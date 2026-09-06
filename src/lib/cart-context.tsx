@@ -1,14 +1,24 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from "react";
-import type { Product } from "../data/products";
+import type { Product } from "../types/product";
+
+export interface CartSelection {
+  color?: string;
+  storage?: string;
+}
 
 export interface CartItem {
-  id: string;
+  key: string;
+  productId: number;
   name: string;
   slug: string;
-  price: number;
-  icon: Product["icon"];
+  image?: string;
+  icon?: Product["icon"];
   category: Product["category"];
+  color?: string;
+  storage?: string;
+  unitPrice: number;
   quantity: number;
+  maxStock: number;
 }
 
 interface CartState {
@@ -17,45 +27,77 @@ interface CartState {
 }
 
 type CartAction =
-  | { type: "ADD"; product: Product; quantity?: number }
-  | { type: "REMOVE"; id: string }
-  | { type: "SET_QTY"; id: string; quantity: number }
+  | { type: "ADD"; product: Product; quantity: number; selection: CartSelection }
+  | { type: "REMOVE"; key: string }
+  | { type: "SET_QTY"; key: string; quantity: number }
   | { type: "CLEAR" }
   | { type: "OPEN" }
   | { type: "CLOSE" };
 
-const STORAGE_KEY = "dgn-cart-v1";
+const STORAGE_KEY = "dgn-cart-v2";
+
+function cartKey(productId: number, selection: CartSelection) {
+  return `${productId}::${selection.color ?? ""}::${selection.storage ?? ""}`;
+}
+
+function priceFor(product: Product, selection: CartSelection) {
+  if (selection.storage && product.storageOptions.length > 0) {
+    const option = product.storageOptions.find((o) => o.label === selection.storage);
+    if (option) return product.price + option.priceDelta;
+  }
+  return product.price;
+}
+
+function stockFor(product: Product, selection: CartSelection) {
+  if (product.storageOptions.length > 0) {
+    const option = product.storageOptions.find((o) => o.label === selection.storage);
+    return option ? option.stock : 0;
+  }
+  return product.stock;
+}
 
 function reducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
     case "ADD": {
-      const qty = action.quantity ?? 1;
-      const existing = state.items.find((i) => i.id === action.product.id);
+      const key = cartKey(action.product.id, action.selection);
+      const maxStock = stockFor(action.product, action.selection);
+      const existing = state.items.find((i) => i.key === key);
       const items = existing
         ? state.items.map((i) =>
-            i.id === action.product.id ? { ...i, quantity: i.quantity + qty } : i
+            i.key === key
+              ? { ...i, quantity: Math.min(maxStock, i.quantity + action.quantity) }
+              : i
           )
         : [
             ...state.items,
             {
-              id: action.product.id,
+              key,
+              productId: action.product.id,
               name: action.product.name,
               slug: action.product.slug,
-              price: action.product.price,
+              image: action.product.images[0],
               icon: action.product.icon,
               category: action.product.category,
-              quantity: qty,
+              color: action.selection.color,
+              storage: action.selection.storage,
+              unitPrice: priceFor(action.product, action.selection),
+              quantity: Math.min(maxStock, action.quantity),
+              maxStock,
             },
           ];
       return { ...state, items, isOpen: true };
     }
     case "REMOVE":
-      return { ...state, items: state.items.filter((i) => i.id !== action.id) };
+      return { ...state, items: state.items.filter((i) => i.key !== action.key) };
     case "SET_QTY":
       return {
         ...state,
         items: state.items
-          .map((i) => (i.id === action.id ? { ...i, quantity: Math.max(1, action.quantity) } : i))
+          .map((i) =>
+            i.key === action.key
+              ? { ...i, quantity: Math.max(1, Math.min(i.maxStock, action.quantity)) }
+              : i
+          )
           .filter((i) => i.quantity > 0),
       };
     case "CLEAR":
@@ -72,9 +114,9 @@ function reducer(state: CartState, action: CartAction): CartState {
 interface CartContextValue {
   items: CartItem[];
   isOpen: boolean;
-  addItem: (product: Product, quantity?: number) => void;
-  removeItem: (id: string) => void;
-  setQuantity: (id: string, quantity: number) => void;
+  addItem: (product: Product, quantity?: number, selection?: CartSelection) => void;
+  removeItem: (key: string) => void;
+  setQuantity: (key: string, quantity: number) => void;
   clear: () => void;
   open: () => void;
   close: () => void;
@@ -107,13 +149,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<CartContextValue>(() => {
     const count = state.items.reduce((sum, i) => sum + i.quantity, 0);
-    const subtotal = state.items.reduce((sum, i) => sum + i.quantity * i.price, 0);
+    const subtotal = state.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
     return {
       items: state.items,
       isOpen: state.isOpen,
-      addItem: (product, quantity) => dispatch({ type: "ADD", product, quantity }),
-      removeItem: (id) => dispatch({ type: "REMOVE", id }),
-      setQuantity: (id, quantity) => dispatch({ type: "SET_QTY", id, quantity }),
+      addItem: (product, quantity = 1, selection = {}) =>
+        dispatch({ type: "ADD", product, quantity, selection }),
+      removeItem: (key) => dispatch({ type: "REMOVE", key }),
+      setQuantity: (key, quantity) => dispatch({ type: "SET_QTY", key, quantity }),
       clear: () => dispatch({ type: "CLEAR" }),
       open: () => dispatch({ type: "OPEN" }),
       close: () => dispatch({ type: "CLOSE" }),

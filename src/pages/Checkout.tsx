@@ -1,45 +1,71 @@
 import { useState, type FormEvent } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { CreditCard, Lock, CheckCircle2, ShoppingBag } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { CreditCard, Lock, CheckCircle2, ShoppingBag, AlertTriangle } from "lucide-react";
 import { useCart } from "../lib/cart-context";
 import { formatPrice } from "../lib/format";
 import { ILLUSTRATIONS } from "../components/illustrations/Illustrations";
+import { resolveIllustrationKey } from "../lib/productDisplay";
 import { Section, SectionHeading } from "../components/ui/Section";
 import { Button } from "../components/ui/Button";
 import { usePageMeta } from "../lib/usePageMeta";
+import { placeOrder, ApiError } from "../lib/api";
+import { PRODUCTS_QUERY_KEY } from "../lib/useProducts";
+import type { Order } from "../types/product";
 
 export default function Checkout() {
   usePageMeta("Checkout", "Complete your order at DGN Tech Mobiles.");
   const { items, subtotal, clear } = useCart();
-  const [placed, setPlaced] = useState(false);
+  const queryClient = useQueryClient();
+  const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
   const [fulfilment, setFulfilment] = useState<"collection" | "delivery">("collection");
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "" });
-  const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const deliveryFee = fulfilment === "delivery" ? 3.99 : 0;
   const total = subtotal + deliveryFee;
 
+  const mutation = useMutation({
+    mutationFn: placeOrder,
+    onSuccess: (order) => {
+      setPlacedOrder(order);
+      clear();
+      queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+    },
+  });
+
   function handlePlaceOrder(e: FormEvent) {
     e.preventDefault();
     if (!form.name || !form.email || !form.phone || (fulfilment === "delivery" && !form.address)) {
-      setError("Please fill in all required fields.");
+      setFormError("Please fill in all required fields.");
       return;
     }
-    setError(null);
-    setPlaced(true);
-    clear();
+    setFormError(null);
+    mutation.mutate({
+      customerName: form.name,
+      email: form.email,
+      phone: form.phone,
+      fulfilmentType: fulfilment,
+      address: fulfilment === "delivery" ? form.address : undefined,
+      items: items.map((i) => ({
+        productId: i.productId,
+        quantity: i.quantity,
+        color: i.color,
+        storage: i.storage,
+      })),
+    });
   }
 
-  if (placed) {
+  if (placedOrder) {
     return (
       <Section>
         <div className="mx-auto flex max-w-lg flex-col items-center rounded-3xl border border-teal-100 bg-teal-50 p-10 text-center">
           <CheckCircle2 className="h-16 w-16 text-teal-600" />
           <h1 className="mt-4 font-display text-2xl font-bold text-ink-950">Order Placed!</h1>
           <p className="mt-2 text-ink-950/60">
-            Thanks {form.name.split(" ")[0]}! Your order total was <strong>{formatPrice(total)}</strong>. We'll
-            contact you at {form.phone} to confirm{" "}
-            {fulfilment === "collection" ? "collection from our Purley shop." : "your delivery."}
+            Thanks {form.name.split(" ")[0]}! Your order <strong>#{placedOrder.orderNumber}</strong> total was{" "}
+            <strong>{formatPrice(placedOrder.total)}</strong>. We'll contact you at {placedOrder.phone} to confirm{" "}
+            {placedOrder.fulfilmentType === "collection" ? "collection from our Purley shop." : "your delivery."}
           </p>
           <p className="mt-4 text-xs text-ink-950/40">
             Online payments aren't live yet — our team will confirm payment on collection or delivery.
@@ -121,7 +147,15 @@ export default function Checkout() {
             </p>
           </div>
 
-          {error && <p className="text-sm font-semibold text-rose-600">{error}</p>}
+          {(formError || mutation.isError) && (
+            <p className="flex items-center gap-2 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              {formError ||
+                (mutation.error instanceof ApiError
+                  ? mutation.error.message
+                  : "Could not place order. Please try again.")}
+            </p>
+          )}
         </div>
 
         <div className="h-fit rounded-3xl border border-ink-950/5 bg-white p-7 shadow-soft">
@@ -130,14 +164,22 @@ export default function Checkout() {
           </h3>
           <ul className="mt-5 space-y-3">
             {items.map((item) => {
-              const Illustration = ILLUSTRATIONS[item.icon];
+              const Illustration = ILLUSTRATIONS[resolveIllustrationKey(item)];
+              const variant = [item.color, item.storage].filter(Boolean).join(" · ");
               return (
-                <li key={item.id} className="flex items-center gap-3 text-sm">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-brand-50">
-                    <Illustration className="h-8 w-8" />
+                <li key={item.key} className="flex items-center gap-3 text-sm">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-50">
+                    {item.image ? (
+                      <img src={item.image} alt={item.name} className="h-full w-full object-contain" />
+                    ) : (
+                      <Illustration className="h-8 w-8" />
+                    )}
                   </div>
-                  <span className="flex-1 font-semibold text-ink-950">{item.name} <span className="text-ink-950/40">×{item.quantity}</span></span>
-                  <span className="font-bold text-ink-950">{formatPrice(item.price * item.quantity)}</span>
+                  <span className="flex-1 font-semibold text-ink-950">
+                    {item.name} <span className="text-ink-950/40">×{item.quantity}</span>
+                    {variant && <span className="block text-xs font-normal text-ink-950/40">{variant}</span>}
+                  </span>
+                  <span className="font-bold text-ink-950">{formatPrice(item.unitPrice * item.quantity)}</span>
                 </li>
               );
             })}
@@ -149,8 +191,12 @@ export default function Checkout() {
           <div className="mt-4 flex justify-between border-t border-ink-950/10 pt-4 text-base font-bold text-ink-950">
             <span>Total</span><span>{formatPrice(total)}</span>
           </div>
-          <button type="submit" className="mt-6 w-full rounded-full bg-gradient-to-r from-brand-500 to-brand-700 px-6 py-4 text-base font-bold text-white shadow-glow transition-transform hover:-translate-y-0.5">
-            Place Order
+          <button
+            type="submit"
+            disabled={mutation.isPending}
+            className="mt-6 w-full rounded-full bg-gradient-to-r from-brand-500 to-brand-700 px-6 py-4 text-base font-bold text-white shadow-glow transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+          >
+            {mutation.isPending ? "Placing Order..." : "Place Order"}
           </button>
           <Link to="/cart" className="mt-3 block text-center text-sm font-semibold text-ink-950/50 hover:text-ink-950">
             Back to Basket

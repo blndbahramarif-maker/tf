@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { products as allProducts } from "../data/products";
+import { useAllProducts } from "../lib/useProducts";
 import { categories } from "../data/categories";
 import { ProductCard } from "../components/shop/ProductCard";
 import { Section } from "../components/ui/Section";
 import { usePageMeta } from "../lib/usePageMeta";
+import { PageLoader, PageError } from "../components/ui/PageState";
 
 type SortKey = "featured" | "price-asc" | "price-desc" | "name-asc";
 
@@ -14,8 +15,12 @@ export default function Shop() {
   const urlQuery = searchParams.get("q") ?? "";
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [sort, setSort] = useState<SortKey>("featured");
+  const { data, isLoading, isError, refetch } = useAllProducts();
 
-  const shoppable = allProducts.filter((p) => p.category !== "vape");
+  const shoppable = useMemo(
+    () => (data ?? []).filter((p) => p.category !== "vape"),
+    [data]
+  );
 
   const filtered = useMemo(() => {
     let list = shoppable;
@@ -33,6 +38,9 @@ export default function Shop() {
     return sorted;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shoppable, urlQuery, activeCategory, sort]);
+
+  if (isLoading) return <PageLoader label="Loading the shop..." />;
+  if (isError) return <PageError onRetry={() => refetch()} />;
 
   return (
     <div>

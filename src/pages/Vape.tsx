@@ -2,9 +2,10 @@ import { useState } from "react";
 import { ShieldAlert, AlertTriangle, Ban, Info } from "lucide-react";
 import { AgeGateModal } from "../components/vape/AgeGateModal";
 import { ProductCard } from "../components/shop/ProductCard";
-import { getProductsByCategory } from "../data/products";
+import { useAllProducts, filterByCategory } from "../lib/useProducts";
 import { Section, SectionHeading } from "../components/ui/Section";
 import { usePageMeta } from "../lib/usePageMeta";
+import { PageLoader, PageError } from "../components/ui/PageState";
 
 export default function Vape() {
   usePageMeta(
@@ -12,7 +13,8 @@ export default function Vape() {
     "Age-restricted vape products at DGN Tech Mobiles, Purley. Strictly for adult customers aged 18 and over."
   );
   const [verified, setVerified] = useState(false);
-  const products = getProductsByCategory("vape");
+  const { data, isLoading, isError, refetch } = useAllProducts();
+  const products = data ? filterByCategory(data, "vape") : [];
 
   return (
     <div>
@@ -62,11 +64,17 @@ export default function Vape() {
               title="Vape Devices & E-Liquids"
               description="A straightforward, responsibly presented range for adult customers only."
             />
-            <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 xl:grid-cols-4">
-              {products.map((p, i) => (
-                <ProductCard key={p.id} product={p} index={i} />
-              ))}
-            </div>
+            {isLoading ? (
+              <PageLoader label="Loading vape products..." />
+            ) : isError ? (
+              <PageError onRetry={() => refetch()} />
+            ) : (
+              <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 xl:grid-cols-4">
+                {products.map((p, i) => (
+                  <ProductCard key={p.id} product={p} index={i} />
+                ))}
+              </div>
+            )}
           </Section>
 
           <Section className="bg-slate-100">

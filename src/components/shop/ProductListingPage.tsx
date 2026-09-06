@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { SlidersHorizontal, X } from "lucide-react";
 import { ProductCard } from "./ProductCard";
-import type { Product } from "../../data/products";
+import type { Product } from "../../types/product";
 import type { Category } from "../../data/categories";
 
 type SortKey = "featured" | "price-asc" | "price-desc" | "name-asc";

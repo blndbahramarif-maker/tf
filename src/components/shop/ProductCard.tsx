@@ -1,13 +1,17 @@
 import { Link } from "react-router-dom";
 import { ShoppingBasket, Eye } from "lucide-react";
-import type { Product } from "../../data/products";
+import type { Product } from "../../types/product";
+import { productTotalStock } from "../../types/product";
 import { ILLUSTRATIONS } from "../illustrations/Illustrations";
 import { formatPrice } from "../../lib/format";
 import { useCart } from "../../lib/cart-context";
+import { resolveIllustrationKey, defaultSelection } from "../../lib/productDisplay";
 
 export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
-  const Illustration = ILLUSTRATIONS[product.icon];
+  const Illustration = ILLUSTRATIONS[resolveIllustrationKey(product)];
   const { addItem } = useCart();
+  const image = product.images[0];
+  const inStock = productTotalStock(product) > 0;
 
   return (
     <div
@@ -22,17 +26,32 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
         ) : (
           <span />
         )}
-        {product.condition && (
-          <span className="rounded-full bg-ink-950/85 px-2.5 py-1 text-[11px] font-semibold text-white">
-            {product.condition}
-          </span>
-        )}
+        <div className="flex flex-col items-end gap-1.5">
+          {product.condition && (
+            <span className="rounded-full bg-ink-950/85 px-2.5 py-1 text-[11px] font-semibold text-white">
+              {product.condition}
+            </span>
+          )}
+          {!inStock && (
+            <span className="rounded-full bg-rose-600 px-2.5 py-1 text-[11px] font-semibold text-white">
+              Out of Stock
+            </span>
+          )}
+        </div>
       </div>
       <Link
         to={`/product/${product.slug}`}
-        className="shine-wrap relative flex aspect-square items-center justify-center bg-gradient-to-br from-brand-50 via-white to-accent-50/60 p-6"
+        className="shine-wrap relative flex aspect-square items-center justify-center overflow-hidden bg-gradient-to-br from-brand-50 via-white to-accent-50/60 p-6"
       >
-        <Illustration className="h-40 w-40 drop-shadow-xl transition-transform duration-500 group-hover:-translate-y-2 group-hover:scale-105 md:h-44 md:w-44" />
+        {image ? (
+          <img
+            src={image}
+            alt={product.name}
+            className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <Illustration className="h-40 w-40 drop-shadow-xl transition-transform duration-500 group-hover:-translate-y-2 group-hover:scale-105 md:h-44 md:w-44" />
+        )}
       </Link>
       <div className="flex flex-1 flex-col gap-2 p-5">
         <span className="text-xs font-semibold uppercase tracking-wide text-brand-500">
@@ -50,10 +69,11 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
         </div>
         <div className="mt-3 flex items-center gap-2">
           <button
-            onClick={() => addItem(product)}
-            className="flex flex-1 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-brand-500 to-brand-700 px-4 py-2.5 text-sm font-bold text-white shadow-md transition-transform hover:-translate-y-0.5 active:scale-95"
+            onClick={() => addItem(product, 1, defaultSelection(product))}
+            disabled={!inStock}
+            className="flex flex-1 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-brand-500 to-brand-700 px-4 py-2.5 text-sm font-bold text-white shadow-md transition-transform hover:-translate-y-0.5 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
           >
-            <ShoppingBasket className="h-4 w-4" /> Add to Basket
+            <ShoppingBasket className="h-4 w-4" /> {inStock ? "Add to Basket" : "Out of Stock"}
           </button>
           <Link
             to={`/product/${product.slug}`}

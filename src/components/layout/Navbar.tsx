@@ -10,7 +10,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { categories } from "../../data/categories";
-import { searchProducts } from "../../data/products";
+import { useAllProducts, searchProductList } from "../../lib/useProducts";
 import { useCart } from "../../lib/cart-context";
 
 const navLinkBase =
@@ -43,7 +43,8 @@ export function Navbar() {
     setSearchOpen(false);
   }, [navigate]);
 
-  const results = searchProducts(query).slice(0, 6);
+  const { data: allProducts } = useAllProducts();
+  const results = searchProductList(allProducts ?? [], query).slice(0, 6);
 
   function submitSearch(e: React.FormEvent) {
     e.preventDefault();

@@ -12,6 +12,17 @@ dist
 dist-ssr
 *.local
 
+# Backend runtime data (do not commit real product/order data or uploads)
+server/data/*.sqlite
+server/data/*.sqlite-journal
+server/data/*.sqlite-wal
+server/data/*.sqlite-shm
+server/uploads/*
+!server/uploads/.gitkeep
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

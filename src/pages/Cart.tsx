@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Minus, Plus, Trash2, ShoppingBasket, ArrowRight } from "lucide-react";
 import { useCart } from "../lib/cart-context";
 import { ILLUSTRATIONS } from "../components/illustrations/Illustrations";
+import { resolveIllustrationKey } from "../lib/productDisplay";
 import { formatPrice } from "../lib/format";
 import { Section, SectionHeading } from "../components/ui/Section";
 import { Button } from "../components/ui/Button";
@@ -25,29 +26,35 @@ export default function Cart() {
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-2">
             {items.map((item) => {
-              const Illustration = ILLUSTRATIONS[item.icon];
+              const Illustration = ILLUSTRATIONS[resolveIllustrationKey(item)];
+              const variant = [item.color, item.storage].filter(Boolean).join(" · ");
               return (
-                <div key={item.id} className="flex flex-col gap-4 rounded-2xl border border-ink-950/5 bg-white p-4 shadow-soft sm:flex-row sm:items-center">
-                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-brand-50">
-                    <Illustration className="h-14 w-14" />
+                <div key={item.key} className="flex flex-col gap-4 rounded-2xl border border-ink-950/5 bg-white p-4 shadow-soft sm:flex-row sm:items-center">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand-50">
+                    {item.image ? (
+                      <img src={item.image} alt={item.name} className="h-full w-full object-contain" />
+                    ) : (
+                      <Illustration className="h-14 w-14" />
+                    )}
                   </div>
                   <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <Link to={`/product/${item.slug}`} className="font-bold text-ink-950 hover:text-brand-600">{item.name}</Link>
-                      <p className="text-sm text-ink-950/50">{formatPrice(item.price)} each</p>
+                      {variant && <p className="text-xs text-ink-950/45">{variant}</p>}
+                      <p className="text-sm text-ink-950/50">{formatPrice(item.unitPrice)} each</p>
                     </div>
                     <div className="flex items-center gap-5">
                       <div className="flex items-center gap-2 rounded-full border border-ink-950/10 px-1.5 py-1">
-                        <button onClick={() => setQuantity(item.id, item.quantity - 1)} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-ink-950/5" aria-label="Decrease quantity">
+                        <button onClick={() => setQuantity(item.key, item.quantity - 1)} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-ink-950/5" aria-label="Decrease quantity">
                           <Minus className="h-3.5 w-3.5" />
                         </button>
                         <span className="w-6 text-center font-bold">{item.quantity}</span>
-                        <button onClick={() => setQuantity(item.id, item.quantity + 1)} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-ink-950/5" aria-label="Increase quantity">
+                        <button onClick={() => setQuantity(item.key, item.quantity + 1)} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-ink-950/5" aria-label="Increase quantity">
                           <Plus className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                      <span className="w-20 text-right font-display font-bold text-ink-950">{formatPrice(item.price * item.quantity)}</span>
-                      <button onClick={() => removeItem(item.id)} aria-label="Remove item" className="text-ink-950/30 hover:text-rose-500">
+                      <span className="w-20 text-right font-display font-bold text-ink-950">{formatPrice(item.unitPrice * item.quantity)}</span>
+                      <button onClick={() => removeItem(item.key)} aria-label="Remove item" className="text-ink-950/30 hover:text-rose-500">
                         <Trash2 className="h-5 w-5" />
                       </button>
                     </div>
