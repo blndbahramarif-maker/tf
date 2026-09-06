@@ -12,7 +12,7 @@ const points = [
 
 export function WhyChooseUs() {
   return (
-    <Section className="relative overflow-hidden bg-ink-950 text-white">
+    <Section className="grain relative overflow-hidden bg-ink-950 text-white">
       <div className="pointer-events-none absolute -left-20 top-1/2 h-80 w-80 -translate-y-1/2 animate-blob rounded-full bg-brand-600/20 blur-3xl" />
       <div className="pointer-events-none absolute -right-20 bottom-0 h-72 w-72 animate-blob rounded-full bg-teal-500/15 blur-3xl" />
       <SectionHeading eyebrow="Why Choose Us" title="A Shop You Can Rely On" light />

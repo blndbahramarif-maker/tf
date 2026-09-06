@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Search,
   ShoppingBasket,
@@ -156,11 +157,20 @@ export function Navbar() {
               className="relative flex h-11 w-11 items-center justify-center rounded-full text-ink-950/80 hover:bg-ink-950/5"
             >
               <ShoppingBasket className="h-5 w-5" />
-              {cart.count > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-500 px-1 text-[11px] font-bold text-white">
-                  {cart.count}
-                </span>
-              )}
+              <AnimatePresence>
+                {cart.count > 0 && (
+                  <motion.span
+                    key={cart.count}
+                    initial={{ scale: 0.4, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.4, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                    className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-500 px-1 text-[11px] font-bold text-white"
+                  >
+                    {cart.count}
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </button>
             <button
               onClick={() => setMobileOpen(true)}

@@ -6,6 +6,7 @@ import { ILLUSTRATIONS } from "../illustrations/Illustrations";
 import { formatPrice } from "../../lib/format";
 import { useCart } from "../../lib/cart-context";
 import { resolveIllustrationKey, defaultSelection } from "../../lib/productDisplay";
+import { TiltCard } from "../ui/TiltCard";
 
 export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
   const Illustration = ILLUSTRATIONS[resolveIllustrationKey(product)];
@@ -14,10 +15,8 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
   const inStock = productTotalStock(product) > 0;
 
   return (
-    <div
-      className="animate-fade-up group relative flex flex-col overflow-hidden rounded-3xl border border-ink-950/5 bg-white shadow-soft card-hover"
-      style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
-    >
+    <TiltCard className="h-full animate-fade-up" style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}>
+    <div className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-ink-950/5 bg-white shadow-soft card-hover">
       <div className="absolute inset-x-3 top-3 z-10 flex items-start justify-between gap-2">
         {product.badge ? (
           <span className="rounded-full bg-accent-500 px-2.5 py-1 text-[11px] font-bold text-white shadow-md">
@@ -86,5 +85,6 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
         </div>
       </div>
     </div>
+    </TiltCard>
   );
 }

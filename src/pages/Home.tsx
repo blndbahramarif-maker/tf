@@ -5,6 +5,7 @@ import { CategoriesSection } from "../components/home/CategoriesSection";
 import { FeaturedProducts } from "../components/home/FeaturedProducts";
 import { WhyChooseUs } from "../components/home/WhyChooseUs";
 import { ContactSection } from "../components/home/ContactSection";
+import { Reveal } from "../components/ui/Reveal";
 import { usePageMeta } from "../lib/usePageMeta";
 
 export default function Home() {
@@ -16,11 +17,21 @@ export default function Home() {
     <>
       <Hero />
       <RepairBanner />
-      <ServicesSection />
-      <CategoriesSection />
-      <FeaturedProducts />
-      <WhyChooseUs />
-      <ContactSection />
+      <Reveal>
+        <ServicesSection />
+      </Reveal>
+      <Reveal>
+        <CategoriesSection />
+      </Reveal>
+      <Reveal>
+        <FeaturedProducts />
+      </Reveal>
+      <Reveal>
+        <WhyChooseUs />
+      </Reveal>
+      <Reveal>
+        <ContactSection />
+      </Reveal>
     </>
   );
 }

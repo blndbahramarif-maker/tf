@@ -1,18 +1,12 @@
 import { ArrowRight, Wrench, MessageCircle, Star, ShieldCheck, Zap } from "lucide-react";
 import { Button } from "../ui/Button";
-import {
-  PhoneIllustration,
-  HeadphoneIllustration,
-  ColaCanIllustration,
-  MugIllustration,
-  ToyRobotIllustration,
-  CaseIllustration,
-} from "../illustrations/Illustrations";
+import { Hero3DGate } from "../three/Hero3DGate";
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-ink-950 via-brand-950 to-brand-900 pb-24 pt-14 text-white sm:pb-32 sm:pt-20">
+    <section className="grain relative overflow-hidden bg-gradient-to-b from-ink-950 via-brand-950 to-brand-900 pb-24 pt-14 text-white sm:pb-32 sm:pt-20">
       <div className="bg-grid pointer-events-none absolute inset-0 opacity-40" />
+      <div className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[820px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-brand-500/20 blur-[120px]" />
       <div className="pointer-events-none absolute -left-32 top-10 h-72 w-72 animate-blob rounded-full bg-brand-500/30 blur-3xl" />
       <div className="pointer-events-none absolute -right-24 bottom-0 h-96 w-96 animate-blob rounded-full bg-accent-500/20 blur-3xl" style={{ animationDelay: "3s" }} />
 
@@ -21,8 +15,11 @@ export function Hero() {
           <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-brand-200 backdrop-blur">
             <Star className="h-3.5 w-3.5 fill-accent-400 text-accent-400" /> Purley's Local Tech &amp; Everyday Shop
           </span>
-          <h1 className="mt-6 text-balance font-display text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
-            DGN Tech <span className="bg-gradient-to-r from-brand-300 via-accent-300 to-teal-300 bg-clip-text text-transparent">Mobiles</span>
+          <h1 className="mt-6 text-balance font-display text-4xl font-extrabold leading-[1.02] tracking-tight sm:text-5xl lg:text-7xl">
+            DGN Tech{" "}
+            <span className="bg-gradient-to-r from-brand-300 via-accent-300 to-teal-300 bg-clip-text text-transparent">
+              Mobiles
+            </span>
           </h1>
           <p className="mt-5 max-w-lg text-balance font-display text-xl font-semibold text-white/90 sm:text-2xl">
             Everything You Need, All in One Shop
@@ -51,27 +48,7 @@ export function Hero() {
           </div>
         </div>
 
-        <div className="relative mx-auto hidden h-[420px] w-full max-w-md md:block">
-          <div className="glass absolute inset-8 rounded-[3rem]" />
-          <div className="absolute left-1/2 top-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 animate-float">
-            <PhoneIllustration className="h-full w-full drop-shadow-2xl" />
-          </div>
-          <div className="absolute left-2 top-4 h-24 w-24 animate-float-slow" style={{ animationDelay: "0.5s" }}>
-            <HeadphoneIllustration className="h-full w-full drop-shadow-xl" />
-          </div>
-          <div className="absolute right-0 top-10 h-20 w-20 animate-float" style={{ animationDelay: "1.2s" }}>
-            <CaseIllustration className="h-full w-full drop-shadow-xl" />
-          </div>
-          <div className="absolute bottom-6 left-6 h-20 w-20 animate-float-slow" style={{ animationDelay: "0.8s" }}>
-            <ColaCanIllustration className="h-full w-full drop-shadow-xl" />
-          </div>
-          <div className="absolute bottom-2 right-4 h-24 w-24 animate-float" style={{ animationDelay: "1.6s" }}>
-            <MugIllustration className="h-full w-full drop-shadow-xl" />
-          </div>
-          <div className="absolute right-16 top-0 h-16 w-16 animate-float-slow" style={{ animationDelay: "2s" }}>
-            <ToyRobotIllustration className="h-full w-full drop-shadow-xl" />
-          </div>
-        </div>
+        <Hero3DGate />
       </div>
     </section>
   );

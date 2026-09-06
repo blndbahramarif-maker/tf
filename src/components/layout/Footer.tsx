@@ -50,23 +50,23 @@ export function Footer() {
         <div>
           <h4 className="mb-4 font-display text-sm font-bold uppercase tracking-wide text-white">Quick Links</h4>
           <ul className="space-y-2.5 text-sm">
-            <li><Link to="/" className="hover:text-white">Home</Link></li>
-            <li><Link to="/shop" className="hover:text-white">Shop</Link></li>
-            <li><Link to="/repairs" className="hover:text-white">Repairs</Link></li>
-            <li><Link to="/about" className="hover:text-white">About Us</Link></li>
-            <li><Link to="/contact" className="hover:text-white">Contact</Link></li>
+            <li><Link to="/" className="link-underline hover:text-white">Home</Link></li>
+            <li><Link to="/shop" className="link-underline hover:text-white">Shop</Link></li>
+            <li><Link to="/repairs" className="link-underline hover:text-white">Repairs</Link></li>
+            <li><Link to="/about" className="link-underline hover:text-white">About Us</Link></li>
+            <li><Link to="/contact" className="link-underline hover:text-white">Contact</Link></li>
           </ul>
         </div>
 
         <div>
           <h4 className="mb-4 font-display text-sm font-bold uppercase tracking-wide text-white">Shop Categories</h4>
           <ul className="space-y-2.5 text-sm">
-            <li><Link to="/phones" className="hover:text-white">Phones & Technology</Link></li>
-            <li><Link to="/accessories" className="hover:text-white">Phone Accessories</Link></li>
-            <li><Link to="/drinks" className="hover:text-white">Drinks</Link></li>
-            <li><Link to="/kitchen" className="hover:text-white">Kitchen & Home</Link></li>
-            <li><Link to="/toys" className="hover:text-white">Kids' Toys</Link></li>
-            <li><Link to="/vape" className="hover:text-white">Vape Products (18+)</Link></li>
+            <li><Link to="/phones" className="link-underline hover:text-white">Phones & Technology</Link></li>
+            <li><Link to="/accessories" className="link-underline hover:text-white">Phone Accessories</Link></li>
+            <li><Link to="/drinks" className="link-underline hover:text-white">Drinks</Link></li>
+            <li><Link to="/kitchen" className="link-underline hover:text-white">Kitchen & Home</Link></li>
+            <li><Link to="/toys" className="link-underline hover:text-white">Kids' Toys</Link></li>
+            <li><Link to="/vape" className="link-underline hover:text-white">Vape Products (18+)</Link></li>
           </ul>
         </div>
 
@@ -79,11 +79,11 @@ export function Footer() {
             </li>
             <li className="flex gap-2.5">
               <Phone className="mt-0.5 h-4 w-4 shrink-0 text-brand-300" />
-              <a href="tel:07939294583" className="hover:text-white">07939 294583</a>
+              <a href="tel:07939294583" className="link-underline hover:text-white">07939 294583</a>
             </li>
             <li className="flex gap-2.5">
               <Mail className="mt-0.5 h-4 w-4 shrink-0 text-brand-300" />
-              <a href="mailto:dgntechpurley@gmail.com" className="hover:text-white">dgntechpurley@gmail.com</a>
+              <a href="mailto:dgntechpurley@gmail.com" className="link-underline hover:text-white">dgntechpurley@gmail.com</a>
             </li>
             <li className="flex gap-2.5">
               <Clock className="mt-0.5 h-4 w-4 shrink-0 text-brand-300" />
@@ -97,8 +97,8 @@ export function Footer() {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-6 text-xs text-white/50 sm:flex-row sm:px-6 lg:px-8">
           <p>© 2026 DGN Tech Mobiles. All Rights Reserved.</p>
           <div className="flex gap-5">
-            <Link to="/privacy" className="hover:text-white">Privacy Policy</Link>
-            <Link to="/terms" className="hover:text-white">Terms and Conditions</Link>
+            <Link to="/privacy" className="link-underline hover:text-white">Privacy Policy</Link>
+            <Link to="/terms" className="link-underline hover:text-white">Terms and Conditions</Link>
           </div>
         </div>
       </div>
