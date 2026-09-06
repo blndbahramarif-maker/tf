@@ -36,6 +36,7 @@ db.exec(`
     badge TEXT,
     icon TEXT,
     featured INTEGER NOT NULL DEFAULT 0,
+    visible INTEGER NOT NULL DEFAULT 1,
     stock INTEGER NOT NULL DEFAULT 0,
     images TEXT NOT NULL DEFAULT '[]',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -93,7 +94,12 @@ db.exec(`
 `);
 
 // CREATE TABLE IF NOT EXISTS does not add columns to a database created by an
-// older version of this schema, so migrate existing `orders` tables in place.
+// older version of this schema, so migrate existing tables in place.
+const productColumns = new Set(db.prepare("PRAGMA table_info(products)").all().map((c) => c.name));
+if (!productColumns.has("visible")) {
+  db.exec("ALTER TABLE products ADD COLUMN visible INTEGER NOT NULL DEFAULT 1");
+}
+
 const orderColumns = new Set(db.prepare("PRAGMA table_info(orders)").all().map((c) => c.name));
 if (!orderColumns.has("payment_status")) {
   db.exec("ALTER TABLE orders ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'unpaid'");

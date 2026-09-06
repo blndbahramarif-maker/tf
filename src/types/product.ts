@@ -29,6 +29,7 @@ export interface Product {
   badge?: string;
   icon?: IllustrationKey;
   featured: boolean;
+  visible: boolean;
   stock: number;
   images: string[];
   colors: ProductColor[];
@@ -50,6 +51,7 @@ export interface ProductInput {
   badge?: string | null;
   icon?: IllustrationKey | null;
   featured: boolean;
+  visible: boolean;
   stock: number;
   images: string[];
   colors: { name: string; hex: string }[];

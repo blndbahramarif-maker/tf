@@ -8,12 +8,13 @@ productsRouter.get("/", (req, res) => {
   const products = listProducts({
     category: typeof category === "string" ? category : undefined,
     includeOutOfStock: true,
+    visibleOnly: true,
   });
   res.json({ products });
 });
 
 productsRouter.get("/:slug", (req, res) => {
-  const product = getProductBySlug(req.params.slug);
+  const product = getProductBySlug(req.params.slug, { visibleOnly: true });
   if (!product) return res.status(404).json({ error: "Product not found." });
   res.json({ product });
 });

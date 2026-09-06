@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Eye, EyeOff } from "lucide-react";
 import { useAdminAuth } from "../../lib/admin-auth-context";
-import { adminDeleteProduct, adminListProducts } from "../../lib/api";
+import { adminDeleteProduct, adminListProducts, adminUpdateProduct } from "../../lib/api";
 import { productTotalStock } from "../../types/product";
 import { categories } from "../../data/categories";
 import { formatPrice } from "../../lib/format";
@@ -31,6 +31,15 @@ export default function AdminProducts() {
       queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
       queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
       setConfirmDelete(null);
+    },
+  });
+
+  const visibilityMutation = useMutation({
+    mutationFn: ({ id, visible }: { id: number; visible: boolean }) =>
+      adminUpdateProduct(token as string, id, { visible }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
+      queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
     },
   });
 
@@ -124,10 +133,28 @@ export default function AdminProducts() {
                     </span>
                   </td>
                   <td className="px-5 py-3">
-                    {p.featured && <span className="rounded-full bg-brand-100 px-2.5 py-1 text-xs font-bold text-brand-700">Featured</span>}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {p.featured && <span className="rounded-full bg-brand-100 px-2.5 py-1 text-xs font-bold text-brand-700">Featured</span>}
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                          p.visible ? "bg-teal-100 text-teal-700" : "bg-ink-950/10 text-ink-950/60"
+                        }`}
+                      >
+                        {p.visible ? "Visible" : "Hidden"}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => visibilityMutation.mutate({ id: p.id, visible: !p.visible })}
+                        disabled={visibilityMutation.isPending}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-ink-950/10 text-ink-950/60 hover:border-brand-300 hover:text-brand-600 disabled:opacity-50"
+                        aria-label={p.visible ? `Hide ${p.name}` : `Show ${p.name}`}
+                        title={p.visible ? "Hide from customer website" : "Show on customer website"}
+                      >
+                        {p.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                      </button>
                       <Link
                         to={`/admin/products/${p.id}/edit`}
                         className="flex h-8 w-8 items-center justify-center rounded-lg border border-ink-950/10 text-ink-950/60 hover:border-brand-300 hover:text-brand-600"

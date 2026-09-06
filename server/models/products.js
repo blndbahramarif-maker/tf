@@ -55,6 +55,7 @@ function serializeProduct(row) {
     badge: row.badge ?? undefined,
     icon: row.icon ?? undefined,
     featured: !!row.featured,
+    visible: !!row.visible,
     stock: row.stock,
     images,
     colors,
@@ -64,13 +65,18 @@ function serializeProduct(row) {
   };
 }
 
-export function listProducts({ category, includeOutOfStock = true } = {}) {
-  let sql = "SELECT * FROM products";
+export function listProducts({ category, includeOutOfStock = true, visibleOnly = false } = {}) {
+  const clauses = [];
   const params = [];
   if (category) {
-    sql += " WHERE category = ?";
+    clauses.push("category = ?");
     params.push(category);
   }
+  if (visibleOnly) {
+    clauses.push("visible = 1");
+  }
+  let sql = "SELECT * FROM products";
+  if (clauses.length > 0) sql += ` WHERE ${clauses.join(" AND ")}`;
   sql += " ORDER BY created_at DESC";
   const rows = db.prepare(sql).all(...params);
   return rows
@@ -85,8 +91,9 @@ function totalStock(product) {
   return product.stock;
 }
 
-export function getProductBySlug(slug) {
+export function getProductBySlug(slug, { visibleOnly = false } = {}) {
   const row = db.prepare("SELECT * FROM products WHERE slug = ?").get(slug);
+  if (visibleOnly && row && !row.visible) return null;
   return serializeProduct(row);
 }
 
@@ -124,8 +131,8 @@ export function createProduct(input) {
   const info = db
     .prepare(
       `INSERT INTO products
-        (slug, name, category, subcategory, description, short_description, price, old_price, brand, condition, badge, icon, featured, stock, images)
-       VALUES (@slug, @name, @category, @subcategory, @description, @shortDescription, @price, @oldPrice, @brand, @condition, @badge, @icon, @featured, @stock, @images)`
+        (slug, name, category, subcategory, description, short_description, price, old_price, brand, condition, badge, icon, featured, visible, stock, images)
+       VALUES (@slug, @name, @category, @subcategory, @description, @shortDescription, @price, @oldPrice, @brand, @condition, @badge, @icon, @featured, @visible, @stock, @images)`
     )
     .run({
       slug,
@@ -141,6 +148,7 @@ export function createProduct(input) {
       badge: input.badge || null,
       icon: input.icon || null,
       featured: input.featured ? 1 : 0,
+      visible: input.visible != null ? (input.visible ? 1 : 0) : 1,
       stock: Number(input.stock) || 0,
       images: JSON.stringify(input.images || []),
     });
@@ -175,6 +183,7 @@ export function updateProduct(id, input) {
       badge = @badge,
       icon = @icon,
       featured = @featured,
+      visible = @visible,
       stock = @stock,
       images = @images,
       updated_at = datetime('now')
@@ -197,6 +206,7 @@ export function updateProduct(id, input) {
     badge: input.badge ?? existing.badge,
     icon: input.icon ?? existing.icon,
     featured: input.featured != null ? (input.featured ? 1 : 0) : existing.featured,
+    visible: input.visible != null ? (input.visible ? 1 : 0) : existing.visible,
     stock: input.stock != null ? Number(input.stock) : existing.stock,
     images: input.images != null ? JSON.stringify(input.images) : existing.images,
   });

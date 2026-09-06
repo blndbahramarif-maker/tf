@@ -28,6 +28,7 @@ interface FormState {
   oldPrice: string;
   badge: string;
   featured: boolean;
+  visible: boolean;
   description: string;
   shortDescription: string;
   stock: string;
@@ -46,6 +47,7 @@ const emptyForm: FormState = {
   oldPrice: "",
   badge: "",
   featured: false,
+  visible: true,
   description: "",
   shortDescription: "",
   stock: "0",
@@ -90,6 +92,7 @@ export default function AdminProductForm() {
         oldPrice: p.oldPrice != null ? String(p.oldPrice) : "",
         badge: p.badge ?? "",
         featured: p.featured,
+        visible: p.visible,
         description: p.description,
         shortDescription: p.shortDescription,
         stock: String(p.stock),
@@ -122,6 +125,7 @@ export default function AdminProductForm() {
         oldPrice: form.oldPrice ? parseFloat(form.oldPrice) : null,
         badge: form.badge || null,
         featured: form.featured,
+        visible: form.visible,
         description: form.description,
         shortDescription: form.shortDescription,
         stock: parseInt(form.stock, 10) || 0,
@@ -227,6 +231,33 @@ export default function AdminProductForm() {
               <input type="checkbox" checked={form.featured} onChange={(e) => setForm((f) => ({ ...f, featured: e.target.checked }))} className="h-4 w-4 rounded accent-brand-600" />
               Feature on homepage
             </label>
+            <div className="sm:col-span-2">
+              <span className="block text-sm font-bold text-ink-950/80">Visibility</span>
+              <p className="mt-1 text-xs font-normal text-ink-950/40">
+                Hidden products stay in your catalogue and keep their stock, but are removed from the shop, search
+                and listings until you make them visible again.
+              </p>
+              <div className="mt-2 inline-flex rounded-full border border-ink-950/10 bg-ink-950/[0.03] p-1">
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, visible: true }))}
+                  className={`rounded-full px-5 py-2 text-sm font-bold transition-colors ${
+                    form.visible ? "bg-teal-600 text-white shadow-sm" : "text-ink-950/50 hover:text-ink-950/80"
+                  }`}
+                >
+                  Visible
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, visible: false }))}
+                  className={`rounded-full px-5 py-2 text-sm font-bold transition-colors ${
+                    !form.visible ? "bg-ink-950 text-white shadow-sm" : "text-ink-950/50 hover:text-ink-950/80"
+                  }`}
+                >
+                  Hidden
+                </button>
+              </div>
+            </div>
             <label className="block text-sm font-bold text-ink-950/80 sm:col-span-2">
               Short Description
               <input className="input mt-1.5 font-normal" value={form.shortDescription} onChange={(e) => setForm((f) => ({ ...f, shortDescription: e.target.value }))} placeholder="One line shown on product cards" />
