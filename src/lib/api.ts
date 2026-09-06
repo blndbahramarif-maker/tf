@@ -61,6 +61,16 @@ export function placeOrder(payload: PlaceOrderPayload): Promise<Order> {
   }).then((r) => r.order);
 }
 
+export function createCheckoutSession(orderId: number): Promise<{ url: string }> {
+  return request<{ url: string }>(`/orders/${orderId}/checkout-session`, {
+    method: "POST",
+  });
+}
+
+export function fetchOrderBySession(sessionId: string): Promise<Order> {
+  return request<{ order: Order }>(`/orders/session/${sessionId}`).then((r) => r.order);
+}
+
 /* -------------------------------- Admin API -------------------------------- */
 
 export interface AdminSession {
@@ -147,5 +157,12 @@ export function adminUpdateOrderStatus(
     method: "PATCH",
     token,
     body: JSON.stringify({ status }),
+  }).then((r) => r.order);
+}
+
+export function adminRefundOrder(token: string, id: number): Promise<Order> {
+  return request<{ order: Order }>(`/admin/orders/${id}/refund`, {
+    method: "POST",
+    token,
   }).then((r) => r.order);
 }

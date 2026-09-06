@@ -68,6 +68,8 @@ export interface OrderItem {
 
 export type OrderStatus = "pending" | "confirmed" | "ready" | "completed" | "cancelled";
 
+export type PaymentStatus = "unpaid" | "paid" | "failed" | "refunded";
+
 export interface Order {
   id: number;
   orderNumber: string;
@@ -80,6 +82,7 @@ export interface Order {
   deliveryFee: number;
   total: number;
   status: OrderStatus;
+  paymentStatus: PaymentStatus;
   createdAt: string;
   items: OrderItem[];
 }

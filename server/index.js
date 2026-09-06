@@ -7,6 +7,7 @@ import { runSeed } from "./seed.js";
 import { productsRouter } from "./routes/products.js";
 import { ordersRouter } from "./routes/orders.js";
 import { adminRouter } from "./routes/admin.js";
+import { stripeWebhookRouter } from "./routes/stripe-webhook.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 4000;
@@ -15,6 +16,11 @@ runSeed();
 
 const app = express();
 app.use(cors());
+
+// Must be registered before express.json() — Stripe webhook signature
+// verification requires the raw, unparsed request body.
+app.use("/api/stripe/webhook", stripeWebhookRouter);
+
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 

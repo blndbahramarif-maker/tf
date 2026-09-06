@@ -3,11 +3,12 @@ import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Mail, Phone, MapPin, Package } from "lucide-react";
 import { useAdminAuth } from "../../lib/admin-auth-context";
-import { adminGetOrder, adminUpdateOrderStatus } from "../../lib/api";
+import { adminGetOrder, adminUpdateOrderStatus, adminRefundOrder, ApiError } from "../../lib/api";
 import { formatPrice } from "../../lib/format";
 import { PageLoader, PageError } from "../../components/ui/PageState";
 import { usePageMeta } from "../../lib/usePageMeta";
 import { StatusBadge } from "../../components/admin/StatusBadge";
+import { PaymentStatusBadge } from "../../components/admin/PaymentStatusBadge";
 import type { OrderStatus } from "../../types/product";
 
 const STATUS_OPTIONS: OrderStatus[] = ["pending", "confirmed", "ready", "completed", "cancelled"];
@@ -35,6 +36,14 @@ export default function AdminOrderDetail() {
     },
   });
 
+  const refundMutation = useMutation({
+    mutationFn: () => adminRefundOrder(token as string, Number(id)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "order", id] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
+    },
+  });
+
   if (orderQuery.isLoading) return <PageLoader label="Loading order..." />;
   if (orderQuery.isError || !orderQuery.data) return <PageError onRetry={() => orderQuery.refetch()} />;
 
@@ -53,7 +62,10 @@ export default function AdminOrderDetail() {
             Placed {new Date(order.createdAt).toLocaleString("en-GB")}
           </p>
         </div>
-        <StatusBadge status={order.status} />
+        <div className="flex items-center gap-2">
+          <StatusBadge status={order.status} />
+          <PaymentStatusBadge status={order.paymentStatus} />
+        </div>
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -89,6 +101,44 @@ export default function AdminOrderDetail() {
             ))}
           </div>
           {savedMessage && <p className="mt-3 text-sm font-semibold text-teal-600">Status updated.</p>}
+        </div>
+
+        <div className="rounded-2xl border border-ink-950/5 bg-white p-6 shadow-soft sm:col-span-2">
+          <h2 className="font-display text-lg font-bold text-ink-950">Payment</h2>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <PaymentStatusBadge status={order.paymentStatus} />
+              <p className="mt-2 text-sm text-ink-950/60">
+                {order.paymentStatus === "paid" && "Paid via Stripe. Stock has been deducted for this order."}
+                {order.paymentStatus === "unpaid" && "This order hasn't been paid yet — no stock has been deducted."}
+                {order.paymentStatus === "failed" && "The customer's payment attempt failed or was cancelled."}
+                {order.paymentStatus === "refunded" && "This payment has been refunded via Stripe."}
+              </p>
+            </div>
+            {order.paymentStatus === "paid" && (
+              <button
+                onClick={() => {
+                  if (confirm(`Refund order #${order.orderNumber} for ${formatPrice(order.total)}?`)) {
+                    refundMutation.mutate();
+                  }
+                }}
+                disabled={refundMutation.isPending}
+                className="rounded-full border-2 border-rose-200 px-4 py-2 text-sm font-bold text-rose-600 transition-colors hover:border-rose-400 disabled:opacity-60"
+              >
+                {refundMutation.isPending ? "Refunding..." : "Refund via Stripe"}
+              </button>
+            )}
+          </div>
+          {refundMutation.isError && (
+            <p className="mt-3 text-sm font-semibold text-rose-600">
+              {refundMutation.error instanceof ApiError
+                ? refundMutation.error.message
+                : "Could not process refund. Please try again."}
+            </p>
+          )}
+          {refundMutation.isSuccess && (
+            <p className="mt-3 text-sm font-semibold text-teal-600">Refund issued successfully.</p>
+          )}
         </div>
       </div>
 

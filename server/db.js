@@ -71,6 +71,9 @@ db.exec(`
     delivery_fee REAL NOT NULL DEFAULT 0,
     total REAL NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
+    payment_status TEXT NOT NULL DEFAULT 'unpaid',
+    stripe_checkout_session_id TEXT,
+    stripe_payment_intent_id TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -88,5 +91,21 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
   CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
 `);
+
+// CREATE TABLE IF NOT EXISTS does not add columns to a database created by an
+// older version of this schema, so migrate existing `orders` tables in place.
+const orderColumns = new Set(db.prepare("PRAGMA table_info(orders)").all().map((c) => c.name));
+if (!orderColumns.has("payment_status")) {
+  db.exec("ALTER TABLE orders ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'unpaid'");
+}
+if (!orderColumns.has("stripe_checkout_session_id")) {
+  db.exec("ALTER TABLE orders ADD COLUMN stripe_checkout_session_id TEXT");
+}
+if (!orderColumns.has("stripe_payment_intent_id")) {
+  db.exec("ALTER TABLE orders ADD COLUMN stripe_payment_intent_id TEXT");
+}
+db.exec(
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_stripe_session ON orders(stripe_checkout_session_id) WHERE stripe_checkout_session_id IS NOT NULL"
+);
 
 export default db;

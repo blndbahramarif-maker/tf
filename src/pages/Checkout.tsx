@@ -1,23 +1,21 @@
 import { useState, type FormEvent } from "react";
-import { Link, Navigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CreditCard, Lock, CheckCircle2, ShoppingBag, AlertTriangle } from "lucide-react";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
+import { useMutation } from "@tanstack/react-query";
+import { CreditCard, Lock, ShoppingBag, AlertTriangle, Info } from "lucide-react";
 import { useCart } from "../lib/cart-context";
 import { formatPrice } from "../lib/format";
 import { ILLUSTRATIONS } from "../components/illustrations/Illustrations";
 import { resolveIllustrationKey } from "../lib/productDisplay";
 import { Section, SectionHeading } from "../components/ui/Section";
-import { Button } from "../components/ui/Button";
 import { usePageMeta } from "../lib/usePageMeta";
-import { placeOrder, ApiError } from "../lib/api";
-import { PRODUCTS_QUERY_KEY } from "../lib/useProducts";
-import type { Order } from "../types/product";
+import { placeOrder, createCheckoutSession, ApiError } from "../lib/api";
+import type { PlaceOrderPayload } from "../lib/api";
 
 export default function Checkout() {
   usePageMeta("Checkout", "Complete your order at DGN Tech Mobiles.");
-  const { items, subtotal, clear } = useCart();
-  const queryClient = useQueryClient();
-  const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
+  const { items, subtotal } = useCart();
+  const [searchParams] = useSearchParams();
+  const paymentCancelled = searchParams.get("payment") === "cancelled";
   const [fulfilment, setFulfilment] = useState<"collection" | "delivery">("collection");
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "" });
   const [formError, setFormError] = useState<string | null>(null);
@@ -26,11 +24,15 @@ export default function Checkout() {
   const total = subtotal + deliveryFee;
 
   const mutation = useMutation({
-    mutationFn: placeOrder,
-    onSuccess: (order) => {
-      setPlacedOrder(order);
-      clear();
-      queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+    mutationFn: async (payload: PlaceOrderPayload) => {
+      const order = await placeOrder(payload);
+      const { url } = await createCheckoutSession(order.id);
+      return url;
+    },
+    onSuccess: (url) => {
+      // The basket is only cleared once Stripe confirms payment, on the
+      // order confirmation page — not here, in case the customer cancels.
+      window.location.href = url;
     },
   });
 
@@ -54,26 +56,6 @@ export default function Checkout() {
         storage: i.storage,
       })),
     });
-  }
-
-  if (placedOrder) {
-    return (
-      <Section>
-        <div className="mx-auto flex max-w-lg flex-col items-center rounded-3xl border border-teal-100 bg-teal-50 p-10 text-center">
-          <CheckCircle2 className="h-16 w-16 text-teal-600" />
-          <h1 className="mt-4 font-display text-2xl font-bold text-ink-950">Order Placed!</h1>
-          <p className="mt-2 text-ink-950/60">
-            Thanks {form.name.split(" ")[0]}! Your order <strong>#{placedOrder.orderNumber}</strong> total was{" "}
-            <strong>{formatPrice(placedOrder.total)}</strong>. We'll contact you at {placedOrder.phone} to confirm{" "}
-            {placedOrder.fulfilmentType === "collection" ? "collection from our Purley shop." : "your delivery."}
-          </p>
-          <p className="mt-4 text-xs text-ink-950/40">
-            Online payments aren't live yet — our team will confirm payment on collection or delivery.
-          </p>
-          <Button to="/shop" variant="primary" className="mt-6">Continue Shopping</Button>
-        </div>
-      </Section>
-    );
   }
 
   if (items.length === 0) {
@@ -133,19 +115,20 @@ export default function Checkout() {
               <CreditCard className="h-5 w-5 text-brand-600" /> Payment
             </h3>
             <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-950/50">
-              <Lock className="h-3.5 w-3.5" /> Online card payments are coming soon — this is a preview checkout.
+              <Lock className="h-3.5 w-3.5" /> Secure card payment powered by Stripe.
             </p>
-            <div className="mt-4 grid grid-cols-1 gap-4 opacity-50 sm:grid-cols-2">
-              <input disabled placeholder="Card Number" className="input" />
-              <input disabled placeholder="Name on Card" className="input" />
-              <input disabled placeholder="MM / YY" className="input" />
-              <input disabled placeholder="CVC" className="input" />
-            </div>
             <p className="mt-4 text-sm text-ink-950/60">
-              Don't worry — you won't be charged online yet. Simply place your order and our team will confirm
-              payment in-store, by card machine, or bank transfer.
+              When you continue, you'll be taken to Stripe's secure payment page to enter your card details. We never
+              see or store your card number — Stripe handles it directly.
             </p>
           </div>
+
+          {paymentCancelled && !mutation.isPending && (
+            <p className="flex items-center gap-2 rounded-2xl bg-accent-50 px-4 py-3 text-sm font-semibold text-accent-700">
+              <Info className="h-4 w-4 shrink-0" />
+              Payment was cancelled — your basket is still here, so you can try again whenever you're ready.
+            </p>
+          )}
 
           {(formError || mutation.isError) && (
             <p className="flex items-center gap-2 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
@@ -194,9 +177,10 @@ export default function Checkout() {
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="mt-6 w-full rounded-full bg-gradient-to-r from-brand-500 to-brand-700 px-6 py-4 text-base font-bold text-white shadow-glow transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-brand-500 to-brand-700 px-6 py-4 text-base font-bold text-white shadow-glow transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
           >
-            {mutation.isPending ? "Placing Order..." : "Place Order"}
+            <Lock className="h-4 w-4" />
+            {mutation.isPending ? "Redirecting to Payment..." : "Pay Securely with Stripe"}
           </button>
           <Link to="/cart" className="mt-3 block text-center text-sm font-semibold text-ink-950/50 hover:text-ink-950">
             Back to Basket

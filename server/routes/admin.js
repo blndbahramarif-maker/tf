@@ -16,7 +16,10 @@ import {
   listOrders,
   getOrderById,
   updateOrderStatus,
+  markOrderRefunded,
+  getStripePaymentIntentId,
 } from "../models/orders.js";
+import { requireStripe } from "../stripe.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadsDir = path.join(__dirname, "..", "uploads");
@@ -131,4 +134,28 @@ adminRouter.patch("/orders/:id/status", (req, res) => {
   const order = updateOrderStatus(Number(req.params.id), status);
   if (!order) return res.status(404).json({ error: "Order not found." });
   res.json({ order });
+});
+
+// ---- Refunds ----
+
+adminRouter.post("/orders/:id/refund", async (req, res) => {
+  const orderRow = getOrderById(Number(req.params.id));
+  if (!orderRow) return res.status(404).json({ error: "Order not found." });
+  if (orderRow.paymentStatus !== "paid") {
+    return res.status(400).json({ error: "Only paid orders can be refunded." });
+  }
+
+  try {
+    const stripe = requireStripe();
+    const paymentIntentId = getStripePaymentIntentId(orderRow.id);
+    if (!paymentIntentId) {
+      return res.status(400).json({ error: "No Stripe payment found for this order." });
+    }
+    await stripe.refunds.create({ payment_intent: paymentIntentId });
+    const order = markOrderRefunded(orderRow.id);
+    res.json({ order });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not process refund. Please try again." });
+  }
 });

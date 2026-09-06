@@ -8,6 +8,7 @@ import { PageLoader, PageError } from "../../components/ui/PageState";
 import { usePageMeta } from "../../lib/usePageMeta";
 import type { OrderStatus } from "../../types/product";
 import { StatusBadge } from "../../components/admin/StatusBadge";
+import { PaymentStatusBadge } from "../../components/admin/PaymentStatusBadge";
 
 const STATUS_FILTERS: ("All" | OrderStatus)[] = [
   "All",
@@ -65,6 +66,7 @@ export default function AdminOrders() {
               <th className="px-5 py-3">Fulfilment</th>
               <th className="px-5 py-3">Total</th>
               <th className="px-5 py-3">Status</th>
+              <th className="px-5 py-3">Payment</th>
               <th className="px-5 py-3">Date</th>
             </tr>
           </thead>
@@ -86,12 +88,15 @@ export default function AdminOrders() {
                 <td className="px-5 py-3">
                   <StatusBadge status={o.status} />
                 </td>
+                <td className="px-5 py-3">
+                  <PaymentStatusBadge status={o.paymentStatus} />
+                </td>
                 <td className="px-5 py-3 text-ink-950/50">{new Date(o.createdAt).toLocaleDateString("en-GB")}</td>
               </tr>
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-10 text-center text-ink-950/40">
+                <td colSpan={7} className="px-5 py-10 text-center text-ink-950/40">
                   No orders found.
                 </td>
               </tr>
