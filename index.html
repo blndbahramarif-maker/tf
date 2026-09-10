@@ -139,6 +139,37 @@
      hand over to. ------------------------------------------------------- */
   .lets{position:absolute; inset:0; pointer-events:none}
 
+
+  /* ======================================================================
+     SCROLL 2 - THE MARK.
+
+     Built, not borrowed: the reference for this section was a watermarked
+     stock clip at 596x336, so instead of shipping that, its language is
+     rebuilt here as real geometry - a field of fine points in a starfield,
+     laced with constellation lines, turning in space as you scroll and
+     resolving into the mark. Nothing to license, and sharp at any size.
+     ================================================================== */
+  .forge{position:relative; z-index:1; background:#000; height:340svh}
+  .forge .pin2{
+    position:sticky; top:0; height:100svh; overflow:hidden; background:#000;
+  }
+  .forge canvas{position:absolute; inset:0}
+
+  .sr-mark{
+    position:absolute; width:1px; height:1px; margin:-1px;
+    overflow:hidden; clip-path:inset(50%); white-space:nowrap;
+  }
+  .say{
+    position:absolute; left:0; right:0; top:23%;
+    text-align:center; margin:0; padding:0 24px;
+    font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:clamp(9px, .82vw, 12px); font-weight:500;
+    letter-spacing:.42em; text-transform:uppercase;
+    color:rgba(242,242,242,.62);
+    opacity:0;
+    text-shadow:0 0 22px rgba(0,0,0,.9);
+  }
+
   /* the beat counter */
   .ticks{
     position:absolute; right:22px; top:50%; transform:translateY(-50%);
@@ -303,6 +334,14 @@
     <div class="ticks" aria-hidden="true">
       <i></i><i></i><i></i><i></i><i></i>
     </div>
+  </div>
+</section>
+
+<section class="forge" id="forge">
+  <div class="pin2">
+    <canvas aria-hidden="true"></canvas>
+    <p class="say">Build what you want with</p>
+    <h2 class="sr-mark">BLN</h2>
   </div>
 </section>
 
@@ -1011,6 +1050,246 @@
       es[0].isIntersecting ? head.play().catch(function(){}) : head.pause();
     }, {threshold:0}).observe(head);
   }
+})();
+
+/* ---------------------------------------------------------------------------
+   Scroll 2 - the mark.
+
+   A field of fine points in a starfield, laced with constellation lines,
+   turning in space as you scroll. Scattered at first, it gathers into the
+   mark, holds while it turns, then lets go as you leave.
+
+   The reference for this was a watermarked stock clip at 596x336, so rather
+   than ship that, its language is rebuilt as real geometry: the letterforms
+   are sampled once into points, given depth, and run through the same
+   perspective camera the headline uses - so it is sharp at any size, carries
+   real parallax, and there is nothing to license.
+--------------------------------------------------------------------------- */
+(function(){
+  var sec = document.getElementById('forge');
+  if (!sec || !window.requestAnimationFrame) return;
+  var cv  = sec.querySelector('canvas');
+  var say = sec.querySelector('.say');
+  var ctx = cv && cv.getContext && cv.getContext('2d');
+  if (!ctx) return;
+
+  var STILL = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var FOCAL = 900, REF = 300;              // reference type size for sampling
+  var W = 0, H = 0, dpr = 1;
+  var mark = [], stars = [], links = [], span = 1, ready = false;
+  var aimX = 0, aimY = 0, panX = 0, panY = 0, t0 = 0;
+
+  function hash(n){ var s = Math.sin(n) * 43758.5453; return s - Math.floor(s); }
+  function clamp(v,a,b){ return v < a ? a : v > b ? b : v; }
+  function ramp(t){ t = clamp(t,0,1); return t*t*(3-2*t); }
+  function out3(t){ return 1 - Math.pow(1 - t, 3); }
+
+  addEventListener('pointermove', function(e){
+    aimX = (e.clientX / innerWidth  - 0.5) * 2;
+    aimY = (e.clientY / innerHeight - 0.5) * 2;
+  }, {passive:true});
+
+  /* --- sample the mark once, in its own units ------------------------- */
+  function build(){
+    dpr = Math.min(devicePixelRatio || 1, 2.5);
+    W = innerWidth; H = innerHeight;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    var body = getComputedStyle(document.body).fontFamily;
+    var off = document.createElement('canvas');
+    var o   = off.getContext('2d');
+    if (!o) return;
+    o.font = '700 ' + REF + 'px ' + body;
+    var txt = 'BLN', m = o.measureText(txt);
+    var pad = Math.round(REF * 0.22);
+    var bw  = Math.ceil(m.width) + pad * 2;
+    var bh  = Math.ceil(REF * 1.25) + pad * 2;
+    off.width = bw; off.height = bh;
+    o = off.getContext('2d');
+    o.font = '700 ' + REF + 'px ' + body;
+    o.textBaseline = 'alphabetic';
+    o.fillStyle = '#fff';
+    var fm  = o.measureText('Hg');
+    var asc = fm.fontBoundingBoxAscent || REF * 0.8;
+    o.fillText(txt, pad, pad + asc);
+
+    var img;
+    try { img = o.getImageData(0, 0, bw, bh).data; } catch(e){ return; }
+
+    mark.length = 0;
+    var step = 4, n = 0, minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+    for (var y = 0; y < bh; y += step){
+      for (var x = 0; x < bw; x += step){
+        if (img[(y * bw + x) * 4 + 3] > 128){
+          if (x < minX) minX = x; if (x > maxX) maxX = x;
+          if (y < minY) minY = y; if (y > maxY) maxY = y;
+          mark.push({ x:x, y:y, n:n++ });
+        }
+      }
+    }
+    if (!mark.length) return;
+
+    /* centre the cloud on its own ink, and give it a shell of depth */
+    var cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    span = maxX - minX || 1;
+    for (var i = 0; i < mark.length; i++){
+      var p = mark[i], k = p.n;
+      p.x -= cx; p.y -= cy;
+      p.z  = (hash(k * 3.7) - 0.5) * REF * 0.34;
+      p.s  = 0.88 + hash(k * 5.3) * 0.78;
+      p.d  = 0.5 * ((p.x / span) + 0.5) + 0.5 * hash(k * 7.9);   /* left first */
+      var a = hash(k * 11.3) * 6.2832, e = Math.acos(2 * hash(k * 13.1) - 1);
+      var r = REF * (2.4 + hash(k * 17.7) * 2.6);                /* from a shell */
+      p.fx = Math.sin(e) * Math.cos(a) * r;
+      p.fy = Math.sin(e) * Math.sin(a) * r * 0.7;
+      p.fz = Math.cos(e) * r;
+      p.bl = hash(k * 23.9) > 0.986;
+    }
+
+    /* a starfield behind it, on the same camera so it parallaxes */
+    stars.length = 0;
+    for (i = 0; i < 190; i++){
+      var b = hash(i * 31.1);
+      stars.push({
+        x: (hash(i * 2.3) - 0.5) * REF * 9,
+        y: (hash(i * 4.7) - 0.5) * REF * 5.4,
+        z: (hash(i * 6.1) - 0.5) * REF * 5,
+        s: 0.5 + b * 1.5,
+        a: 0.20 + b * 0.62
+      });
+    }
+
+    /* constellation lines - the cloud is rigid, so the pairs never change
+       and can be found once instead of every frame */
+    links.length = 0;
+    var lim = REF * 1.35, deg = [];
+    for (i = 0; i < stars.length; i++) deg[i] = 0;
+    for (i = 0; i < stars.length; i++){
+      if (deg[i] >= 2) continue;
+      for (var j = i + 1; j < stars.length; j++){
+        if (deg[i] >= 2 || deg[j] >= 2) continue;
+        var dx = stars[i].x - stars[j].x, dy = stars[i].y - stars[j].y,
+            dz = stars[i].z - stars[j].z;
+        if (dx*dx + dy*dy + dz*dz < lim * lim){
+          links.push(i, j); deg[i]++; deg[j]++;
+        }
+      }
+    }
+    ready = true;
+  }
+
+  function frame(now){
+    if (!t0) t0 = now;
+    var el = (now - t0) / 1000;
+    var r = sec.getBoundingClientRect();
+    var run = sec.offsetHeight - innerHeight;
+
+    if (!ready || run <= 0 || r.bottom < -160 || r.top > innerHeight + 160){
+      if (ready && W) ctx.clearRect(0, 0, W, H);
+      return requestAnimationFrame(frame);
+    }
+
+    var p = clamp(-r.top / run, 0, 1);
+
+    /* gather, hold, let go */
+    var form = STILL ? 1 : ramp(clamp((p - 0.10) / 0.46, 0, 1));
+    var loose = STILL ? 0 : ramp(clamp((p - 0.84) / 0.16, 0, 1));
+
+    /* the cloud turns as you travel through it */
+    panX += (aimX - panX) * 0.05;
+    panY += (aimY - panY) * 0.05;
+    var yaw = (p - 0.5) * 1.15 + panX * 0.22 + (STILL ? 0 : Math.sin(el * 0.2) * 0.05);
+    var pit = -panY * 0.13 + (STILL ? 0 : Math.sin(el * 0.16 + 1.1) * 0.035);
+    var cy_ = Math.cos(yaw), sy_ = Math.sin(yaw);
+    var cx_ = Math.cos(pit), sx_ = Math.sin(pit);
+
+    var fit = Math.min(W * 0.78, H * 0.60) / span;   /* how big the mark sits */
+    var ox = W / 2, oy = H * 0.56;
+
+    ctx.clearRect(0, 0, W, H);
+
+    function project(x, y, z){
+      var rx =  x * cy_ + z * sy_;
+      var rz = -x * sy_ + z * cy_;
+      var ry =  y * cx_ - rz * sx_;
+      var rzz=  y * sx_ + rz * cx_;
+      var k  = FOCAL / (FOCAL + rzz * fit);
+      return [ox + rx * fit * k, oy + ry * fit * k, k];
+    }
+
+    /* stars first, then the threads between them */
+    var i, q;
+    for (i = 0; i < stars.length; i++){
+      var st = stars[i];
+      q = project(st.x, st.y, st.z);
+      if (q[2] <= 0.05) continue;
+      ctx.fillStyle = 'rgba(242,242,242,' + (st.a * q[2] * 0.9).toFixed(3) + ')';
+      ctx.fillRect(q[0] - st.s * q[2], q[1] - st.s * q[2], st.s * 2 * q[2], st.s * 2 * q[2]);
+    }
+    ctx.strokeStyle = 'rgba(242,242,242,.07)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (i = 0; i < links.length; i += 2){
+      var A = stars[links[i]], B = stars[links[i+1]];
+      var qa = project(A.x, A.y, A.z), qb = project(B.x, B.y, B.z);
+      if (qa[2] <= 0.05 || qb[2] <= 0.05) continue;
+      ctx.moveTo(qa[0], qa[1]); ctx.lineTo(qb[0], qb[1]);
+    }
+    ctx.stroke();
+
+    /* the mark */
+    var BUCK = 6, ink = [], blue = [], b;
+    for (b = 0; b < BUCK; b++){ ink.push([]); blue.push([]); }
+
+    for (i = 0; i < mark.length; i++){
+      var pt = mark[i];
+      var lo = pt.d * 0.4;
+      var t  = out3(clamp((form - lo) / (1 - lo), 0, 1));
+      if (loose > 0) t *= 1 - loose;
+      var g  = 1 - t;
+
+      q = project(pt.x + pt.fx * g, pt.y + pt.fy * g, pt.z + pt.fz * g);
+      if (q[2] <= 0.05) continue;
+      var s = pt.s * fit * q[2] * (1 + 2.4 * g);
+      var a = (0.34 + 0.66 * t) * (0.62 + 0.42 * q[2]);
+      if (s < 0.22 || a <= 0.03) continue;
+      if (q[0] < -40 || q[0] > W + 40 || q[1] < -40 || q[1] > H + 40) continue;
+      b = Math.min(BUCK - 1, Math.floor(a * BUCK));
+      (pt.bl ? blue : ink)[b].push(q[0], q[1], s);
+    }
+    for (b = 0; b < BUCK; b++){
+      paint(ink[b],  'rgba(242,242,242,', (b + 1) / BUCK);
+      paint(blue[b], 'rgba(30,95,255,',   (b + 1) / BUCK);
+    }
+
+    if (say) say.style.opacity = (ramp((form - 0.45) / 0.4) * (1 - loose)).toFixed(3);
+
+    requestAnimationFrame(frame);
+  }
+
+  function paint(list, rgb, a){
+    if (!list.length) return;
+    ctx.fillStyle = rgb + a.toFixed(3) + ')';
+    ctx.beginPath();
+    for (var i = 0; i < list.length; i += 3){
+      var x = list[i], y = list[i+1], s = list[i+2];
+      ctx.moveTo(x, y - s); ctx.lineTo(x + s, y);      /* rotated square */
+      ctx.lineTo(x, y + s); ctx.lineTo(x - s, y);
+      ctx.closePath();
+    }
+    ctx.fill();
+  }
+
+  var rt;
+  addEventListener('resize', function(){
+    clearTimeout(rt); rt = setTimeout(build, 180);
+  }, {passive:true});
+
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(build);
+  build();
+  requestAnimationFrame(frame);
 })();
 </script>
 
