@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Web Designer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* Palette sampled directly from the source video ------------------------ */
+  :root{
+    --bg:    #b3b3b3;   /* the video's field, exact */
+    --ink:   #0a0a0a;   /* voxel black */
+    --blue:  #1450f2;   /* tracking-marker blue */
+    --paper: #f2f2f2;   /* waveform white */
+
+    /* dot-grid, kept in sync with the video's own grid by script below */
+    --grid: 32px;
+    --gx: 7px;
+    --gy: 31px;
+
+    --pad: clamp(20px, 4.4vw, 68px);
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family:'Inter Tight',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+    min-height:100svh;
+    overflow-x:hidden;
+  }
+
+  /* The page's dot-grid. Sits UNDER the video, which is opaque, so the two
+     grids read as one continuous field across the video's edge. ----------- */
+  .grid-layer{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image: radial-gradient(circle at center,
+                      rgba(10,10,10,.27) .8px, transparent 1.1px);
+    background-size: var(--grid) var(--grid);
+    background-position: var(--gx) var(--gy);
+  }
+
+  /* Fine grain over EVERYTHING, page and video alike, so the video's
+     compression sparkle and the flat page share one texture and the
+     video's rectangle stops reading as an edge. --------------------- */
+  .grain{
+    position:fixed; inset:0; z-index:3; pointer-events:none;
+    background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAQAAAAAYLlVAAAOEElEQVR42j2Zi5akOAxDAwmvIoH//9qM7zU9u6fnVFGQhyNLsimzlbc8pc59jnKXoyyzzqv8SitX2coov7nE79yxlhF/Nb63cs8t7t3jqXMe84jPV9njeo9rLUZayjHf2eOXdZ6Fu9b4dZsl/pa4OuJb/Bef4p8xuVji1hgmbq+zxwS9PN5+xhLu+Zu/mOKNSRhqj0mfuB5XJsus8cfg1yw+98TvS1wtsfA7xo+Fxwht7mWNpS3+XmPWN0aMAWO6WPnjp1/8VGJ9z7xLi0nu+J/11/i9xy9L3PXE7k6Gj51uMWlO2GK/T3zrcd8aEXxi+tPYvbE94sxvIybt83XpayznLTH0Fl9jythdj08xWExaYwEXwWfomDCGjMfiWGLdWzFKsZ/4RignB8dxtfj0xvUIeiy7ez1i4uFdcVzE7o2Y/Dy8J0aMCDzxwB43Dn/IgBZPKKaNve+xSoZeHeo3CXaPta/x8BKRYFctttFiuZx4jkQcH5HyxDOgasTTJaZ9OYzC9kaMHPPsAof17HETIT9jwNvws0+mAHhlcu8Wv+yFIWPv8Qfwaky/xu7YUUwZYwFi4robid1NlFhO4Mxn33iyxEKIcSH8gee4ZZuEusa+yIhTSB4xJIsBIb8YArAO7zvZWwFajV17UE2MxBbiHo5vNY4xHVAlGiA/NrTFSLcIaRnsJoprLGYFHAwEYmMJXOekAMwVg1VDHjFi54EZQg+WG4cV07RY1OaWzohdA9jeDTbcWuwcfNUPzp1zjRDGvqrrvURA7Myf2ckgwIL0F1MspBvX4mo1d17OO34BQRzXFZ8ueICjmSDKQ/WgWfoSY3ON5G/x2an2CFcQSwwVN/gYVEEGMyC4ZoDNjLhAcuwBjLeYegUrPgsKNpYYd65ubC8s5pgkK4u6zapYpmQUd8W1Qr5z5iRMBCgCT7bz4G3iFIFYIRl3Agibj0Y2SzhD6G2e+uNv1+RfDpWUjNSOz81sO2LD5MHqIltscwIm2Ov0h+FigE8Q9ARKuYSDIDNp2WTIGrEK1AM5mYGjOjjz2O8P0E7oh5R8RcBtPKC0ICQXNUhMEHhBrjH9IVcV49DjIRDhWiWXyNrJYcB/5ELs7oMde4/rsjo4gIwXebGbKQDz9WB/IuwWxrAvaRnp+BZY+WfYOelmFj8F8ehm9Q7gYjqQscFwpZkNp7y5qRNAiqXD88TncZHd5N6ZQfbciYog3HyGjAEck5WtEkcVqxekHDuNXSlGYL5nUipJhxnBAmG01xQrJmMggmdcWvGUq6d9ClHRZMZIQ7KB53qRJPH4bYCR5SY/vBMi4cF1woohPGUzsJVD+/TghIALW+kmJoBDqkEEmQ+7LDBGIeRgKo62JJ2fxXWeJTN5KM4kZk3tFsWkza7qX+5wkWSuQqhh85WdfAeFnv6k3OZT8T2miWyat5gnCfETQ1jCsWbobZo9ormzunkoGuAVtft5JJ5bIYOfTLGIGGccShH33oXkSuJGuIu/nB7wZiIrS6UL9gFOyI6iRVi9vIPJGIYT/JlA6r4MtyOzE95j+CoeXiW8TP0UsIrFj5LAg1VIQujnErqb5LVKb7BPF2FrgZcn9sO0i89FaoHfOKM4cWOBeyFzsVdF9ce2XCLo1mYMEUE6r7JKgNhl32KiyQqbygofhtXzjsgCTpE9pHwMiQKaJO9xAU3eYneAMaIS916SMwLdtSTN+1fj8MbQWK/xURceEXx1yDkWKAMi7UlVnNTuJZ2avPVoxrp02zSpVWka81EncHXx54Ghjz+OaWZ6MsXNfXqBNT2VuH88+6TrTTyhH6NokTYRuhmDXOWmi71RcK1J06YyZBcxw6P7kflSLTx4eF8xL37KOdvZlPLHtAuF0WNV6a1LWuXQbu56AsQFVeyy+mPwntjvrcg2E2eQ+VIzHBJqEXeToOtMGRrGKxX1SF6QXXYZs+uOqvmFI+q6NMmlmjDw9iqPc47IR5kJliWZzSwPVpBQse+nub0aEWLZQZXe+PTUF5/HTz2KcMapiSY0V9BhrAnQmjVAfEp2tJRQ99jjTzI5rCJuxZrdAjMWWuPbk0ohGVej+HPfWh1p+Zb/NfPqyFWscy7hVxIachzGCXmCYE8nQi2SzYnKQ6nhtI8cuIoeU3Ei5MufUS+ZNxxnI5c+PHSXZX1EyIcJsTKVCHitdV4ngv2qJLPoCxgCGlq1alWs6HH0ectn2X8K89BtwR6n3pIlrvqHkHRwE0spP+uZn07ndlWyFammK8Cwn4Z9V2TSCSS2q/6hWMqBjNXFXvplnoPmYNTzj2mM0rC8K2rNWQxXmsihfNyf6SzKclEjyfpdyn5nqgL0unhlV6BfPTR+hzoDtFTdprZkEsuqTQV8p7+sJSsIy6VduTyk2U0/g2DWT3i7qkdcMChF1/BaK1WjAm0v7nxVvNI1DOkMLkBFTo8a4ME4e/poKiiy4DTscR6CjbDBjZc1cfPbbZneMu2sEwjxT1z/vqBDKs0ybpF0EhmX7uIVyl31AFObBneTI7SfWizX2pTm/Tv7dLp4gK5P/OmfsrLB4b/GSC/sgeArYAIs6m2l+KiPTDXUyFXlOFTUjdwoWViXNAuHkIJqLnN5k/fGTJsFLMn0RQopCqr1DZaOdEaOqBxjusVyD125LEjhGNCBa9hUHkoWCiLxXK36SK8yYfPBImI5eMNuVV/cC2Gjg1BLUu0tsUauTN2gdfBP3e/WRZh2DoDETpccc2hQyKwuI0yy8fnsxv4/DTcx0UTIYqfjte1CJdWUKvBBNbQkSQnE5tOgJyeUJy328r9h6XroB1YjeFoJWVI8rrZJPa8gHKbd0BVcX/WM5QC9HFNxCo6PKrl83ZFNLcVTNGlr002+3g2MOWg1UdDW4lqrNcutY+Gka1avupfTIXIhScK703yNCGUoQcfgFiC6g5Z27NOR9JzprPHLbWYn5s181KFIHyjeq8gWhadLJo/2nO5Xs4+mYqKC2vIrHYHO4tZTJHEDYqqGxc5Bk4qBLdUWRwhf3MXy8rX5kiU2VgErXRUcVO33VQrndxxZkNo5QohcsvpuB2H/VG9XT+2PUS9ZsJSSlRH1I65wSUOyqWCvu2DCw6Kq6Og1Ep45+Tx0zs8n3+9fpawXRMhWK4JXG35+VHxJbrsV5amI4bFZLFzyI5tfdf823a6ZRRmAwkqj9Lch223UPBaq26eDwC+faTZxHic7hW6VL09DTnwPiRq8vR4W4sVIfti/2mZYSlxa88O06u4OR8T3rJpHtud0y4d8r7DO6ytBmnXEpvdPFFRhiKXL1M2u6WHlIAPUL7ywV7Ut8dOKZi10W4jQP1tnku/plCWnLAm2/pXgqxkFYfdPJ4ZtrUtQmr6Uu9lxtTKyWcZ6HhNlzCxSX/t8qWdJz1mkQKsJ3Oo5jplNSYQdB8h48DxZg6E9bEpsugvLGRpC2tRb6fqPb1iuKcTsqnsAZ9Z91Df+0tOsz2ztsZPDnlinIiQbaN/NrJaKzr/bAAfWaUYWqi0wY2P3pklVbZlajmjEMvftYVrjdys8/bJu//5I61AhF11+hhqbjg0bRmi3VfdYRUDmSXBSmK2NV3exWdtgG+0UH4aF9V+feJTP25L5Nmk1sbuAerLlYBJnznNIu5k/FK9Dr/3KgvbZNOlw7GlHgU1JG8hRdm8PO9/FYhve34Tl8tXEr173toGjq/vq4Z/GdvPpx/K06iJOqRoleGfats3MoRiqNsHuYlf0tHM7BE8XZD9FimDmkrjrJ94tNv8XGesXl2rlt8vwi9r4yoWc+Wrur1ljuozb0XAWb1GTjs98nFoFyPe2771KMZndw45n1xHt8ni6yeeD12uf4FTCDkHbbGOUb/qmkFf7JbjwYj/lSeoETo+Skb3iKuf5wkYDsYrxKsPZ1FSUq3aNwjz75FWC6nY/iN0mw1y2e9LE0EnebYO9mhNU03PLzv2Z6SWXHWbF4qn3j35/+pzV5KsOsakUTUNeNFmPjU8kihbW5ruXastuM4k36y6eMcnjk2BZXe8mG4LYn5LEbm3UaSX0+V9nrNng5XTTdA4N5m0BeliovFlz2nPdLeKvme3ux2RE4sms6lssTfRqY6JpSbDZq0mypyJKPI/7fqyBi1yPIqCUp03KbGddjrjbpGqfVWEE2t4Jdza2KfJQ/cyi6bHaLVZsAOgx41cNWv+O55x5ii3fjNl8WTRbw90s4ibfNaX2Xabvaz8oWzMc5qWAp4lds1H52krvJh5+Z7HgGiVfNjzmr++UZrXljjeiJ7DbDVnFSs8zzV6obS6RZPJpcGSP11bw5cingOXFo29/bKz4QmW1MMuO0J8dPTUgw6rotphdTKifZev2acUrrh+r56oG5CtBaoZLqUoFrVL7ocu2v98sHi4TZFgj8JJpzzei8p2NGLXxcSE2222/vSrAM1NPu8lbrYht7RiDn+w5vvcI+RZiye/FLmcX/T9fOnU7QXKYh7B6JEPDen3d81seJzZw+vk18Hq+kEPSbcz7wvd/0XLObOJeX5awScoBm/QZ+mf+1W3XXL7m+/AokKjDcy6GjphcRuix3+OOYUHwrVpkCmd5lkK/+brPl4Dl/dqWvsS6hEp2vbvOaNgJ+Zlkq36g6oYejVuz/lvU+az6keD69X5V+lJt+5w2M8b3egYPVHx5t8x8oTm0PQabS4us5Zqll0fvkll9iOBsOL5myD2zRzB8YbXkm3KJeNVbLoq7Z60dPVzya+PGN8t2CJB7aES6+NmWKmY3r+R/X0ezfrK72/05FdpDR3tZ8xaRTyWwfsyfXvLWHW16pXypbVUsKA9pmyvbPzbndPc/W1k5AAAAAElFTkSuQmCC);
+    background-size:64px 64px;
+  }
+
+  .stage{
+    position:relative; z-index:1;
+    display:grid;
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+    grid-template-rows: minmax(0,1fr);
+    min-height:100svh;
+  }
+
+  /* ------------------------------------------------------------ the words */
+  .words{
+    display:flex; flex-direction:column; justify-content:space-between;
+    padding: var(--pad);
+    padding-right: clamp(16px, 2vw, 32px);
+    min-width:0;
+  }
+
+  .rule{
+    font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:11px; font-weight:500;
+    letter-spacing:.16em; text-transform:uppercase;
+    color:rgba(10,10,10,.58);
+    display:flex; align-items:center; gap:10px;
+  }
+  .rule .line{flex:1; height:1px; background:rgba(10,10,10,.22)}
+
+  .mark{
+    width:9px; height:9px; background:var(--blue);
+    display:inline-block; flex:none;
+  }
+
+  .headline{
+    margin:0;
+    font-weight:600;
+    font-size: clamp(54px, 9.4vw, 152px);
+    line-height:.86;
+    letter-spacing:-.045em;
+  }
+  .headline .l{display:block; overflow:hidden}
+  .headline .l > span{display:block}
+
+  .foot{
+    display:flex; align-items:flex-end; justify-content:space-between; gap:16px;
+  }
+
+  /* ----------------------------------------------------------- the object */
+  .object{
+    position:relative; min-width:0; min-height:0; overflow:hidden;
+  }
+  .object video{
+    position:absolute; inset:0;      /* absolute => never drives page height */
+    display:block;
+    width:100%; height:100%;
+    object-fit:contain;      /* letterbox is transparent -> grid shows through */
+    background:transparent;
+  }
+
+  /* ------------------------------------------------------------- entrance */
+  @keyframes rise{from{transform:translateY(102%)} to{transform:translateY(0)}}
+  @keyframes fade{from{opacity:0} to{opacity:1}}
+
+  .headline .l > span{animation:rise .95s cubic-bezier(.16,.84,.28,1) both}
+  .headline .l:nth-child(1) > span{animation-delay:.10s}
+  .headline .l:nth-child(2) > span{animation-delay:.20s}
+  .rule, .foot{animation:fade .9s ease .55s both}
+  .object{animation:fade 1.5s ease .30s both}
+
+  @media (prefers-reduced-motion: reduce){
+    .headline .l > span,.rule,.foot,.object{animation:none}
+  }
+
+  /* --------------------------------------------------------------- narrow */
+  @media (max-width: 860px){
+    .stage{grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr);}
+    .words{padding-right: var(--pad); gap:28px; padding-bottom:4px}
+    .object{min-height:62svh}
+    .headline{font-size:clamp(48px,15vw,96px)}
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-layer" aria-hidden="true"></div>
+
+<div class="grain" aria-hidden="true"></div>
+
+<main class="stage">
+
+  <section class="words">
+    <p class="rule"><span class="mark"></span>Home<span class="line"></span>01</p>
+
+    <h1 class="headline">
+      <span class="l"><span>Web</span></span>
+      <span class="l"><span>Designer</span></span>
+    </h1>
+
+    <p class="rule foot"><span>2026</span><span class="line"></span><span>Index</span></p>
+  </section>
+
+  <section class="object">
+    <video src="object.mp4" poster="poster.jpg"
+           autoplay muted loop playsinline preload="auto"
+           disablepictureinpicture aria-label="Rotating voxel portrait"></video>
+  </section>
+
+</main>
+
+<script>
+/* Keep the page's dot-grid at the same scale and phase as the grid printed
+   inside the video, so the pattern runs unbroken across the video's edge.
+   Source grid: 32px pitch at 720x1280, dots at x=7, y=31 (mod 32).        */
+(function(){
+  var VW = 720, VH = 1280, PITCH = 32, PX = 7, PY = 31;
+  var v = document.querySelector('.object video');
+  var root = document.documentElement;
+
+  function sync(){
+    var r = v.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+
+    var s = Math.min(r.width / VW, r.height / VH);   // object-fit: contain
+    var left = r.left + (r.width  - VW * s) / 2;
+    var top  = r.top  + (r.height - VH * s) / 2;
+
+    var g = PITCH * s;
+    if (!(g > 2)) return;
+
+    var mod = function(n, m){ return ((n % m) + m) % m; };
+    root.style.setProperty('--grid', g.toFixed(3) + 'px');
+    root.style.setProperty('--gx', mod(left + PX * s, g).toFixed(3) + 'px');
+    root.style.setProperty('--gy', mod(top  + PY * s, g).toFixed(3) + 'px');
+  }
+
+  addEventListener('resize', sync, {passive:true});
+  addEventListener('orientationchange', sync);
+  v.addEventListener('loadedmetadata', sync);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(sync);
+  sync();
+
+  /* Safari/iOS sometimes refuses the initial autoplay; nudge it once. */
+  var p = v.play();
+  if (p && p.catch) p.catch(function(){
+    addEventListener('touchstart', function once(){
+      v.play(); removeEventListener('touchstart', once);
+    }, {once:true, passive:true});
+  });
+})();
+</script>
+
+</body>
+</html>
