@@ -120,6 +120,7 @@
     text-shadow:0 0 1.4em rgba(0,0,0,.98), 0 0 .5em rgba(0,0,0,.95);
   }
   .beat .tag i{width:.62em; height:.62em; background:var(--blue); flex:none}
+  .beat h2 .ln{display:block}
   .beat h2{
     margin:0 0 .46em;
     font-size:1.2em;
@@ -132,6 +133,11 @@
     line-height:1.55; color:rgba(242,242,242,.72);
     text-shadow:0 0 1.3em rgba(0,0,0,.98), 0 0 .5em rgba(0,0,0,.95);
   }
+
+  /* The letters in flight. Sits over the take, under the writing itself,
+     so particles pass in front of the figure and land behind the type they
+     hand over to. ------------------------------------------------------- */
+  .lets{position:absolute; inset:0; pointer-events:none}
 
   /* the beat counter */
   .ticks{
@@ -269,27 +275,27 @@
     <div class="beats">
       <article class="beat b1">
         <p class="tag"><i></i>01 &mdash; EXPERIENCE</p>
-        <h2>Four years. Every site built from nothing.</h2>
+        <h2><span class="ln">Four years. Every site</span><span class="ln">built from nothing.</span></h2>
         <p>No templates, no themes, no page builders &mdash; only work made for the one business it belongs to.</p>
       </article>
       <article class="beat b2">
         <p class="tag"><i></i>02 &mdash; CRAFT</p>
-        <h2>Finished to a standard, not to a deadline.</h2>
+        <h2><span class="ln">Finished to a standard,</span><span class="ln">not to a deadline.</span></h2>
         <p>Every state designed, every interaction considered, every screen tested on real devices before it ships.</p>
       </article>
       <article class="beat b3">
         <p class="tag"><i></i>03 &mdash; SPEED</p>
-        <h2>Quick to build. Quicker to load.</h2>
+        <h2><span class="ln">Quick to build.</span><span class="ln">Quicker to load.</span></h2>
         <p>Your site opens before a visitor has decided whether to wait &mdash; and your first draft lands in days, not months.</p>
       </article>
       <article class="beat b4">
         <p class="tag"><i></i>04 &mdash; PRICE</p>
-        <h2>Studio work without the studio invoice.</h2>
+        <h2><span class="ln">Studio work without</span><span class="ln">the studio invoice.</span></h2>
         <p>There is no agency floor to pay for, so the budget goes into the build. That is why the quote comes in under theirs.</p>
       </article>
       <article class="beat b5">
         <p class="tag"><i></i>05 &mdash; SCOPE</p>
-        <h2>Any business. Any kind of site.</h2>
+        <h2><span class="ln">Any business.</span><span class="ln">Any kind of site.</span></h2>
         <p>Shops, bookings, portfolios, launch pages &mdash; whatever the work turns out to need.</p>
       </article>
     </div>
@@ -711,19 +717,23 @@
 })();
 
 /* ---------------------------------------------------------------------------
-   Scrubbing the take, and the camera that follows the writing.
+   Scrubbing the take, the camera that follows the writing, and the letters
+   that come out of the figure.
 
    Scroll maps straight onto the take's clock. Each beat spends its first 56%
-   moving between two marks and the rest held dead still. The move is eased in
-   and out, so the figure accelerates away from one mark and decelerates into
-   the next instead of stopping dead.
+   moving between two marks and the rest held dead still, eased in and out so
+   the figure decelerates into a mark rather than stopping dead.
 
-   Over that, a camera. While the figure travels the camera sits wide at 1x.
-   As the figure settles the camera pushes in on the patch of empty frame
-   where that beat's writing lives, carrying the writing with it - which is
-   why the writing can be set small enough never to collide with the body and
-   still read once we are close. When the beat ends the camera pulls back out
-   to full frame, and only then does the figure move again.
+   Over that, a camera: wide while the figure travels, pushing in on the patch
+   of empty frame that beat's writing lives in as the figure settles, holding
+   through the beat, then pulling back out before the figure moves again.
+
+   And the writing does not simply appear. As the figure starts moving, the
+   headline is sampled into a field of particles which launch OUT OF ITS HAND,
+   arc across the frame and settle into the letterforms. Once they have landed
+   the canvas hands over to the real type underneath - so the motion is
+   particles, but what you finally read is live text, rendered sharp. At the
+   end of the beat they peel back off the words and return to the body.
 --------------------------------------------------------------------------- */
 (function(){
   var story = document.getElementById('story');
@@ -735,33 +745,152 @@
   var ZOOM = 1.50;                   // how far in the camera comes
   var PULL = 0.72;                   // how far toward centre the subject rides
 
-  /* Where each beat's writing sits, as a fraction of the TAKE'S OWN FRAME -
-     straight off the storyboard. Anchoring to the frame rather than to the
-     window means the writing keeps its relationship to the figure at every
-     screen size, and the camera pushes into the picture instead of into the
-     black bars beside it. */
+  /* Where each beat's writing rests, and where its letters are thrown from -
+     both as fractions of the TAKE'S OWN frame, so they hold at any screen
+     size. The sources are read off the figure: the bright hand or limb that
+     is actually in frame at that mark. */
   var ANCH = [[.20,.30], [.47,.70], [.23,.33], [.45,.17], [.24,.67]];
+  var SRC  = [[.61,.42], [.36,.56], [.54,.42], [.40,.53], [.34,.58]];
 
   var beats = story.querySelectorAll('.beat');
   var ticks = story.querySelectorAll('.ticks i');
   var STILL = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  var live = -1, primed = false, lastCam = '';
+  var cv = document.createElement('canvas');
+  cv.className = 'lets'; cv.setAttribute('aria-hidden','true');
+  var ctx = cv.getContext && cv.getContext('2d');
+  if (ctx) v.parentNode.insertBefore(cv, v.nextSibling);
 
+  var FIELDS = [], live = -1, primed = false, lastCam = '', cw = 0, ch = 0, dpr = 1;
+
+  function hash(n){ var s = Math.sin(n) * 43758.5453; return s - Math.floor(s); }
   function clamp(v,a,b){ return v < a ? a : v > b ? b : v; }
-  function ease(t){                                   // in-out cubic
-    return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
-  }
   function ramp(t){ t = clamp(t,0,1); return t*t*(3-2*t); }
+  function ease(t){ return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }
+  function out3(t){ return 1 - Math.pow(1 - t, 3); }
 
-  /* How far in the camera is, across one beat: wide while the figure travels,
-     pushing in as it settles, held through the writing, pulled back at the end. */
+  /* How far in the camera is across one beat. */
   function focus(u){
     var IN0 = MOVE * 0.62, IN1 = MOVE + (1 - MOVE) * 0.26, OUT = 0.90;
     if (u < IN0)  return 0;
     if (u < IN1)  return ramp((u - IN0) / (IN1 - IN0));
     if (u < OUT)  return 1;
     return ramp((1 - u) / (1 - OUT));
+  }
+
+  /* --- sample one headline into particles ---------------------------- */
+  function sample(beat){
+    if (!ctx) return null;
+    var W0 = beat.offsetWidth, H0 = beat.offsetHeight;
+    var lines = beat.querySelectorAll('h2 .ln');
+    if (!W0 || !H0 || !lines.length) return null;
+
+    var SS = 2;                                  /* supersample for detail */
+    var off = document.createElement('canvas');
+    off.width = Math.ceil(W0 * SS); off.height = Math.ceil(H0 * SS);
+    var o = off.getContext('2d');
+    if (!o) return null;
+    o.setTransform(SS, 0, 0, SS, 0, 0);
+    o.fillStyle = '#fff';
+    o.textBaseline = 'alphabetic';
+
+    for (var i = 0; i < lines.length; i++){
+      var sp = lines[i], cs = getComputedStyle(sp), fs = parseFloat(cs.fontSize);
+      o.font = cs.fontWeight + ' ' + fs + 'px ' + cs.fontFamily;
+      if ('letterSpacing' in o) o.letterSpacing = cs.letterSpacing;
+      var fm  = o.measureText('Hg');
+      var asc = fm.fontBoundingBoxAscent  || fs * 0.80;
+      var dsc = fm.fontBoundingBoxDescent || fs * 0.20;
+      var lh  = sp.offsetHeight;
+      o.fillText(sp.textContent, sp.offsetLeft,
+                 sp.offsetTop + (lh - (asc + dsc)) / 2 + asc);
+    }
+
+    var img;
+    try { img = o.getImageData(0, 0, off.width, off.height).data; }
+    catch(e){ return null; }
+
+    var step = Math.max(2, Math.round(Math.sqrt(W0 * H0 / 9000)));
+    var pts = [], n = 0;
+    for (var y = 0; y < H0; y += step){
+      for (var x = 0; x < W0; x += step){
+        var px = Math.floor(x * SS), py = Math.floor(y * SS);
+        if (px >= off.width || py >= off.height) continue;
+        if (img[(py * off.width + px) * 4 + 3] > 128){
+          var u = x / W0, ang = hash(n * 7.7) * 6.2832;
+          pts.push({
+            u: u, v: y / H0,
+            d: 0.52 * u + 0.44 * hash(n * 3.3),     /* left letters land first */
+            jx: Math.cos(ang) * (16 + 92 * hash(n * 5.1)),   /* burst spread */
+            jy: Math.sin(ang) * (14 + 76 * hash(n * 9.3)),
+            arc: (hash(n * 11.7) - 0.5) * 150,               /* curved flight */
+            sz: 0.62 + hash(n * 13.9) * 0.5,
+            bl: hash(n * 23.9) > 0.985,
+            id: n
+          });
+          n++;
+        }
+      }
+    }
+    return pts.length ? pts : null;
+  }
+
+  function measure(){
+    if (!ctx) return;
+    dpr = Math.min(devicePixelRatio || 1, 2.5);
+    cw = innerWidth; ch = innerHeight;
+    cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+    cv.style.width = cw + 'px'; cv.style.height = ch + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    FIELDS = [];
+    for (var i = 0; i < beats.length; i++) FIELDS.push(sample(beats[i]));
+  }
+
+  /* --- draw one headline's letters in flight -------------------------- */
+  function fly(beat, pts, t01, back, alpha, sx, sy){
+    var r = beat.getBoundingClientRect();
+    if (!r.width || !r.height || alpha <= 0.01) return;
+
+    var BUCK = 5, ink = [], blue = [], b;
+    for (b = 0; b < BUCK; b++){ ink.push([]); blue.push([]); }
+    var base = Math.max(1.05, r.width / 210);
+
+    for (var i = 0; i < pts.length; i++){
+      var p = pts[i];
+      /* each particle has its own slice of the window, so they stream
+         rather than move as one block */
+      var lo = p.d * 0.42, t = clamp((t01 - lo) / (1 - lo), 0, 1);
+      t = back ? 1 - out3(t) : out3(t);
+
+      var ox = sx + p.jx, oy = sy + p.jy;
+      var tx = r.left + p.u * r.width, ty = r.top + p.v * r.height;
+      var x = ox + (tx - ox) * t;
+      var y = oy + (ty - oy) * t - Math.sin(t * Math.PI) * p.arc * 0.5;
+      var s = base * p.sz * (1 + 1.7 * (1 - t));
+      var a = alpha * (0.30 + 0.70 * t);
+      if (hash(p.id + Math.floor(t01 * 90)) < 0.10 * (1 - t)) a *= 0.3;
+      if (a <= 0.03 || x < -50 || x > cw + 50 || y < -50 || y > ch + 50) continue;
+
+      b = Math.min(BUCK - 1, Math.floor(a * BUCK));
+      (p.bl ? blue : ink)[b].push(x, y, s);
+    }
+    for (b = 0; b < BUCK; b++){
+      paint(ink[b],  'rgba(242,242,242,', (b + 1) / BUCK);
+      paint(blue[b], 'rgba(30,95,255,',   (b + 1) / BUCK);
+    }
+  }
+
+  function paint(list, rgb, a){
+    if (!list.length) return;
+    ctx.fillStyle = rgb + a.toFixed(3) + ')';
+    ctx.beginPath();
+    for (var i = 0; i < list.length; i += 3){
+      var x = list[i], y = list[i+1], s = list[i+2];
+      ctx.moveTo(x, y - s); ctx.lineTo(x + s, y);      /* rotated square */
+      ctx.lineTo(x, y + s); ctx.lineTo(x - s, y);
+      ctx.closePath();
+    }
+    ctx.fill();
   }
 
   /* iOS will not seek a video it has never been allowed to play */
@@ -779,7 +908,6 @@
     var r = story.getBoundingClientRect();
     var span = story.offsetHeight - innerHeight;
 
-    /* only work while the section is anywhere near the screen */
     if (r.bottom > -200 && r.top < innerHeight + 200 && span > 0){
       var p   = clamp(-r.top / span, 0, 1);
       var seg = p * MARK.length;
@@ -797,31 +925,35 @@
 
       /* --- the camera ------------------------------------------------ */
       var W = innerWidth, H = innerHeight;
-
-      /* find where the take is actually drawn, matching its object-fit */
       var nw = v.videoWidth || 720, nh = v.videoHeight || 1280;
       var fit = W <= 860 ? Math.max(W / nw, H / nh)   /* cover on a phone */
                          : Math.min(W / nw, H / nh);  /* contain otherwise */
       var bw = nw * fit, bh = nh * fit;
-      var A  = ANCH[i];
-      var ax = (W - bw) / 2 + A[0] * bw;             // the beat's spot in frame
-      var ay = (H - bh) / 2 + A[1] * bh;
+      var bx = (W - bw) / 2, by = (H - bh) / 2;
+      var A  = ANCH[i], Q = SRC[i];
+      var ax = bx + A[0] * bw, ay = by + A[1] * bh;
       var f  = STILL ? 1 : focus(u);
       var s  = 1 + f * (ZOOM - 1);
 
-      /* the spot rides toward the middle of frame as we come in */
       var g  = f * PULL;
       var qx = ax + (W / 2 - ax) * g;
       var qy = ay + (H / 2 - ay) * g;
 
-      /* move the take so that spot lands there at this scale */
       var cam = 'translate(' + (qx - ax * s).toFixed(2) + 'px,'
                              + (qy - ay * s).toFixed(2) + 'px) scale(' + s.toFixed(4) + ')';
       if (cam !== lastCam){ v.style.transform = cam; lastCam = cam; }
 
-      /* The writing travels with the camera and is RE-TYPED at its size -
-         never transform-scaled, so the glyphs stay natively sharp. Whole
-         pixels only, so they land on the pixel grid rather than between it. */
+      /* where the hand is on screen right now, under that same camera */
+      var hx = (qx - ax * s) + (bx + Q[0] * bw) * s;
+      var hy = (qy - ay * s) + (by + Q[1] * bh) * s;
+
+      /* --- letters out, letters back --------------------------------- */
+      var pp = STILL ? 1 : clamp((u - 0.20) / 0.45, 0, 1);   /* thrown, land */
+      var ep = STILL ? 0 : clamp((u - 0.88) / 0.12, 0, 1);   /* peel, return */
+
+      var blockOp = ramp((pp - 0.70) / 0.30) * (1 - ramp(ep / 0.40));
+      var typeOp  = ep > 0 ? 1 - ramp(ep / 0.35) : ramp((pp - 0.78) / 0.22);
+
       var base = Math.max(16, Math.min(23, W * 0.016));
       for (var k = 0; k < beats.length; k++){
         var el = beats[k];
@@ -832,18 +964,44 @@
         var z = base * s;
         if (Math.abs(parseFloat(el.style.fontSize) - z) > 0.15)
           el.style.fontSize = z.toFixed(2) + 'px';
-        el.style.opacity   = ramp((f - 0.34) / 0.5).toFixed(3);
+        el.style.opacity   = blockOp.toFixed(3);
         el.style.transform = 'translate(' + Math.round(qx) + 'px,' + Math.round(qy) + 'px)'
                            + ' translate(-50%,-50%)';
+        var hd = el.querySelector('h2');
+        if (hd) hd.style.opacity = typeOp.toFixed(3);
+      }
+
+      if (ctx){
+        ctx.clearRect(0, 0, cw, ch);
+        var pts = FIELDS[i];
+        if (pts && !STILL){
+          if (ep > 0)
+            fly(beats[i], pts, ep, true,
+                ramp(ep / 0.12) * (1 - ramp((ep - 0.72) / 0.28)), hx, hy);
+          else
+            fly(beats[i], pts, pp, false,
+                ramp(pp / 0.10) * (1 - ramp((pp - 0.78) / 0.22)), hx, hy);
+        }
       }
 
       if (i !== live){
         for (k = 0; k < ticks.length; k++) ticks[k].classList.toggle('on', k === i);
         live = i;
       }
+    } else if (ctx && cw){
+      ctx.clearRect(0, 0, cw, ch);
     }
     requestAnimationFrame(frame);
   }
+
+  var rt;
+  addEventListener('resize', function(){
+    clearTimeout(rt); rt = setTimeout(measure, 180);
+  }, {passive:true});
+
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+  else addEventListener('load', measure);
+  measure();
   requestAnimationFrame(frame);
 
   /* the home page's portrait need not decode while it is off screen */
