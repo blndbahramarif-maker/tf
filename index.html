@@ -204,15 +204,18 @@
 
 
 /* ---------------------------------------------------------------------------
-   The headline, built and shed the way the portrait is.
+   The headline, built and churned the way the portrait is.
 
-   Measured off the source at 60fps: the material leaving the head barely
-   travels. It is rotated squares that pop in and out, drift slowly outward,
-   and grow LARGER and sparser with distance while they fade. Crucially the
-   head itself stays solid the whole time - what streams off it is extra
-   material, not the head being eaten. So each sampled point of the type gets
-   a body particle that holds the letterform, plus, towards the right end of
-   its own word, one or two shed particles that ride that cycle outward.
+   Measured off the source at 60fps: material leaving the head barely travels.
+   It is rotated squares that pop in and out, drift slowly, grow moderately
+   larger and thin out by DENSITY rather than fading pale. And the head never
+   gets eaten - it stays solid the whole 42s while one region keeps churning.
+
+   So the type is sampled into that same field, per letter, and:
+     1. it assembles INCOMPLETE, reading  "W b" / "De igner"
+     2. the three held-back letters then arrive one at a time
+     3. from then on only those three mess up and rebuild, on a loop,
+        while every other letter holds solid.
 --------------------------------------------------------------------------- */
 (function(){
   var h1 = document.querySelector('.headline');
@@ -225,14 +228,37 @@
   if (!ctx) return;
   document.body.appendChild(cv);
 
+  /* The letters held back, then left churning. Line 0 "Web", line 1 "Designer",
+     indexes into each word: Web[1]='e', Designer[2]='s', Designer[6]='e'.  */
+  var MARKS = [
+    { line:0, ch:1, at:2.05, start:5.0, period:5.4 },
+    { line:1, ch:2, at:2.70, start:6.1, period:6.2 },
+    { line:1, ch:6, at:3.35, start:7.4, period:5.8 }
+  ];
+
   var STILL  = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var BUCKET = 6;                       // alpha buckets, so we batch the fills
   var parts = [], W = 0, H = 0, dpr = 1, t0 = 0, running = false;
 
   function hash(n){ var s = Math.sin(n) * 43758.5453; return s - Math.floor(s); }
   function clamp(v,a,b){ return v < a ? a : v > b ? b : v; }
+  function smooth(t){ return t * t * (3 - 2 * t); }
 
-  /* --- sample the two lines of type into diamonds --------------------- */
+  /* messiness over one churn cycle: break up, hold messy, pull back, rest */
+  function churn(u){
+    if (u < 0.26) return smooth(u / 0.26);
+    if (u < 0.46) return 1;
+    if (u < 0.80) return smooth(1 - (u - 0.46) / 0.34);
+    return 0;
+  }
+
+  function markOf(line, ch){
+    for (var i = 0; i < MARKS.length; i++)
+      if (MARKS[i].line === line && MARKS[i].ch === ch) return i;
+    return -1;
+  }
+
+  /* --- sample the two lines of type into diamonds, per letter ---------- */
   function build(){
     var r = h1.getBoundingClientRect();
     if (!r.width || !r.height) return false;
@@ -265,9 +291,17 @@
     var asc = fm.fontBoundingBoxAscent  || fs * 0.80;
     var dsc = fm.fontBoundingBoxDescent || fs * 0.20;
 
-    for (var i = 0; i < lines.length; i++){
-      o.fillText(lines[i].textContent,
-                 pad, pad + i * lh + (lh - (asc + dsc)) / 2 + asc);
+    /* each letter's horizontal span, so particles can be owned by a letter */
+    var spans = [], i, c;
+    for (i = 0; i < lines.length; i++){
+      var txt = lines[i].textContent, run = [], prev = 0;
+      for (c = 0; c < txt.length; c++){
+        var wd = o.measureText(txt.slice(0, c + 1)).width;
+        run.push(pad + prev, pad + wd);
+        prev = wd;
+      }
+      spans.push(run);
+      o.fillText(txt, pad, pad + i * lh + (lh - (asc + dsc)) / 2 + asc);
     }
 
     var step = Math.max(3, Math.round(fs / 29));
@@ -275,8 +309,6 @@
     try { img = o.getImageData(0, 0, off.width, off.height).data; }
     catch(e){ return false; }
 
-    /* Collect points, and each line's own right edge, so BOTH words shed
-       off their own end rather than only the longer one. */
     var pts = [], rowLine = [], lineMin = [], lineMax = [];
     for (var y = 0; y < oh; y += step){
       var li = clamp(Math.floor((y - pad) / lh), 0, lines.length - 1);
@@ -300,37 +332,48 @@
       var lo = lineMin[li2], hi = lineMax[li2];
       var nx = hi > lo ? (px - lo) / (hi - lo) : 1;
 
-      var tx = r.left + px - pad, ty = r.top + py - pad;
-      var dl = 0.45 * nx + 0.30 * hash(k * 11.3);        // stagger, left first
+      /* which letter owns this particle */
+      var run2 = spans[li2], gi = run2.length / 2 - 1;
+      for (c = 0; c < run2.length; c += 2){
+        if (px < run2[c + 1]){ gi = c / 2; break; }
+      }
+      var mk = markOf(li2, gi);
 
-      /* the body: holds the letterform, stays solid and readable */
+      var tx = r.left + px - pad, ty = r.top + py - pad;
+      var ang0 = hash(k * 41.3) * 6.2832;
+
       parts.push({
-        sh: 0, tx: tx, ty: ty,
+        sh: 0, mk: mk, tx: tx, ty: ty,
         s:  half * (0.84 + hash(k * 2.3) * 0.44),
-        er: clamp((nx - 0.90) / 0.10, 0, 1),             // faint erosion, tip only
-        dl: dl,
+        er: mk < 0 ? clamp((nx - 0.90) / 0.10, 0, 1) : 0,
+        at: mk < 0 ? 0.45 * nx + 0.30 * hash(k * 11.3) : MARKS[mk].at,
+        du: mk < 0 ? 1.15 : 0.80,
         ox: 130 + 210 * hash(k * 13.7),                  // flies in from right
         oy: (hash(k * 17.3) - 0.5) * 200,
+        /* where this one goes when its letter messes up - kept short */
+        mx: Math.cos(ang0) * (14 + 58 * hash(k * 43.1) * hash(k * 43.1)),
+        my: Math.sin(ang0) * (12 + 46 * hash(k * 47.9) * hash(k * 47.9)),
         bl: hash(k * 23.9) > 0.993,                      // a few blue markers
         id: k
       });
 
-      /* the shed: extra material streaming off the end of the word */
+      /* extra material shedding off the end of each word - kept close in */
+      if (mk >= 0) continue;
       var t = clamp((nx - 0.62) / 0.38, 0, 1);
       if (t <= 0) continue;
       var n = nx > 0.87 ? 2 : 1;
-      for (var c = 0; c < n; c++){
+      for (c = 0; c < n; c++){
         var sd  = k * 31.7 + c * 101.3;
         var ang = -0.28 + (hash(sd * 3.1) - 0.5) * 0.80;  // right, tilted up
         parts.push({
-          sh: 1, tx: tx, ty: ty,
+          sh: 1, mk: -1, tx: tx, ty: ty,
           s:  half * (0.80 + hash(sd * 2.7) * 0.55),
           ca: Math.cos(ang), sa: Math.sin(ang),
-          d:  (70 + 330 * t) * (0.40 + hash(sd * 5.3)),
+          d:  (32 + 122 * t) * (0.40 + hash(sd * 5.3)),
           sp: (0.13 + 0.34 * t) * (0.6 + hash(sd * 7.7) * 0.8),
           ph: hash(sd * 9.1),
-          w:  t,
-          dl: dl + 0.85,
+          at: 0.45 * nx + 0.30 * hash(k * 11.3) + 0.85,
+          du: 1.15,
           ox: 150 + 200 * hash(sd * 13.7),
           oy: (hash(sd * 17.3) - 0.5) * 180,
           bl: hash(sd * 23.9) > 0.988,
@@ -359,8 +402,8 @@
     for (var i = 0; i < parts.length; i++){
       var p = parts[i], a = 1, x = p.tx, y = p.ty, s = p.s;
 
-      /* assemble: fly in from the right and settle onto the letterform */
-      var e = STILL ? 1 : clamp((dt - p.dl) / 1.15, 0, 1);
+      /* arrive: fly in from the right and settle onto the letterform */
+      var e = STILL ? 1 : clamp((dt - p.at) / p.du, 0, 1);
       e = 1 - Math.pow(1 - e, 3);
       if (e <= 0) continue;
       if (e < 1){
@@ -371,7 +414,7 @@
       }
 
       if (p.sh){
-        /* shed: further out means bigger, fainter, sparser */
+        /* shed: further out means bigger, sparser - and it stays near */
         if (STILL) continue;
         var ph = (p.ph + dt * p.sp) % 1;
         x += p.ca * p.d * ph * ph;
@@ -380,7 +423,22 @@
         /* in the source these stay black and thin out by DENSITY rather than
            fading, so hold the tone and cull harder with distance instead */
         a *= 1 - 0.72 * Math.pow(ph, 1.5);
+        /* fade in as it leaves, so it peels off the glyph instead of piling
+           up on top of it and burying the last letter of the word */
+        a *= clamp(ph / 0.20, 0, 1);
         if (hash(p.id + flick) < 0.10 + 0.5 * ph) continue;
+      } else if (p.mk >= 0){
+        /* a held-back letter: once it has arrived it never settles */
+        var M = MARKS[p.mk];
+        if (!STILL && dt > M.start){
+          var m = churn(((dt - M.start) / M.period) % 1);
+          if (m > 0){
+            x += p.mx * m; y += p.my * m;
+            s *= 1 + 0.85 * m;
+            a *= 1 - 0.30 * m;
+            if (hash(p.id + flick) < 0.34 * m) continue;
+          }
+        }
       } else if (!STILL && p.er > 0){
         /* the very tip of each word flickers, so the edge reads as eroding */
         if (hash(p.id + flick) < 0.3 * p.er) a *= 0.25;
