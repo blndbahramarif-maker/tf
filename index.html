@@ -118,10 +118,9 @@
   .headline .l:nth-child(1) > span{animation-delay:.10s}
   .headline .l:nth-child(2) > span{animation-delay:.20s}
   .rule, .foot{animation:fade .9s ease .55s both}
-  .object{animation:fade 1.5s ease .30s both}
 
   @media (prefers-reduced-motion: reduce){
-    .headline .l > span,.rule,.foot,.object{animation:none}
+    .headline .l > span,.rule,.foot{animation:none}
   }
 
   /* --------------------------------------------------------------- narrow */
@@ -165,25 +164,30 @@
    inside the video, so the pattern runs unbroken across the video's edge.
    Source grid: 32px pitch at 720x1280, dots at x=7, y=31 (mod 32).        */
 (function(){
-  var VW = 720, VH = 1280, PITCH = 32, PX = 7, PY = 31;
+  /* The video prints its own dot-grid: 32px pitch, dots at x=7 y=31, measured
+     on the 720x1280 source. Held here as fractions of the video's width so the
+     maths survives any re-encode, then rescaled to whatever size it renders
+     at, so the page's grid and the video's grid read as one field. */
+  var PITCH = 32/720, PX = 7/720, PY = 31/720, FALLBACK = 720/1280;
   var v = document.querySelector('.object video');
   var root = document.documentElement;
+  var mod = function(n,m){ return ((n % m) + m) % m; };
 
   function sync(){
     var r = v.getBoundingClientRect();
     if (!r.width || !r.height) return;
 
-    var s = Math.min(r.width / VW, r.height / VH);   // object-fit: contain
-    var left = r.left + (r.width  - VW * s) / 2;
-    var top  = r.top  + (r.height - VH * s) / 2;
+    var ar = (v.videoWidth && v.videoHeight) ? v.videoWidth / v.videoHeight
+                                             : FALLBACK;
+    var w = r.width, hh = r.width / ar;        // object-fit: contain
+    if (hh > r.height){ hh = r.height; w = r.height * ar; }
 
-    var g = PITCH * s;
+    var g = PITCH * w;
     if (!(g > 2)) return;
 
-    var mod = function(n, m){ return ((n % m) + m) % m; };
     root.style.setProperty('--grid', g.toFixed(3) + 'px');
-    root.style.setProperty('--gx', mod(left + PX * s, g).toFixed(3) + 'px');
-    root.style.setProperty('--gy', mod(top  + PY * s, g).toFixed(3) + 'px');
+    root.style.setProperty('--gx', mod(r.left + (r.width  - w )/2 + PX*w, g).toFixed(3) + 'px');
+    root.style.setProperty('--gy', mod(r.top  + (r.height - hh)/2 + PY*w, g).toFixed(3) + 'px');
   }
 
   addEventListener('resize', sync, {passive:true});
@@ -192,12 +196,10 @@
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(sync);
   sync();
 
-  /* Safari/iOS sometimes refuses the initial autoplay; nudge it once. */
+  /* iOS occasionally declines the first autoplay; take the next tap. */
   var p = v.play();
   if (p && p.catch) p.catch(function(){
-    addEventListener('touchstart', function once(){
-      v.play(); removeEventListener('touchstart', once);
-    }, {once:true, passive:true});
+    addEventListener('touchstart', function once(){ v.play(); }, {once:true, passive:true});
   });
 })();
 </script>
