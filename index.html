@@ -92,45 +92,41 @@
     width:100%; height:100%;
     object-fit:contain;                /* the take is 9:16; letterbox is black */
     background:#000;
+    transform-origin:0 0;              /* the camera drives this */
+    will-change:transform;
   }
 
   .beat{
-    position:absolute; margin:0;
-    opacity:0;                          /* the scrubber drives this */
+    position:absolute; left:0; top:0;
+    margin:0; width:min(360px, 66vw);
+    transform-origin:center center;
+    opacity:0;                          /* the scrubber drives all of this */
     color:var(--paper);
-    max-width:min(30vw, 430px);
-    /* a soft scrim, so the writing holds even across the figure's wireframe */
-    filter: drop-shadow(0 0 26px rgba(0,0,0,.92))
-            drop-shadow(0 0 9px rgba(0,0,0,.85));
+    will-change:transform, opacity;
   }
   .beat .tag{
-    display:flex; align-items:center; gap:9px;
+    display:flex; align-items:center; gap:7px;
     font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
-    font-size:11px; font-weight:500;
-    letter-spacing:.2em; text-transform:uppercase;
-    color:rgba(242,242,242,.62);
-    margin-bottom:18px;
+    font-size:9px; font-weight:500;
+    letter-spacing:.22em; text-transform:uppercase;
+    color:rgba(242,242,242,.6);
+    margin-bottom:11px;
+    text-shadow:0 0 16px rgba(0,0,0,.95);
   }
-  .beat .tag i{width:8px; height:8px; background:var(--blue); flex:none}
+  .beat .tag i{width:6px; height:6px; background:var(--blue); flex:none}
   .beat h2{
-    margin:0 0 16px;
-    font-size:clamp(27px, 3.1vw, 52px);
-    font-weight:600; line-height:1.02; letter-spacing:-.035em;
+    margin:0 0 9px;
+    font-size:clamp(16px, 1.7vw, 26px);
+    font-weight:600; line-height:1.06; letter-spacing:-.03em;
     text-wrap:balance;
+    text-shadow:0 0 24px rgba(0,0,0,.96), 0 0 9px rgba(0,0,0,.9);
   }
   .beat p{
-    margin:0; max-width:42ch;
-    font-size:clamp(14px, 1.05vw, 17px);
-    line-height:1.5; color:rgba(242,242,242,.66);
+    margin:0;
+    font-size:clamp(10px, .78vw, 12.5px);
+    line-height:1.55; color:rgba(242,242,242,.66);
+    text-shadow:0 0 20px rgba(0,0,0,.96), 0 0 8px rgba(0,0,0,.9);
   }
-
-  /* Desktop: the take is a tall centred column, so the writing lives in the
-     margins either side of it, at the heights marked on the storyboard. */
-  .b1{left:5.5vw;  top:21%}
-  .b2{right:5.5vw; bottom:19%}
-  .b3{left:5.5vw;  top:33%}
-  .b4{right:5.5vw; top:13%}
-  .b5{left:5.5vw;  bottom:23%}
 
   /* the beat counter */
   .ticks{
@@ -146,15 +142,7 @@
   .ticks i.on{width:34px; background:var(--blue)}
 
   @media (max-width: 860px){
-    /* On a phone the take fills the screen, so the writing goes exactly
-       where the storyboard put it - in the gaps around the figure. */
-    .pin video{object-fit:cover}
-    .beat{max-width:none}
-    .b1{left:7%; right:24%; top:14%;    bottom:auto}
-    .b2{left:7%; right:7%;  bottom:20%; top:auto}
-    .b3{left:7%; right:26%; top:20%;    bottom:auto}
-    .b4{left:7%; right:10%; top:7%;     bottom:auto}
-    .b5{left:7%; right:24%; bottom:24%; top:auto}
+    /* On a phone the take fills the screen. */
     .ticks{right:14px}
   }
 
@@ -718,13 +706,19 @@
 })();
 
 /* ---------------------------------------------------------------------------
-   Scrubbing the take.
+   Scrubbing the take, and the camera that follows the writing.
 
    Scroll maps straight onto the take's clock. Each beat spends its first 56%
-   moving between two marks and the rest held dead still with the writing up.
-   The move is eased in and out, so the figure accelerates away from one mark
-   and decelerates into the next instead of stopping dead - and the writing
-   only fades up once it has actually settled.
+   moving between two marks and the rest held dead still. The move is eased in
+   and out, so the figure accelerates away from one mark and decelerates into
+   the next instead of stopping dead.
+
+   Over that, a camera. While the figure travels the camera sits wide at 1x.
+   As the figure settles the camera pushes in on the patch of empty frame
+   where that beat's writing lives, carrying the writing with it - which is
+   why the writing can be set small enough never to collide with the body and
+   still read once we are close. When the beat ends the camera pulls back out
+   to full frame, and only then does the figure move again.
 --------------------------------------------------------------------------- */
 (function(){
   var story = document.getElementById('story');
@@ -733,17 +727,37 @@
 
   var MARK = [2, 11, 19, 28, 33];    // the five marks, in seconds
   var MOVE = 0.56;                   // share of a beat spent travelling
+  var ZOOM = 1.50;                   // how far in the camera comes
+  var PULL = 0.72;                   // how far toward centre the subject rides
+
+  /* Where each beat's writing sits, as a fraction of the TAKE'S OWN FRAME -
+     straight off the storyboard. Anchoring to the frame rather than to the
+     window means the writing keeps its relationship to the figure at every
+     screen size, and the camera pushes into the picture instead of into the
+     black bars beside it. */
+  var ANCH = [[.20,.30], [.47,.70], [.23,.33], [.45,.17], [.24,.67]];
+
   var beats = story.querySelectorAll('.beat');
   var ticks = story.querySelectorAll('.ticks i');
   var STILL = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  var shown = [-1,-1,-1,-1,-1], live = -1, primed = false;
+  var live = -1, primed = false, lastCam = '';
 
   function clamp(v,a,b){ return v < a ? a : v > b ? b : v; }
   function ease(t){                                   // in-out cubic
     return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
   }
   function ramp(t){ t = clamp(t,0,1); return t*t*(3-2*t); }
+
+  /* How far in the camera is, across one beat: wide while the figure travels,
+     pushing in as it settles, held through the writing, pulled back at the end. */
+  function focus(u){
+    var IN0 = MOVE * 0.62, IN1 = MOVE + (1 - MOVE) * 0.26, OUT = 0.90;
+    if (u < IN0)  return 0;
+    if (u < IN1)  return ramp((u - IN0) / (IN1 - IN0));
+    if (u < OUT)  return 1;
+    return ramp((1 - u) / (1 - OUT));
+  }
 
   /* iOS will not seek a video it has never been allowed to play */
   function prime(){
@@ -776,19 +790,40 @@
         try { v.currentTime = t; } catch(e){}
       }
 
-      /* the writing: up only while the figure is held */
+      /* --- the camera ------------------------------------------------ */
+      var W = innerWidth, H = innerHeight;
+
+      /* find where the take is actually drawn, matching its object-fit */
+      var nw = v.videoWidth || 720, nh = v.videoHeight || 1280;
+      var fit = W <= 860 ? Math.max(W / nw, H / nh)   /* cover on a phone */
+                         : Math.min(W / nw, H / nh);  /* contain otherwise */
+      var bw = nw * fit, bh = nh * fit;
+      var A  = ANCH[i];
+      var ax = (W - bw) / 2 + A[0] * bw;             // the beat's spot in frame
+      var ay = (H - bh) / 2 + A[1] * bh;
+      var f  = STILL ? 1 : focus(u);
+      var s  = 1 + f * (ZOOM - 1);
+
+      /* the spot rides toward the middle of frame as we come in */
+      var g  = f * PULL;
+      var qx = ax + (W / 2 - ax) * g;
+      var qy = ay + (H / 2 - ay) * g;
+
+      /* move the take so that spot lands there at this scale */
+      var cam = 'translate(' + (qx - ax * s).toFixed(2) + 'px,'
+                             + (qy - ay * s).toFixed(2) + 'px) scale(' + s.toFixed(4) + ')';
+      if (cam !== lastCam){ v.style.transform = cam; lastCam = cam; }
+
+      /* the writing travels with it, and grows because we are closer */
       for (var k = 0; k < beats.length; k++){
-        var o = 0;
-        if (k === i && u >= MOVE){
-          var h = (u - MOVE) / (1 - MOVE);
-          o = ramp(h / 0.20) * ramp((1 - h) / 0.16);
+        var el = beats[k];
+        if (k !== i){
+          if (el.style.opacity !== '0') el.style.opacity = '0';
+          continue;
         }
-        if (STILL && k === i) o = 1;
-        if (o !== shown[k]){
-          beats[k].style.opacity = o.toFixed(3);
-          beats[k].style.transform = 'translateY(' + ((1 - o) * 16).toFixed(2) + 'px)';
-          shown[k] = o;
-        }
+        el.style.opacity  = ramp((f - 0.34) / 0.5).toFixed(3);
+        el.style.transform = 'translate3d(' + qx.toFixed(1) + 'px,' + qy.toFixed(1) + 'px,0)'
+                           + ' scale(' + s.toFixed(4) + ') translate(-50%,-50%)';
       }
 
       if (i !== live){
