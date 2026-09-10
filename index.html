@@ -49,10 +49,14 @@
      compression sparkle and the flat page share one texture and the
      video's rectangle stops reading as an edge. --------------------- */
   .grain{
-    position:fixed; inset:0; z-index:3; pointer-events:none;
+    position:fixed; inset:0; z-index:4; pointer-events:none;
     background-image:url(data:image/png;base64,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);
     background-size:64px 64px;
   }
+
+  /* The headline's particles. Above the page, under the grain, and free to
+     drift past the words' column as they shed. ---------------------------- */
+  .ink{position:fixed; inset:0; z-index:2; pointer-events:none}
 
   .stage{
     position:relative; z-index:1;
@@ -85,14 +89,16 @@
   }
 
   .headline{
-    margin:0;
+    position:relative; margin:0;
     font-weight:600;
     font-size: clamp(54px, 9.4vw, 152px);
     line-height:.86;
     letter-spacing:-.045em;
   }
-  .headline .l{display:block; overflow:hidden}
-  .headline .l > span{display:block}
+  .headline .l{display:block}
+  /* Real type until the canvas is actually painting, then it hands over.
+     If the script never runs, the words simply stay as type. */
+  .headline.painted .l{color:transparent}
 
   .foot{
     display:flex; align-items:flex-end; justify-content:space-between; gap:16px;
@@ -111,16 +117,11 @@
   }
 
   /* ------------------------------------------------------------- entrance */
-  @keyframes rise{from{transform:translateY(102%)} to{transform:translateY(0)}}
   @keyframes fade{from{opacity:0} to{opacity:1}}
-
-  .headline .l > span{animation:rise .95s cubic-bezier(.16,.84,.28,1) both}
-  .headline .l:nth-child(1) > span{animation-delay:.10s}
-  .headline .l:nth-child(2) > span{animation-delay:.20s}
-  .rule, .foot{animation:fade .9s ease .55s both}
+  .rule, .foot{animation:fade .9s ease .5s both}
 
   @media (prefers-reduced-motion: reduce){
-    .headline .l > span,.rule,.foot{animation:none}
+    .rule,.foot{animation:none}
   }
 
   /* --------------------------------------------------------------- narrow */
@@ -135,7 +136,6 @@
 <body>
 
 <div class="grid-layer" aria-hidden="true"></div>
-
 <div class="grain" aria-hidden="true"></div>
 
 <main class="stage">
@@ -144,8 +144,8 @@
     <p class="rule"><span class="mark"></span>Home<span class="line"></span>01</p>
 
     <h1 class="headline">
-      <span class="l"><span>Web</span></span>
-      <span class="l"><span>Designer</span></span>
+      <span class="l">Web</span>
+      <span class="l">Designer</span>
     </h1>
 
     <p class="rule foot"><span>2026</span><span class="line"></span><span>Index</span></p>
@@ -161,8 +161,7 @@
 
 <script>
 /* Keep the page's dot-grid at the same scale and phase as the grid printed
-   inside the video, so the pattern runs unbroken across the video's edge.
-   Source grid: 32px pitch at 720x1280, dots at x=7, y=31 (mod 32).        */
+   inside the video, so the pattern runs unbroken across the video's edge. */
 (function(){
   /* The video prints its own dot-grid: 32px pitch, dots at x=7 y=31, measured
      on the 720x1280 source. Held here as fractions of the video's width so the
@@ -201,6 +200,234 @@
   if (p && p.catch) p.catch(function(){
     addEventListener('touchstart', function once(){ v.play(); }, {once:true, passive:true});
   });
+})();
+
+
+/* ---------------------------------------------------------------------------
+   The headline, built and shed the way the portrait is.
+
+   Measured off the source at 60fps: the material leaving the head barely
+   travels. It is rotated squares that pop in and out, drift slowly outward,
+   and grow LARGER and sparser with distance while they fade. Crucially the
+   head itself stays solid the whole time - what streams off it is extra
+   material, not the head being eaten. So each sampled point of the type gets
+   a body particle that holds the letterform, plus, towards the right end of
+   its own word, one or two shed particles that ride that cycle outward.
+--------------------------------------------------------------------------- */
+(function(){
+  var h1 = document.querySelector('.headline');
+  if (!h1 || !window.requestAnimationFrame) return;
+
+  var cv = document.createElement('canvas');
+  cv.className = 'ink';
+  cv.setAttribute('aria-hidden','true');
+  var ctx = cv.getContext && cv.getContext('2d');
+  if (!ctx) return;
+  document.body.appendChild(cv);
+
+  var STILL  = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var BUCKET = 6;                       // alpha buckets, so we batch the fills
+  var parts = [], W = 0, H = 0, dpr = 1, t0 = 0, running = false;
+
+  function hash(n){ var s = Math.sin(n) * 43758.5453; return s - Math.floor(s); }
+  function clamp(v,a,b){ return v < a ? a : v > b ? b : v; }
+
+  /* --- sample the two lines of type into diamonds --------------------- */
+  function build(){
+    var r = h1.getBoundingClientRect();
+    if (!r.width || !r.height) return false;
+
+    dpr = Math.min(devicePixelRatio || 1, 2.5);
+    W = innerWidth; H = innerHeight;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    var cs = getComputedStyle(h1);
+    var fs = parseFloat(cs.fontSize);
+    var lh = fs * 0.86;                                  // matches line-height
+    var lines = h1.querySelectorAll('.l');
+
+    var pad = Math.ceil(fs * 0.25);
+    var ow  = Math.ceil(r.width + pad * 2);
+    var oh  = Math.ceil(r.height + pad * 2);
+
+    var off = document.createElement('canvas');
+    off.width = Math.ceil(ow * dpr); off.height = Math.ceil(oh * dpr);
+    var o = off.getContext('2d');
+    o.setTransform(dpr, 0, 0, dpr, 0, 0);
+    o.font = cs.fontWeight + ' ' + fs + 'px ' + cs.fontFamily;
+    if ('letterSpacing' in o) o.letterSpacing = cs.letterSpacing;
+    o.textBaseline = 'alphabetic';
+    o.fillStyle = '#000';
+
+    var fm  = o.measureText('Hg');
+    var asc = fm.fontBoundingBoxAscent  || fs * 0.80;
+    var dsc = fm.fontBoundingBoxDescent || fs * 0.20;
+
+    for (var i = 0; i < lines.length; i++){
+      o.fillText(lines[i].textContent,
+                 pad, pad + i * lh + (lh - (asc + dsc)) / 2 + asc);
+    }
+
+    var step = Math.max(3, Math.round(fs / 29));
+    var img;
+    try { img = o.getImageData(0, 0, off.width, off.height).data; }
+    catch(e){ return false; }
+
+    /* Collect points, and each line's own right edge, so BOTH words shed
+       off their own end rather than only the longer one. */
+    var pts = [], rowLine = [], lineMin = [], lineMax = [];
+    for (var y = 0; y < oh; y += step){
+      var li = clamp(Math.floor((y - pad) / lh), 0, lines.length - 1);
+      for (var x = 0; x < ow; x += step){
+        var sx = Math.floor(x * dpr), sy = Math.floor(y * dpr);
+        if (sx >= off.width || sy >= off.height) continue;
+        if (img[(sy * off.width + sx) * 4 + 3] > 130){
+          pts.push(x, y); rowLine.push(li);
+          if (lineMin[li] === undefined || x < lineMin[li]) lineMin[li] = x;
+          if (lineMax[li] === undefined || x > lineMax[li]) lineMax[li] = x;
+        }
+      }
+    }
+    if (!pts.length) return false;
+
+    var half = step * 0.56;
+    parts.length = 0;
+
+    for (var k = 0; k < rowLine.length; k++){
+      var px = pts[k*2], py = pts[k*2+1], li2 = rowLine[k];
+      var lo = lineMin[li2], hi = lineMax[li2];
+      var nx = hi > lo ? (px - lo) / (hi - lo) : 1;
+
+      var tx = r.left + px - pad, ty = r.top + py - pad;
+      var dl = 0.45 * nx + 0.30 * hash(k * 11.3);        // stagger, left first
+
+      /* the body: holds the letterform, stays solid and readable */
+      parts.push({
+        sh: 0, tx: tx, ty: ty,
+        s:  half * (0.84 + hash(k * 2.3) * 0.44),
+        er: clamp((nx - 0.90) / 0.10, 0, 1),             // faint erosion, tip only
+        dl: dl,
+        ox: 130 + 210 * hash(k * 13.7),                  // flies in from right
+        oy: (hash(k * 17.3) - 0.5) * 200,
+        bl: hash(k * 23.9) > 0.993,                      // a few blue markers
+        id: k
+      });
+
+      /* the shed: extra material streaming off the end of the word */
+      var t = clamp((nx - 0.62) / 0.38, 0, 1);
+      if (t <= 0) continue;
+      var n = nx > 0.87 ? 2 : 1;
+      for (var c = 0; c < n; c++){
+        var sd  = k * 31.7 + c * 101.3;
+        var ang = -0.28 + (hash(sd * 3.1) - 0.5) * 0.80;  // right, tilted up
+        parts.push({
+          sh: 1, tx: tx, ty: ty,
+          s:  half * (0.80 + hash(sd * 2.7) * 0.55),
+          ca: Math.cos(ang), sa: Math.sin(ang),
+          d:  (70 + 330 * t) * (0.40 + hash(sd * 5.3)),
+          sp: (0.13 + 0.34 * t) * (0.6 + hash(sd * 7.7) * 0.8),
+          ph: hash(sd * 9.1),
+          w:  t,
+          dl: dl + 0.85,
+          ox: 150 + 200 * hash(sd * 13.7),
+          oy: (hash(sd * 17.3) - 0.5) * 180,
+          bl: hash(sd * 23.9) > 0.988,
+          id: k * 3 + c + 7919
+        });
+      }
+    }
+
+    h1.classList.add('painted');
+    return true;
+  }
+
+  /* --- paint ---------------------------------------------------------- */
+  function draw(now){
+    if (!t0) t0 = now;
+    var dt = (now - t0) / 1000;
+
+    ctx.clearRect(0, 0, W, H);
+
+    /* one path per alpha bucket per colour: 12 fills a frame, not thousands */
+    var ink = [], blue = [], b;
+    for (b = 0; b < BUCKET; b++){ ink.push([]); blue.push([]); }
+
+    var flick = Math.floor(dt * 20);
+
+    for (var i = 0; i < parts.length; i++){
+      var p = parts[i], a = 1, x = p.tx, y = p.ty, s = p.s;
+
+      /* assemble: fly in from the right and settle onto the letterform */
+      var e = STILL ? 1 : clamp((dt - p.dl) / 1.15, 0, 1);
+      e = 1 - Math.pow(1 - e, 3);
+      if (e <= 0) continue;
+      if (e < 1){
+        x += p.ox * (1 - e);
+        y += p.oy * (1 - e);
+        s *= 1 + 1.5 * (1 - e);
+        a  = e;
+      }
+
+      if (p.sh){
+        /* shed: further out means bigger, fainter, sparser */
+        if (STILL) continue;
+        var ph = (p.ph + dt * p.sp) % 1;
+        x += p.ca * p.d * ph * ph;
+        y += p.sa * p.d * ph * ph;
+        s *= 1 + 1.35 * ph;
+        /* in the source these stay black and thin out by DENSITY rather than
+           fading, so hold the tone and cull harder with distance instead */
+        a *= 1 - 0.72 * Math.pow(ph, 1.5);
+        if (hash(p.id + flick) < 0.10 + 0.5 * ph) continue;
+      } else if (!STILL && p.er > 0){
+        /* the very tip of each word flickers, so the edge reads as eroding */
+        if (hash(p.id + flick) < 0.3 * p.er) a *= 0.25;
+      }
+
+      if (a <= 0.04 || x < -60 || x > W + 60) continue;
+
+      b = Math.min(BUCKET - 1, Math.floor(a * BUCKET));
+      (p.bl ? blue : ink)[b].push(x, y, p.bl ? s * 1.25 : s);
+    }
+
+    for (b = 0; b < BUCKET; b++){
+      paint(ink[b],  'rgba(10,10,10,',  (b + 1) / BUCKET);
+      paint(blue[b], 'rgba(20,80,242,', (b + 1) / BUCKET);
+    }
+
+    if (running) requestAnimationFrame(draw);
+  }
+
+  function paint(list, rgb, a){
+    if (!list.length) return;
+    ctx.fillStyle = rgb + a.toFixed(3) + ')';
+    ctx.beginPath();
+    for (var i = 0; i < list.length; i += 3){
+      var x = list[i], y = list[i+1], s = list[i+2];
+      ctx.moveTo(x, y - s); ctx.lineTo(x + s, y);      /* rotated square */
+      ctx.lineTo(x, y + s); ctx.lineTo(x - s, y);
+      ctx.closePath();
+    }
+    ctx.fill();
+  }
+
+  function start(){
+    if (!build()) return;
+    if (running) return;
+    running = true;
+    requestAnimationFrame(draw);
+  }
+
+  var rt;
+  addEventListener('resize', function(){
+    clearTimeout(rt);
+    rt = setTimeout(function(){ build(); }, 180);
+  }, {passive:true});
+
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(start);
+  else addEventListener('load', start);
 })();
 </script>
 
