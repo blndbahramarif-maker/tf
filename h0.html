@@ -810,5 +810,15 @@
 })();
 </script>
 
-</body>
+<script>
+(function(){
+  function hold(){
+    var s=document.getElementById('story');
+    if(s){ var span=s.offsetHeight-innerHeight;
+      if(span>0) scrollTo(0, s.offsetTop + ((0+0.80)/5)*span); }
+    requestAnimationFrame(hold);
+  }
+  requestAnimationFrame(hold);
+})();
+</script></body>
 </html>
