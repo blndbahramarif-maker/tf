@@ -96,36 +96,41 @@
     will-change:transform;
   }
 
+  /* The writing is NEVER scaled by a transform - that rasterises the glyphs
+     once and stretches them, which goes soft the moment the camera moves in.
+     Instead every size here is in em off one driving font-size, and the
+     script re-types the block at the camera's size each frame. Because the
+     whole block scales by the same factor, the line breaks never shift. */
   .beat{
     position:absolute; left:0; top:0;
-    margin:0; width:min(360px, 66vw);
-    transform-origin:center center;
-    opacity:0;                          /* the scrubber drives all of this */
+    margin:0;
+    font-size:18px;                     /* the script drives this */
+    width:15.5em;
+    opacity:0;
     color:var(--paper);
-    will-change:transform, opacity;
+    /* deliberately NO will-change:transform - it caches the raster */
   }
   .beat .tag{
-    display:flex; align-items:center; gap:7px;
+    display:flex; align-items:center; gap:.5em;
     font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
-    font-size:9px; font-weight:500;
+    font-size:.4em; font-weight:500;
     letter-spacing:.22em; text-transform:uppercase;
-    color:rgba(242,242,242,.6);
-    margin-bottom:11px;
-    text-shadow:0 0 16px rgba(0,0,0,.95);
+    color:rgba(242,242,242,.66);
+    margin:0 0 1em;
+    text-shadow:0 0 1.4em rgba(0,0,0,.98), 0 0 .5em rgba(0,0,0,.95);
   }
-  .beat .tag i{width:6px; height:6px; background:var(--blue); flex:none}
+  .beat .tag i{width:.62em; height:.62em; background:var(--blue); flex:none}
   .beat h2{
-    margin:0 0 9px;
-    font-size:clamp(16px, 1.7vw, 26px);
-    font-weight:600; line-height:1.06; letter-spacing:-.03em;
-    text-wrap:balance;
-    text-shadow:0 0 24px rgba(0,0,0,.96), 0 0 9px rgba(0,0,0,.9);
+    margin:0 0 .46em;
+    font-size:1.2em;
+    font-weight:600; line-height:1.07; letter-spacing:-.03em;
+    text-shadow:0 0 1.1em rgba(0,0,0,.98), 0 0 .4em rgba(0,0,0,.95);
   }
   .beat p{
     margin:0;
-    font-size:clamp(10px, .78vw, 12.5px);
-    line-height:1.55; color:rgba(242,242,242,.66);
-    text-shadow:0 0 20px rgba(0,0,0,.96), 0 0 8px rgba(0,0,0,.9);
+    font-size:.5em;
+    line-height:1.55; color:rgba(242,242,242,.72);
+    text-shadow:0 0 1.3em rgba(0,0,0,.98), 0 0 .5em rgba(0,0,0,.95);
   }
 
   /* the beat counter */
@@ -814,16 +819,22 @@
                              + (qy - ay * s).toFixed(2) + 'px) scale(' + s.toFixed(4) + ')';
       if (cam !== lastCam){ v.style.transform = cam; lastCam = cam; }
 
-      /* the writing travels with it, and grows because we are closer */
+      /* The writing travels with the camera and is RE-TYPED at its size -
+         never transform-scaled, so the glyphs stay natively sharp. Whole
+         pixels only, so they land on the pixel grid rather than between it. */
+      var base = Math.max(16, Math.min(23, W * 0.016));
       for (var k = 0; k < beats.length; k++){
         var el = beats[k];
         if (k !== i){
           if (el.style.opacity !== '0') el.style.opacity = '0';
           continue;
         }
-        el.style.opacity  = ramp((f - 0.34) / 0.5).toFixed(3);
-        el.style.transform = 'translate3d(' + qx.toFixed(1) + 'px,' + qy.toFixed(1) + 'px,0)'
-                           + ' scale(' + s.toFixed(4) + ') translate(-50%,-50%)';
+        var z = base * s;
+        if (Math.abs(parseFloat(el.style.fontSize) - z) > 0.15)
+          el.style.fontSize = z.toFixed(2) + 'px';
+        el.style.opacity   = ramp((f - 0.34) / 0.5).toFixed(3);
+        el.style.transform = 'translate(' + Math.round(qx) + 'px,' + Math.round(qy) + 'px)'
+                           + ' translate(-50%,-50%)';
       }
 
       if (i !== live){
