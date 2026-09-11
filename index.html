@@ -220,6 +220,80 @@
   .card a:hover, .card a:focus-visible{ color:#fff; border-color:var(--blue) }
   .card .sep{ width:5px; height:5px; background:var(--blue); flex:none }
 
+
+  /* ======================================================================
+     THE DETAIL. Everything a search engine, and a serious customer, needs
+     in words. It sits after the film so it costs the cinematic run nothing,
+     and returns to the home page's grey to close the loop. No hidden text:
+     every word here is on screen for the reader as well as the crawler.
+     ================================================================== */
+  .detail{
+    position:relative; z-index:1; color:var(--ink);
+    padding:clamp(76px,11vh,140px) 0 clamp(60px,9vh,116px);
+  }
+  .detail .wrap{
+    width:min(1180px, 100% - clamp(40px,9vw,136px));
+    margin-inline:auto;
+    display:flex; flex-direction:column; gap:clamp(42px,6vh,74px);
+  }
+  .detail h2{
+    margin:0; max-width:19ch;
+    font-size:clamp(30px,4.4vw,58px); font-weight:600;
+    line-height:1.02; letter-spacing:-.04em; text-wrap:balance;
+  }
+  .detail .lead{
+    margin:0; max-width:62ch;
+    font-size:clamp(15px,1.2vw,19px); line-height:1.58;
+    color:rgba(10,10,10,.75);
+  }
+  .cols{
+    display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:clamp(30px,3.4vw,58px);
+  }
+  .cols h3, .faq h3{
+    margin:0 0 16px;
+    font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:11px; font-weight:500; letter-spacing:.18em; text-transform:uppercase;
+    color:rgba(10,10,10,.55);
+    display:flex; align-items:center; gap:9px;
+  }
+  .cols h3::before, .faq h3::before{
+    content:''; width:7px; height:7px; background:var(--blue); flex:none;
+  }
+  .cols ul{margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:12px}
+  .cols li, .cols p{
+    margin:0; font-size:15px; line-height:1.55; color:rgba(10,10,10,.8);
+  }
+  .steps li{display:flex; gap:11px; align-items:baseline}
+  .steps b{
+    font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:11px; font-weight:500; color:rgba(10,10,10,.45); flex:none;
+  }
+  .faq{
+    display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:clamp(26px,2.6vw,46px) clamp(30px,3.4vw,58px);
+  }
+  .faq > h3{grid-column:1/-1}
+  .faq h4{margin:0 0 7px; font-size:16px; font-weight:600; letter-spacing:-.012em}
+  .faq p{margin:0; max-width:52ch; font-size:14.5px; line-height:1.58; color:rgba(10,10,10,.72)}
+  .ends{
+    display:flex; flex-wrap:wrap; gap:14px 26px; align-items:center;
+    padding-top:clamp(26px,3vh,40px);
+    border-top:1px solid rgba(10,10,10,.2);
+    font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:12px; letter-spacing:.12em; text-transform:uppercase;
+  }
+  .ends a{
+    color:rgba(10,10,10,.82); text-decoration:none;
+    border-bottom:1px solid rgba(10,10,10,.28); padding-bottom:.25em;
+    transition:color .3s ease, border-color .3s ease;
+  }
+  .ends a:hover, .ends a:focus-visible{color:var(--ink); border-color:var(--blue)}
+
+  @media (max-width:860px){
+    .cols, .faq{grid-template-columns:1fr}
+  }
+
   /* the beat counter */
   .ticks{
     position:absolute; right:22px; top:50%; transform:translateY(-50%);
@@ -398,6 +472,112 @@
       <span class="sep" aria-hidden="true"></span>
       <a href="tel:+447593717895">+44 7593 717895</a>
     </p>
+  </div>
+</section>
+
+<section class="detail">
+  <div class="wrap">
+
+    <p class="rule"><span class="mark"></span>Details<span class="line"></span>06</p>
+
+    <h2>Websites built from scratch for businesses across the UK.</h2>
+
+    <p class="lead">BLND designs and builds custom websites for small businesses &mdash; shops,
+    restaurants, trades, salons, clinics and anyone else who needs to be found online.
+    Every site is drawn and written for the one business it belongs to. No templates,
+    no themes, no page builders, and nothing recycled from the last job.</p>
+
+    <div class="cols">
+      <article>
+        <h3>What you get</h3>
+        <ul>
+          <li>A site designed around your business, not adapted from a theme somebody else bought.</li>
+          <li>Built to open fast on a phone, which is where most of your customers will see it.</li>
+          <li>Set up so Google can read and index it properly from the day it goes live.</li>
+          <li>Click-to-call and an enquiry form, so the people who want you can actually reach you.</li>
+          <li>Tested on real phones, tablets and laptops before anything is published.</li>
+        </ul>
+      </article>
+
+      <article>
+        <h3>Who it is for</h3>
+        <p>Shops and online stores. Restaurants, cafés and takeaways. Builders, electricians,
+        plumbers, joiners and other trades. Barbers, salons and tattoo studios. Dentists,
+        clinics and therapists. Estate agents. Gyms and personal trainers. Photographers
+        and designers. And anyone opening something new who has nothing online yet.</p>
+      </article>
+
+      <article>
+        <h3>How it works</h3>
+        <ul class="steps">
+          <li><b>01</b><span>We talk about what the business does, who it sells to, and what the site has to achieve.</span></li>
+          <li><b>02</b><span>You get a fixed price before any work starts &mdash; somewhere between £500 and £3,000.</span></li>
+          <li><b>03</b><span>I design and build it, and you see it taking shape rather than waiting in the dark.</span></li>
+          <li><b>04</b><span>It goes live, and I make sure Google knows it exists.</span></li>
+        </ul>
+      </article>
+    </div>
+
+    <div class="faq">
+      <h3>Common questions</h3>
+
+      <div>
+        <h4>How long does a website take?</h4>
+        <p>Most take two to four weeks from the first conversation to going live. A single
+        page can be done sooner. A larger site with a shop or booking system takes longer,
+        and you will be told which it is before you commit.</p>
+      </div>
+
+      <div>
+        <h4>What does it cost?</h4>
+        <p>Between £500 and £3,000. Where you land depends on how many pages there are and
+        whether you need things like a shop, bookings or a booking calendar. The price is
+        agreed up front and nothing is added to it afterwards.</p>
+      </div>
+
+      <div>
+        <h4>Do I have to write the words myself?</h4>
+        <p>No. Tell me about the business and I will write it. If you already have wording
+        you like, that gets used instead.</p>
+      </div>
+
+      <div>
+        <h4>Can you redo a website I already have?</h4>
+        <p>Yes. Rebuilding a tired or slow site is common work, and your existing address,
+        content and search history can be carried across so you do not start from nothing.</p>
+      </div>
+
+      <div>
+        <h4>Will it work properly on phones?</h4>
+        <p>Yes, and phones come first. Most people will find you on a phone, so that is the
+        screen the design starts from rather than the one it gets squeezed onto at the end.</p>
+      </div>
+
+      <div>
+        <h4>Can you build an online shop?</h4>
+        <p>Yes &mdash; product pages, a basket and card payments. Shops sit at the upper end
+        of the range because there is more to build and more to test.</p>
+      </div>
+
+      <div>
+        <h4>What happens once it is live?</h4>
+        <p>It is submitted to Google, and you are shown how to update the parts you will want
+        to change yourself. If you would rather not touch it, I can handle changes for you.</p>
+      </div>
+
+      <div>
+        <h4>Where do you work?</h4>
+        <p>Anywhere in the United Kingdom. The whole thing can be done over the phone and by
+        email, so where you are based makes no difference to the work or the price.</p>
+      </div>
+    </div>
+
+    <p class="ends">
+      <span>Start a website</span>
+      <a href="mailto:blndbahramarif@gmail.com">blndbahramarif@gmail.com</a>
+      <a href="tel:+447593717895">+44 7593 717895</a>
+    </p>
+
   </div>
 </section>
 
