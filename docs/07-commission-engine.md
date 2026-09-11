@@ -1,5 +1,10 @@
 # 07 — Commission Engine
 
+> **Seeded default rates are set in [DL-2](./12-decisions-log.md#dl-2--high-value-transactions-fee-only-success-fee).**
+> 0.5% is kept for Business and Cars, which are profitable in the fee-only flow.
+> Everyday-goods categories are seeded at 5–7% because 0.5% does not cover the card
+> fee there. All of it is editable in the admin panel without a deploy.
+
 ## Requirement
 
 0.5% today on Business/Cars/Furniture/Mobile/Clothing; the owner must be able to change

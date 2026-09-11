@@ -1,5 +1,15 @@
 # 02 — System Architecture
 
+> **Adjusted for the lean stack ([DL-3](./12-decisions-log.md)).** The component
+> diagram below shows the *logical* architecture, which is unchanged. Physically,
+> `kurdora.com` and `api.kurdora.com` are **one Next.js deployment** (the API lives at
+> `/api/v1/*`), and the admin console is a route group rather than a separate app.
+> The worker fleet **remains a separate process** — that one is a correctness
+> requirement, not a scale optimisation. Everything else on this page — module
+> boundaries, domain events and the outbox, the request lifecycle, caching, the scaling
+> path — applies exactly as written, because `src/domain` is framework-free and does
+> not care how it is deployed.
+
 ## Component view
 
 ```
@@ -26,7 +36,7 @@
 the API. This is what makes a mobile app a client rather than a rewrite, and it keeps
 exactly one code path for authorisation.
 
-## Module boundaries in the API
+## Module boundaries (`src/domain`)
 
 Grouped by bounded context. Modules communicate through service interfaces and domain
 events, not by reaching into each other's tables.

@@ -1,5 +1,11 @@
 # 04 — Payment Architecture (Stripe Connect)
 
+> **DECIDED ([DL-1](./12-decisions-log.md), [DL-2](./12-decisions-log.md)):
+> UK limited company as the Stripe platform; fee-only (success fee) for high-value
+> categories.** The economics warning below is retained because it is what drove the
+> decision and because it still governs the *everyday-goods* rates — see
+> [DL-2's seeded rate table](./12-decisions-log.md#dl-2--high-value-transactions-fee-only-success-fee).
+>
 > All Stripe behaviour below was **retrieved from official Stripe documentation on
 > 2026-09-11** and is cited. Nothing here is invented. Stripe changes; **re-verify at
 > the start of Phase 7** before writing payment code.
@@ -58,11 +64,16 @@ who has already been paid out and emptied their balance leaves you carrying the 
 | **C** | **Low-cost rails only for high value** — accept Bacs Direct Debit / Pay by Bank / SEPA for orders above a threshold. Bacs is capped at £4.00 | 0.5% survives | Bank rails are slower, UK/EEA-specific, lower conversion, and Pay by Bank is not generally available for non-Dashboard connected accounts (<https://docs.stripe.com/connect/account-capabilities>) |
 | **D** | **Surcharge the buyer** | Recovers fee | `[LEGAL REVIEW]` **Likely unlawful** for consumer cards in the UK and EEA. Do not plan on this |
 
-**My recommendation: B for high-value categories (Business, Cars, Property,
-Machinery) + A for everyday goods** — a realistic commission (e.g. 5–8%) on Mobile,
-Clothing, Furniture, Electronics where the absolute amounts are small and buyers
-expect marketplace protection. The commission engine ([07](./07-commission-engine.md))
-supports per-category rates, so both coexist with zero code changes.
+**DECIDED: B for high-value categories (Business, Cars, Property, Machinery).**
+Everyday goods take model **A** — a realistic commission of 5–7% on Mobile, Clothing, Furniture and
+Electronics, where absolute amounts are small and buyers expect marketplace protection.
+The commission engine ([07](./07-commission-engine.md)) supports per-category rates, so
+both models coexist with zero code changes and the owner can retune either at any time.
+
+**Fee-only is now the primary high-value design.** Its full definition is Flow 3 below;
+what it removes is significant: no seller transfer leg, no transfer reversals, no
+`£50,000` chargeback exposure, and no requirement for a high-value seller to complete
+Stripe Connect onboarding before their first listing.
 
 ---
 
@@ -94,8 +105,8 @@ Stripe moves the seller's share to the seller's own connected account. You only 
 withdraw your `application_fee_amount`.
 
 ### `on_behalf_of`: **omit it**
-Ordinarily a cross-region destination charge requires `on_behalf_of`. But Kurdora is
-a UK/EEA platform paying sellers across the UK and EEA, which is exactly the
+Ordinarily a cross-region destination charge requires `on_behalf_of`. Kurdora is
+a **UK** platform (DL-1) paying sellers across the UK and EEA, which is exactly the
 **cross-border payouts** product, and its supported funds flows are explicitly
 *"Destination charges **without** `on_behalf_of`"* and *"Separate charges and transfers
 **without** `on_behalf_of`"* (<https://docs.stripe.com/connect/cross-border-payouts>).
@@ -187,12 +198,31 @@ Buyer views listing → Contacts seller → Makes an offer (amount, message, exp
 An offer is single-use: once `converted`, it cannot produce a second order
 (`offers.order_id` unique).
 
-### Flow 3 — Fee-only / success fee (recommended default for high-value)
+### Flow 3 — Fee-only / success fee  ✅ **the chosen high-value design**
 The platform fee is charged as an ordinary PaymentIntent **on the platform account
 with no `transfer_data`** — there is no seller payout leg, because the principal never
-passes through Stripe. The listing is marked sold and the fee is recognised as
-platform revenue. Sub-variants: buyer-paid reservation fee, seller-paid success fee,
-or split. All configurable per category.
+passes through Stripe and never enters any Kurdora bank account. The listing is marked
+sold and the fee is recognised as platform revenue.
+
+```
+POST /v1/payment_intents
+  amount=25000            # the £250 commission only — NOT the £50,000
+  currency=gbp
+  automatic_payment_methods[enabled]=true
+  metadata[order_id]=<order_id>
+  # deliberately NO transfer_data, NO application_fee_amount
+Idempotency-Key: order:<order_id>:fee:v1
+```
+
+Configurable per category: who pays (buyer / seller / split), when it is charged (on
+offer acceptance — the default — or on marking sold), and the refund window if the
+sale collapses.
+
+**The honesty requirement is part of the feature.** The listing page, the offer flow
+and the fee checkout must each state what the fee buys (introduction, verified seller,
+in-platform negotiation record, dispute mediation) and what it does **not** (no
+protection on the principal, which the parties settle directly). Burying this would be
+both a trust failure and a consumer-law risk. `[LEGAL REVIEW]`
 
 ### Flow 4 — Contact only (Jobs, Services enquiries, free items)
 No payment object at all. Messaging and lead tracking only.

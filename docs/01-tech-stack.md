@@ -1,5 +1,11 @@
 # 01 — Technology Stack
 
+> **DECIDED ([DL-3](./12-decisions-log.md)): the LEAN variant is the chosen stack** —
+> a single Next.js application rather than a separate Next.js + NestJS pair, because
+> this is being built by one person. Read the "Recommended stack" sections below for
+> the reasoning behind each individual technology (those choices are unchanged), then
+> the **"Chosen shape"** section at the end for what is actually being built.
+
 Every choice below is justified against Kurdora's actual constraints, not popularity.
 Where I rejected a popular option, the reason is stated.
 
@@ -163,10 +169,10 @@ security decision: it removes the admin surface from the public app's bundle and
 attack surface, and lets us apply 2FA enforcement, stricter CSP, optional IP
 allowlisting and shorter sessions without compromising public UX.
 
-## Lean alternative (if you are building solo or near-solo)
+## Chosen shape — the lean variant  ✅ DECIDED
 
-If [Q-8](./00-scope-and-open-questions.md) turns out to be "solo founder, limited
-budget", the recommended stack above is roughly 2× the work. The lean variant:
+Building solo, the two-service architecture above is roughly 2× the work for
+isolation benefits a single developer cannot fully exploit. The chosen shape:
 
 - **One Next.js app** with a `/api/v1/*` route handler layer that is written to the
   same OpenAPI contract (so mobile can consume it unchanged later).
@@ -175,6 +181,35 @@ budget", the recommended stack above is roughly 2× the work. The lean variant:
 - Admin as a protected route group rather than a separate app (accepting the weaker
   isolation), with 2FA still mandatory.
 
-This preserves every architectural decision that is expensive to reverse (money model,
-schema, commission engine, i18n) and defers only the ones that are cheap to reverse
-(process boundaries). I will recommend this path if you tell me the team is small.
+**Background jobs still run as a separate worker process** from the same codebase —
+webhook processing, payout reconciliation, image derivatives, search indexing, email
+and scheduled expiry must never share a web request's lifecycle. That separation is
+not a scale optimisation; it is a correctness requirement for payments.
+
+This preserves every architectural decision that is expensive to reverse — the money
+model, the schema, the commission engine, the Stripe design, the RBAC model, i18n/RTL —
+and defers only the ones that are cheap to reverse (process boundaries). If the team
+grows, the `/app/api/v1` layer lifts out into a standalone service with the domain
+modules unchanged, because the domain logic never imports Next.js types.
+
+### Concrete layout
+
+```
+app/
+  [locale]/              public marketplace + buyer/seller dashboards (SSR/ISR)
+  [locale]/admin/        admin console — route group, TOTP + step-up auth required
+  api/v1/                HTTP API (OpenAPI-documented, mobile-ready)
+  api/webhooks/stripe/   raw-body webhook endpoint
+src/
+  domain/                business logic — framework-free, unit-testable
+    listings/ orders/ payments/ commission/ ledger/ moderation/ ...
+  infra/                 prisma, stripe, redis, storage, mail adapters
+  shared/                zod schemas, money utils, state machines, enums
+worker/                  BullMQ processors (imports src/domain directly)
+packages/
+  brand/  i18n/          brand config + message catalogues
+```
+
+`src/domain` must not import from `app/` or from Next.js. Enforced by an ESLint
+boundary rule. That single constraint is what keeps the mobile API and any future
+service extraction cheap.

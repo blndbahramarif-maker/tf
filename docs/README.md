@@ -1,6 +1,8 @@
 # Kurdora — Planning Documentation
 
-> **Status: PHASE 0 — planning only. No application code has been written yet.**
+> **Status: PHASE 0 — planning complete, awaiting approval to start Phase 1.**
+> **No application code has been written yet.**
+> Blocking decisions are answered — see **[12 — Decisions log](./12-decisions-log.md)**.
 > Nothing in this repository is production-ready. Every payment statement here is
 > traced to official Stripe documentation retrieved on **2026-09-11** (sources cited
 > inline). Re-verify before Phase 7 implementation, because Stripe changes.
@@ -25,6 +27,7 @@ brand configuration module so it can be changed without touching application cod
 | 09 | [Internationalisation & RTL](./09-i18n-rtl.md) | en / ckb / kmr / ar, bidirectional layout |
 | 10 | [Development roadmap](./10-roadmap.md) | Phases 0–14 with exit criteria |
 | 11 | [Risks & decisions](./11-risks-and-decisions.md) | What can sink this project |
+| 12 | **[Decisions log](./12-decisions-log.md)** | **Your answers, and exactly what they changed — read this second** |
 
 ## Legal notice
 

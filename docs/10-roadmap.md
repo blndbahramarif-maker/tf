@@ -1,5 +1,10 @@
 # 10 — Development Roadmap
 
+> **Re-cut for solo development ([DL-3](./12-decisions-log.md)) and a reduced launch
+> scope ([DL-4](./12-decisions-log.md)).** Each phase ends at a state you can actually
+> look at and use — not a half-finished layer — so that progress is visible and
+> reviewable by one person.
+
 Every phase ends with the same gate. **No phase starts until the previous one passes it.**
 
 ### Phase exit gate (applied to every phase)
@@ -17,12 +22,15 @@ Every phase ends with the same gate. **No phase starts until the previous one pa
 Deliverables: this documentation set. **Blocked on your answers to the open questions
 in [00](./00-scope-and-open-questions.md), especially Q-1, Q-2, Q-3 and Q-8.**
 
-### Phase 1 — Architecture sign-off
-Monorepo skeleton, ADRs for the decisions in [11](./11-risks-and-decisions.md), OpenAPI
-contract v0, CI pipeline (lint, typecheck, test, migrate, secret scan), Docker compose
-for local Postgres/Redis/MinIO. **No business logic yet.**
-*Exit:* CI green on an empty but complete skeleton; `docker compose up` gives a working
-local environment from a clean clone.
+### Phase 1 — Project skeleton & architecture sign-off
+Next.js 15 app with the `app/ · src/domain · src/infra · worker/ · packages/` layout
+from [01](./01-tech-stack.md); ESLint boundary rule (`src/domain` may not import Next.js);
+the RTL lint rule banning physical direction classes; brand config package; ADRs for the
+decisions in [11](./11-risks-and-decisions.md) and [12](./12-decisions-log.md); OpenAPI
+contract v0; CI (lint, typecheck, test, migrate, `gitleaks`); `docker compose` for local
+Postgres, Redis and MinIO. **No business logic yet.**
+*Exit:* CI green; `docker compose up` plus one command gives a working local environment
+from a clean clone; a deliberate `src/domain → next` import fails lint.
 
 ### Phase 2 — Project setup & database
 Full Prisma schema from [03](./03-database-architecture.md), all migrations, seed data
@@ -112,19 +120,35 @@ before opening Europe-wide.
 
 ---
 
-## Honest timeline
+## Honest timeline — solo, reduced launch scope
 
-| Team | Phases 1–8 (payable MVP) | Phases 1–14 (full brief) |
+| Milestone | Phases | Estimate |
 |---|---|---|
-| Solo experienced full-stack dev | 8–12 months | 18–30 months |
-| 2–3 experienced devs | 4–6 months | 9–14 months |
-| 4–6 (incl. design, QA, PM) | 3–4 months | 6–9 months |
+| Browsable marketplace (no payments) | 1–5 | **2–3 months** |
+| Payable MVP, ready for a soft launch | 1–8 | **4–7 months** |
+| Trust & safety complete | 1–9 | +1–2 months |
+| The full brief (subscriptions, ads, analytics, hardening) | 1–14 | **12–24 months** |
 
-Plus, in parallel and not optional: legal review, Stripe platform approval, native
-Kurdish translation review, and an external security test.
+Those are estimates for consistent, focused work with Claude Code doing the
+implementation. They assume the reduced launch scope; they do not assume evenings only.
 
-**Strong recommendation: cut the launch scope.** One country, three or four categories,
-one transaction flow, English + Sorani. Prove the payment loop and the trust model with
-real money and real users, then expand. The architecture above is built so that
-expansion is configuration, not rewriting — that is precisely why it is worth designing
-it properly now even though you launch with less.
+Running in parallel, and **not optional**, none of which is engineering time:
+- Stripe platform profile and **written** approval of the model (blocks Phase 7 — start now)
+- UK legal review: seller agreement, terms, privacy policy, fee-only disclosure, DSA duties
+- Tax adviser on VAT and the marketplace's supplier status
+- Native Sorani and Kurmanji review of the UI copy
+- An external penetration test before taking real money
+
+### Where a solo build usually goes wrong, and the guard for each
+
+| Failure mode | Guard built into this plan |
+|---|---|
+| Building admin tooling before anything works | Admin CRUD only where a phase needs it; no speculative screens |
+| Payment code written once, never tested against failure | Phase 7 exit gate requires replayed webhooks, forged signatures and timeout-retry to be proven safe |
+| Schema drift and manual production SQL | Every change is a migration; CI runs them forward and back |
+| i18n retrofitted late | Locale routing and the RTL lint rule land in **Phase 1**, before any UI exists |
+| Money bugs found in production | Double-entry ledger with a zero-sum invariant test from Phase 2, reconciled nightly from Phase 8 |
+| Losing all context after a break | This documentation set, kept current as code lands (R-14) |
+
+**Start the Stripe platform profile this week.** It is the only dependency that can
+block Phase 7 entirely and it is completely outside your control.

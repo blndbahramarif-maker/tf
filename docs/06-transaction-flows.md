@@ -52,7 +52,9 @@ Then: order created with commission snapshot → PaymentIntent (destination char
 Payment Element with SCA → **webhook confirms** → `paid`.
 
 ## Flow 2 — Offer → Accept → Pay
-*Cars, Business, and any high-value category*
+*Cars, Business, and any high-value category. Under [DL-2](./12-decisions-log.md) the
+final "pay" step for these categories is the **fee-only** charge of Flow 3, not a
+destination charge for the full amount.*
 
 ```
 Buyer: view listing → contact seller → submit offer (amount, message, expiry)
@@ -69,8 +71,8 @@ Offer rules:
   exactly one order.
 - Accepting is an explicit, logged commitment. It is shown to the seller as such.
 
-## Flow 3 — Fee-only / success fee
-*Recommended default for Business, Cars, Property, Machinery — see [04](./04-payments-architecture.md)*
+## Flow 3 — Fee-only / success fee  ✅ **CHOSEN for high-value categories**
+*Business, Cars, Property, Machinery — decided in [DL-2](./12-decisions-log.md); mechanics in [04](./04-payments-architecture.md)*
 
 Only the platform fee moves through Stripe. The principal settles directly between the
 parties. The platform's role is discovery, verification, messaging and a fee — and the

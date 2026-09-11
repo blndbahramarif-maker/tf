@@ -2,27 +2,35 @@
 
 ## Risks, worst first
 
-### R-1 · The commission rate is below the payment processing cost `CRITICAL`
+### R-1 · The commission rate is below the payment processing cost `CRITICAL` → **MITIGATED**
 0.5% commission vs 1.5–3.15% + 20p card fees. On a £50,000 destination charge the
 platform nets **−£500.20**. Full arithmetic in [04](./04-payments-architecture.md).
 **Mitigation:** choose a model in Q-2 — fee-only for high value, realistic commission
-for everyday goods. **This must be decided before any payment code is written**, because
-it determines the flow, the schema usage and the UI.
+for everyday goods. **RESOLVED ([DL-2](./12-decisions-log.md)):** fee-only for high value, realistic
+per-category rates for everyday goods. Residual risk: the everyday-goods rates are
+seeded defaults and must be sanity-checked against real order values after launch.
 
-### R-2 · Chargeback exposure on high-value transactions `CRITICAL`
+### R-2 · Chargeback exposure on high-value transactions `CRITICAL` → **LARGELY ELIMINATED**
 As merchant of record on destination charges, your platform balance is debited for the
 full disputed amount. One disputed £50,000 car sale where the seller has already
 withdrawn = a £50,000 hole.
-**Mitigation:** fee-only flow for high value; payout delays; rolling reserves;
+**RESOLVED for high value ([DL-2](./12-decisions-log.md)):** the principal never passes
+through Stripe, so the maximum disputable amount on a business or car sale is the ~£250
+fee, not £50,000. Residual exposure is limited to everyday-goods orders, where order
+values are small.
+**Remaining mitigations (still required):** payout delays; rolling reserves;
 `debit_negative_balances`; per-seller value caps; strong identity verification; good
 in-platform dispute resolution.
 
-### R-3 · Stripe may not approve the business model `HIGH`
+### R-3 · Stripe may not approve the business model `HIGH` → **REDUCED**
 High-value goods are a restricted category requiring additional due diligence; vehicle
 sales are prohibited in some jurisdictions; the sale of whole businesses is not an
 enumerated category at all.
 **Mitigation:** complete the Stripe platform profile and obtain **written**
-confirmation before Phase 7. Have model B as the fallback design.
+confirmation before Phase 7. [DL-2](./12-decisions-log.md) already adopts the fee-only
+design, which is the lower-risk model — Kurdora is charging a service fee for an
+introduction rather than processing £50,000 vehicle and business sales, which is a
+materially easier model for Stripe to approve.
 
 ### R-4 · Holding funds may make Kurdora a regulated payment institution `HIGH` `[LEGAL]`
 Stripe does not provide escrow; manual payouts cap at 90 days; Connect is designed to
@@ -55,11 +63,13 @@ What is legal in one European country is illegal in another.
 **Mitigation:** `prohibited_item_rules` are per-country and per-category from day one;
 launch in few countries; keep rules admin-editable.
 
-### R-9 · Scope is very large for the stated ambition `HIGH`
+### R-9 · Scope is very large for the stated ambition `HIGH` → **PARTLY ADDRESSED**
 The brief describes roughly 3–5 mature products (marketplace + payments + messaging +
 ads + subscriptions + moderation + analytics).
-**Mitigation:** the phased plan and the "cut the launch scope" recommendation in
-[10](./10-roadmap.md).
+**Mitigation:** [DL-4](./12-decisions-log.md) cuts the launch to one country and 3–4
+categories, and [DL-3](./12-decisions-log.md) cuts the stack to one application.
+Residual risk is real: solo development of phases 1–8 is still 4–7 months of consistent
+work, and the remaining phases are a multi-year programme.
 
 ### R-10 · Kurdish language quality `MEDIUM`
 Sorani and Kurmanji need genuine native review; poor translation in a community
@@ -79,6 +89,14 @@ Stripe directs new platforms to Accounts v2, but it is served under
 **Mitigation:** confirm GA status at the start of Phase 7; fallback to Accounts v1 with
 controller properties, which is fully supported.
 
+### R-14 · Solo-developer bus factor `MEDIUM-HIGH` (new, from [DL-3](./12-decisions-log.md))
+One person holds all context for a system that moves real money. Illness, burnout or a
+lost laptop stalls everything.
+**Mitigation:** this documentation set is the first mitigation and must be kept current
+as code lands. Plus: everything in version control, no undocumented manual production
+steps, runbooks for payment incidents, tested backup restores, secrets in a managed
+store recoverable independently of any one machine, and an ADR per significant decision.
+
 ### R-13 · Single-admin key-person risk `MEDIUM`
 One `super_admin` account is a single point of catastrophic failure.
 **Mitigation:** mandatory 2FA, break-glass procedure, at least two admins, audit
@@ -95,8 +113,8 @@ alerting, backup restore tested.
 | **D-3** | Own auth vs managed IdP | **Own auth** (control, cost, seller-state coupling) with the guardrails in [08](./08-security-architecture.md). Switch to a managed IdP if the team is very small |
 | **D-4** | Prisma vs Drizzle | **Prisma**, re-evaluate at Phase 4 if attribute filtering suffers |
 | **D-5** | Postgres FTS vs dedicated search engine at launch | **Postgres first**, engine at 4b. Arabic-script quality is the likely trigger |
-| **D-6** | Separate admin app vs route group | **Separate app** on its own subdomain for isolation; route group is acceptable in the lean variant |
-| **D-7** | Full stack (Next + Nest) vs lean (Next only) | Depends on Q-8. Lean keeps every expensive decision intact and halves the work |
+| **D-6** | Separate admin app vs route group | ✅ **RESOLVED — route group** (`/[locale]/admin`) per [DL-3](./12-decisions-log.md). Compensating controls: mandatory TOTP, step-up auth on money operations, stricter CSP, separate cookie scope, full audit logging |
+| **D-7** | Full stack (Next + Nest) vs lean (Next only) | ✅ **RESOLVED — lean** ([DL-3](./12-decisions-log.md)). `src/domain` stays framework-free so the API can be extracted later without touching business logic |
 | **D-8** | Multi-item cart at launch | **No** — single-item orders. The schema supports `order_items` for later |
 | **D-9** | Guest checkout | **No** at launch. Accounts give dispute resolution, reviews and fraud signals |
-| **D-10** | Buyer protection window / payout delay | **Yes**, per category, short and rule-based — pending D-4 legal confirmation on fund holding |
+| **D-10** | Buyer protection window / payout delay | **Yes** for everyday goods, per category, short and rule-based — pending R-4 legal confirmation on fund holding. Not applicable to fee-only categories, which have no payout leg |

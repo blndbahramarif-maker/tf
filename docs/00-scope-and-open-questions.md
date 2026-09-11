@@ -22,18 +22,22 @@ auctions/bidding · crypto · buyer financing/BNPL · a public partner API.
 
 ---
 
-## Open questions — I need these before Phase 1
+## Open questions
 
-The first four change the architecture. The rest change scope or sequencing.
+> **Q-1 to Q-4 are ANSWERED** — see [12 — Decisions log](./12-decisions-log.md) for the
+> answers and their full consequences. They are kept here for the record, marked
+> ✅ with the answer given. Q-5 and Q-6 are answered in principle but still need the
+> specific country and categories named. Q-7 onward remain open but are **not blocking
+> Phase 1**.
 
-### Q-1 · Where is the platform company legally established? `BLOCKING`
+### Q-1 · Where is the platform company legally established? ✅ **ANSWERED: UK limited company**
 UK Ltd, or an EU entity, or not yet incorporated? This determines your Stripe platform
 country, which cross-border corridors are supported, which consumer law applies, your
 VAT position and your regulator. **Everything about the payment architecture depends on
 this answer.** (Cross-border payouts support platforms in the US, UK, EEA, Canada and
 Switzerland, with UK↔EEA payouts fee-free.)
 
-### Q-2 · How do you want to cover the payment processing cost? `BLOCKING`
+### Q-2 · How do you want to cover the payment processing cost? ✅ **ANSWERED: B (fee-only) for high value; A for everyday goods**
 See the arithmetic in [04](./04-payments-architecture.md) — 0.5% loses money on every
 card transaction. Pick one (or a per-category mix):
 - **A** — raise commission above processing cost for card-funded orders
@@ -41,21 +45,21 @@ card transaction. Pick one (or a per-category mix):
 - **C** — restrict high-value orders to low-cost bank rails (Bacs/SEPA/Pay by Bank)
 - **D** — surcharge the buyer *(likely unlawful for consumer cards in UK/EU — not recommended)*
 
-### Q-3 · For a £50,000 business or car sale, does the full amount go through the platform? `BLOCKING`
+### Q-3 · For a £50,000 sale, does the full amount go through the platform? ✅ **ANSWERED: no — fee-only**
 Full amount = maximum buyer trust, but a £50,000 chargeback lands on your balance and
 Stripe may not approve it. Fee-only = safe and profitable but weaker buyer protection
 on the principal, which you must state honestly in the UI.
 
-### Q-4 · What is the actual team and budget? `BLOCKING`
+### Q-4 · What is the actual team and budget? ✅ **ANSWERED: solo, built with Claude Code → lean stack**
 Solo, or a team? This decides D-7 (full stack vs lean), whether to buy or build auth,
 search and the admin console, and whether the roadmap in [10](./10-roadmap.md) is
 realistic. **An honest answer here saves months.**
 
-### Q-5 · Which countries at launch?
+### Q-5 · Which countries at launch? ⚠️ **PARTLY ANSWERED: one country — which one?**
 "All of Europe" multiplies legal, tax, language, prohibited-goods and payment work. I
 recommend launching in **one or two** countries. Which ones, and why those?
 
-### Q-6 · Which categories at launch?
+### Q-6 · Which categories at launch? ⚠️ **PARTLY ANSWERED: 3–4 categories — which ones?**
 All thirteen is a lot of category-attribute schemas, moderation policies and
 prohibited-item rules. I recommend three or four. Which matter most to you commercially?
 
@@ -94,8 +98,12 @@ recommendation is EU/UK region managed Postgres + containers.
 
 ---
 
-## What happens after you answer
+## What happens next
 
-I update the affected documents, then start **Phase 1** (monorepo skeleton, ADRs,
-OpenAPI v0, CI) and stop at its exit gate for your review before Phase 2.
-No application code is written until you approve.
+Q-1 to Q-4 are answered and the documents are updated. On your approval I start
+**Phase 1** — project skeleton, ADRs, OpenAPI contract v0, CI pipeline, local Docker
+environment — and stop at its exit gate for your review before Phase 2.
+
+The only answers still needed *before Phase 2 seeding* (not before Phase 1) are the
+specific launch **country** and the 3–4 launch **categories** (Q-5, Q-6). My suggestions
+are in [DL-4](./12-decisions-log.md#dl-4--launch-scope-one-country-34-categories).
