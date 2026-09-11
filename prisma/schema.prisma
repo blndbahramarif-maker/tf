@@ -1,0 +1,26 @@
+// Kurdora database schema.
+//
+// PHASE 1: datasource and generator only. There are deliberately no models yet
+// — the schema from docs/03-database-architecture.md is implemented in Phase 2,
+// as migrations. Defining models here now, ahead of their migrations, would put
+// the schema and the migration history out of step from the first commit.
+//
+// Conventions that Phase 2 must follow (docs/03-database-architecture.md):
+//   - Primary keys are UUIDv7.
+//   - Money is BigInt minor units plus a 3-letter currency code. Never Float,
+//     never Decimal for amounts that must be exact.
+//   - Percentages are Int basis points (0.5% = 50).
+//   - Timestamps are DateTime @db.Timestamptz(6), always UTC.
+//   - Every payment-touching table carries `livemode Boolean`.
+//   - audit_logs and ledger_entries are append-only: no UPDATE or DELETE grant.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Prisma 7 no longer accepts `url` here. The connection URL for CLI commands
+  // lives in prisma.config.ts; the runtime client uses a driver adapter.
+}

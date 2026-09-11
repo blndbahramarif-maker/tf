@@ -1,0 +1,24 @@
+{
+  "common": {
+    "skipToContent": "بازدان بۆ ناوەڕۆکی سەرەکی",
+    "languageLabel": "زمان",
+    "directionLabel": "ئاراستەی نووسین",
+    "loading": "بارکردن…"
+  },
+  "meta": {
+    "siteName": "{brandName}",
+    "tagline": "بازاڕی کۆمەڵگا کوردییەکان لە ئەورووپا",
+    "defaultDescription": "کڕین و فرۆشتن لەگەڵ کۆمەڵگا کوردییەکانی ئەورووپا لە {brandName}."
+  },
+  "foundation": {
+    "heading": "{brandName} — بنچینە",
+    "status": "قۆناغی ١: چوارچێوەی پڕۆژە. هێشتا هیچ تایبەتمەندییەکی بازاڕ جێبەجێ نەکراوە.",
+    "localeLine": "زمانی چالاک: {locale} ({nativeName})",
+    "directionLine": "ئاراستەی ڕووکار: {direction}",
+    "docsHint": "بیناسازی و نەخشەڕێ لە بوخچەی docs ی ئەم کۆگایەدا هەن."
+  },
+  "errors": {
+    "notFound": "نەمانتوانی ئەو پەڕەیە بدۆزینەوە.",
+    "generic": "هەڵەیەک ڕوویدا. تکایە دووبارە هەوڵ بدەوە."
+  }
+}

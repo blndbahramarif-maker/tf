@@ -1,0 +1,24 @@
+{
+  "common": {
+    "skipToContent": "Biçe naveroka sereke",
+    "languageLabel": "Ziman",
+    "directionLabel": "Arasteya nivîsê",
+    "loading": "Tê barkirin…"
+  },
+  "meta": {
+    "siteName": "{brandName}",
+    "tagline": "Bazara civakên kurd li seranserê Ewrûpayê",
+    "defaultDescription": "Li {brandName} bi civakên kurd ên Ewrûpayê re bikirin û bifroşin."
+  },
+  "foundation": {
+    "heading": "{brandName} — bingeh",
+    "status": "Qonaxa 1: skeleta projeyê. Hê tu taybetmendiyên bazarê nehatine çêkirin.",
+    "localeLine": "Zimanê çalak: {locale} ({nativeName})",
+    "directionLine": "Arasteya sêwiranê: {direction}",
+    "docsHint": "Mîmarî û rênexşe di peldanka docs a vê depoyê de ne."
+  },
+  "errors": {
+    "notFound": "Me nekarî wê rûpelê bibînin.",
+    "generic": "Tiştek çewt çû. Ji kerema xwe dîsa biceribîne."
+  }
+}

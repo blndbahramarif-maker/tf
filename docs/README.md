@@ -1,7 +1,8 @@
 # Kurdora — Planning Documentation
 
-> **Status: PHASE 0 — planning complete, awaiting approval to start Phase 1.**
-> **No application code has been written yet.**
+> **Status: PHASE 1 COMPLETE — project skeleton.**
+> No marketplace features exist yet: no database models, no authentication,
+> no listings, no payments. Phase 2 has not started.
 > Blocking decisions are answered — see **[12 — Decisions log](./12-decisions-log.md)**.
 > Nothing in this repository is production-ready. Every payment statement here is
 > traced to official Stripe documentation retrieved on **2026-09-11** (sources cited
@@ -28,6 +29,8 @@ brand configuration module so it can be changed without touching application cod
 | 10 | [Development roadmap](./10-roadmap.md) | Phases 0–14 with exit criteria |
 | 11 | [Risks & decisions](./11-risks-and-decisions.md) | What can sink this project |
 | 12 | **[Decisions log](./12-decisions-log.md)** | **Your answers, and exactly what they changed — read this second** |
+| 13 | **[Dependencies & blockers](./13-dependencies-and-blockers.md)** | **External, non-engineering items that can block a phase** |
+| — | [Architecture decision records](./adr/) | Why each structural choice was made |
 
 ## Legal notice
 

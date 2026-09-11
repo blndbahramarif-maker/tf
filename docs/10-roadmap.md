@@ -18,11 +18,11 @@ Every phase ends with the same gate. **No phase starts until the previous one pa
 
 ---
 
-### Phase 0 — Requirements & clarification ← **we are here**
-Deliverables: this documentation set. **Blocked on your answers to the open questions
-in [00](./00-scope-and-open-questions.md), especially Q-1, Q-2, Q-3 and Q-8.**
+### Phase 0 — Requirements & clarification  ✅ **COMPLETE**
+Deliverables: this documentation set. Blocking questions answered in
+[12 — Decisions log](./12-decisions-log.md).
 
-### Phase 1 — Project skeleton & architecture sign-off
+### Phase 1 — Project skeleton & architecture sign-off  ✅ **COMPLETE (2026-09-11)**
 Next.js 15 app with the `app/ · src/domain · src/infra · worker/ · packages/` layout
 from [01](./01-tech-stack.md); ESLint boundary rule (`src/domain` may not import Next.js);
 the RTL lint rule banning physical direction classes; brand config package; ADRs for the
@@ -32,7 +32,18 @@ Postgres, Redis and MinIO. **No business logic yet.**
 *Exit:* CI green; `docker compose up` plus one command gives a working local environment
 from a clean clone; a deliberate `src/domain → next` import fails lint.
 
-### Phase 2 — Project setup & database
+**Exit gate met.** 78 tests passing; format, lint (`--max-warnings 0`), typecheck,
+Prisma schema validation, OpenAPI lint and production build all clean. Boundary
+and RTL rules verified by `tests/architecture.test.ts`, which lints deliberate
+violations and asserts each rule fires. Runtime verified: `/en` serves
+`dir="ltr"`, `/ckb` serves `dir="rtl"`, `/` redirects to `/en`, and
+`/api/v1/health` returns 200.
+**Not verified here:** `docker compose up` could not be executed — the Docker
+daemon is unavailable in the build sandbox. The compose file parses
+(`docker compose config`) but has not been booted. **First action in Phase 2 is
+to run it on a real machine.**
+
+### Phase 2 — Database  ← **next**
 Full Prisma schema from [03](./03-database-architecture.md), all migrations, seed data
 (countries, cities, currencies, category tree with attributes, commission rules, roles,
 locales). Ledger invariant test.

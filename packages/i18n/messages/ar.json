@@ -1,0 +1,24 @@
+{
+  "common": {
+    "skipToContent": "تخطَّ إلى المحتوى الرئيسي",
+    "languageLabel": "اللغة",
+    "directionLabel": "اتجاه النص",
+    "loading": "جارٍ التحميل…"
+  },
+  "meta": {
+    "siteName": "{brandName}",
+    "tagline": "سوق المجتمعات الكردية في أنحاء أوروبا",
+    "defaultDescription": "بيع وشراء مع المجتمعات الكردية في أوروبا على {brandName}."
+  },
+  "foundation": {
+    "heading": "{brandName} — الأساس",
+    "status": "المرحلة ١: هيكل المشروع. لم يتم تنفيذ أي من ميزات السوق بعد.",
+    "localeLine": "اللغة النشطة: {locale} ({nativeName})",
+    "directionLine": "اتجاه التخطيط: {direction}",
+    "docsHint": "التصميم المعماري وخارطة الطريق موجودان في مجلد docs في هذا المستودع."
+  },
+  "errors": {
+    "notFound": "تعذر العثور على هذه الصفحة.",
+    "generic": "حدث خطأ ما. يرجى المحاولة مرة أخرى."
+  }
+}

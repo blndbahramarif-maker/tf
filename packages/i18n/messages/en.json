@@ -1,0 +1,24 @@
+{
+  "common": {
+    "skipToContent": "Skip to main content",
+    "languageLabel": "Language",
+    "directionLabel": "Text direction",
+    "loading": "Loading…"
+  },
+  "meta": {
+    "siteName": "{brandName}",
+    "tagline": "The marketplace for Kurdish communities across Europe",
+    "defaultDescription": "Buy and sell with Kurdish communities across Europe on {brandName}."
+  },
+  "foundation": {
+    "heading": "{brandName} — foundation",
+    "status": "Phase 1: project skeleton. No marketplace features are implemented yet.",
+    "localeLine": "Active locale: {locale} ({nativeName})",
+    "directionLine": "Layout direction: {direction}",
+    "docsHint": "Architecture and roadmap live in the docs directory of this repository."
+  },
+  "errors": {
+    "notFound": "We could not find that page.",
+    "generic": "Something went wrong. Please try again."
+  }
+}

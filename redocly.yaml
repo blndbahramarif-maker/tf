@@ -1,0 +1,22 @@
+# OpenAPI linting configuration.
+#
+# Rules are turned off only with a stated reason. Everything else stays on so
+# that the contract keeps its quality as endpoints are added phase by phase.
+extends:
+  - recommended
+
+rules:
+  # The shared components (Money, Locale, Error, PageInfo, Idempotency-Key,
+  # pagination parameters) are the conventions every future endpoint must use.
+  # They are intentionally defined ahead of the endpoints that consume them —
+  # see the "Conventions" section of the document. Re-enable once Phase 4
+  # resources land and unused components become a genuine signal again.
+  no-unused-components: off
+
+  # `http://localhost:3000` is a deliberate server entry: local development is
+  # the primary workflow and the docker-compose environment binds there.
+  no-server-example.com: off
+
+apis:
+  kurdora@v0:
+    root: openapi/openapi.yaml

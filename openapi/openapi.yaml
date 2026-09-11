@@ -1,0 +1,335 @@
+openapi: 3.1.0
+
+info:
+  title: Kurdora API
+  version: 0.1.0
+  summary: Marketplace API for Kurdish communities across Europe.
+  description: |
+    ## Status
+
+    **v0 — Phase 1 foundation.** This document establishes the conventions every
+    future endpoint must follow, and describes the endpoints that actually exist
+    today. It deliberately does **not** describe unimplemented resources:
+    a contract that promises endpoints which return 404 is worse than no
+    contract, because clients are generated from it.
+
+    Resources arrive with their phases (see `docs/10-roadmap.md`):
+
+    | Phase | Resources |
+    |-------|-----------|
+    | 3 | `/auth`, `/users`, `/sessions` |
+    | 4 | `/listings`, `/categories`, `/attributes`, `/search`, `/media` |
+    | 5 | `/sellers`, `/businesses`, `/favourites`, `/notifications` |
+    | 6 | `/conversations`, `/messages`, `/offers` |
+    | 7 | `/payments`, `/connect/onboarding`, `/webhooks/stripe` |
+    | 8 | `/orders`, `/payouts`, `/refunds`, `/disputes` |
+    | 9 | `/reviews`, `/reports` |
+    | 10 | `/subscriptions`, `/promotions`, `/advertisements` |
+
+    ## Conventions
+
+    **Versioning.** The major version is in the path (`/api/v1`). Breaking
+    changes require a new major version; additive changes do not.
+
+    **Money.** Amounts are integer minor units sent as *strings*
+    (`{ "amountMinor": "5000000", "currency": "GBP" }`). £50,000.00 is
+    `"5000000"`. Strings because 64-bit integers exceed JavaScript's safe
+    number range, and silent precision loss on money is unacceptable.
+
+    **Pagination.** Cursor-based, never offset. Offset pagination duplicates and
+    skips rows when the underlying set changes mid-scroll, which is the normal
+    case for a listing feed.
+
+    **Idempotency.** Every non-GET request that creates or moves money MUST send
+    an `Idempotency-Key` header. Replaying a key returns the original response
+    rather than performing the action twice.
+
+    **Localisation.** API responses are not locale-prefixed. Clients send
+    `Accept-Language`; user-generated content is returned in its authored
+    language with a `contentLocale` field.
+
+    **Errors.** All errors use a single envelope with a machine-readable `code`.
+    Clients must switch on `code`, never on `message`.
+
+    **Never trust the client on payment state.** Payment status is only ever
+    derived from verified Stripe webhooks server-side. No endpoint will ever
+    accept a client assertion that a payment succeeded.
+  contact:
+    name: Kurdora engineering
+    email: support@kurdora.com
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Kurdora-Proprietary
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development
+  - url: https://kurdora.com/api/v1
+    description: Production
+
+tags:
+  - name: System
+    description: Health and contract discovery.
+
+paths:
+  /health:
+    get:
+      tags: [System]
+      summary: Service health
+      operationId: getHealth
+      description: |
+        Liveness and readiness probe. Returns `200` when healthy or degraded,
+        `503` when a critical dependency is failing.
+
+        In Phase 1 the `dependencies` array is empty — process health and
+        configuration validity only. Database, Redis and storage probes are
+        added in Phase 2.
+      security: []
+      responses:
+        '200':
+          description: Service is healthy or degraded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                healthy:
+                  summary: Phase 1 response
+                  value:
+                    status: healthy
+                    checkedAt: '2026-09-11T10:00:00.000Z'
+                    version: 0.1.0
+                    appEnv: local
+                    dependencies: []
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          description: A critical dependency is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /openapi:
+    get:
+      tags: [System]
+      summary: This document
+      operationId: getOpenApiDocument
+      security: []
+      responses:
+        '200':
+          description: The OpenAPI document.
+          content:
+            application/yaml:
+              schema:
+                type: string
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Short-lived access token (15 minutes). Used by mobile clients and by
+        server-to-server callers. Obtained from `/auth/token` (Phase 3).
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: kurdora_session
+      description: |
+        Browser session. The refresh token is held in an `HttpOnly`, `Secure`,
+        `SameSite=Lax` cookie and is rotated on every use, with reuse detection.
+        Cookie-authenticated mutations additionally require a CSRF token.
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 255
+      description: |
+        Client-generated unique key. Required on every request that creates a
+        resource or moves money. Replaying a key returns the original response.
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Opaque cursor from a previous response's `page.nextCursor`.
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 24
+    AcceptLanguage:
+      name: Accept-Language
+      in: header
+      required: false
+      schema:
+        type: string
+        default: en
+      description: 'Supported: `en`, `ckb`, `kmr`, `ar`.'
+
+  schemas:
+    Money:
+      type: object
+      required: [amountMinor, currency]
+      properties:
+        amountMinor:
+          type: string
+          pattern: '^-?\d+$'
+          description: Integer minor units as a string. £50,000.00 is "5000000".
+          examples: ['5000000']
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          description: ISO 4217 code.
+          examples: ['GBP']
+
+    Locale:
+      type: string
+      enum: [en, ckb, kmr, ar]
+      description: |
+        BCP-47 code. `ckb` (Sorani) is Arabic script and right-to-left;
+        `kmr` (Kurmanji) is Latin script and left-to-right. They are distinct
+        languages, not variants.
+
+    ErrorCode:
+      type: string
+      enum:
+        - validation_failed
+        - unauthenticated
+        - forbidden
+        - not_found
+        - conflict
+        - rate_limited
+        - idempotency_key_reused
+        - payment_required
+        - internal_error
+        - service_unavailable
+
+    FieldError:
+      type: object
+      required: [path, message]
+      properties:
+        path:
+          type: string
+          examples: ['listing.priceMinor']
+        message:
+          type: string
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code:
+              $ref: '#/components/schemas/ErrorCode'
+            message:
+              type: string
+              description: For developers. Not for display to end users.
+            fields:
+              type: array
+              items:
+                $ref: '#/components/schemas/FieldError'
+            requestId:
+              type: string
+              description: Correlates this response with server logs.
+
+    PageInfo:
+      type: object
+      required: [nextCursor, hasMore]
+      properties:
+        nextCursor:
+          type: [string, 'null']
+        hasMore:
+          type: boolean
+
+    DependencyProbe:
+      type: object
+      required: [name, ok, critical]
+      properties:
+        name:
+          type: string
+          examples: ['database']
+        ok:
+          type: boolean
+        critical:
+          type: boolean
+          description: A failing critical dependency makes the service unhealthy.
+        latencyMs:
+          type: number
+        detail:
+          type: string
+          description: Non-sensitive failure summary. Never contains credentials.
+
+    HealthResponse:
+      type: object
+      required: [status, checkedAt, version, appEnv, dependencies]
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        checkedAt:
+          type: string
+          format: date-time
+        version:
+          type: string
+        appEnv:
+          type: string
+          enum: [local, test, staging, production]
+        dependencies:
+          type: array
+          items:
+            $ref: '#/components/schemas/DependencyProbe'
+
+  responses:
+    BadRequest:
+      description: Validation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Authentication required or token invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Authenticated but not permitted.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found, or not visible to this caller.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    RateLimited:
+      description: Too many requests.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+security:
+  - sessionCookie: []
+  - bearerAuth: []

@@ -1,0 +1,82 @@
+# Local development environment.
+#
+#   pnpm docker:up      start everything
+#   pnpm docker:down    stop
+#   pnpm docker:reset   destroy volumes and start clean
+#
+# Credentials here are LOCAL DEVELOPMENT ONLY and are intentionally committed so
+# a clean clone works with no setup. They must never appear in any deployed
+# environment — those read from a managed secret store (ADR-0009).
+
+name: kurdora
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kurdora
+      POSTGRES_PASSWORD: kurdora_local_dev
+      POSTGRES_DB: kurdora
+      # Deterministic collation: sorting must not vary by host locale.
+      POSTGRES_INITDB_ARGS: '--locale=C.UTF-8 --encoding=UTF8'
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U kurdora -d kurdora']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Durability matters: Redis holds the job queue, and a lost payment-webhook
+    # job is a lost payment state transition.
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # S3-compatible object storage, so local image handling matches production.
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: ['server', '/data', '--console-address', ':9001']
+    environment:
+      MINIO_ROOT_USER: kurdora
+      MINIO_ROOT_PASSWORD: kurdora_local_dev
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Catches outbound mail locally. Web UI on http://localhost:8025.
+  # Nothing can accidentally email a real person from a dev machine.
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+    environment:
+      MP_MAX_MESSAGES: 500
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
