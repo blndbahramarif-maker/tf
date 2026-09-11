@@ -5,19 +5,31 @@ Read `docs/README.md` before making architectural changes. Read
 
 ## Current state
 
-**Phase 1 complete: project skeleton only.** There are no marketplace features,
-no database models, no authentication and no payment code. Phase 2 (database)
-has not started. See `docs/10-roadmap.md`.
+**Phase 2 complete: database foundation.** The schema, migrations, seeds and the
+double-entry ledger exist. There are still no user-facing features: no
+authentication, no listings UI, no messaging, no payments. Phase 3
+(authentication) has not started. See `docs/10-roadmap.md`.
 
 ## Commands
 
 ```bash
 pnpm docker:up        # Postgres, Redis, MinIO, Mailpit
 pnpm env:check        # validate .env.local
+pnpm db:deploy        # apply migrations
+pnpm db:seed          # seed configuration (idempotent)
 pnpm dev              # http://localhost:3000/en
 pnpm worker           # background worker (separate process)
 
 pnpm verify           # format + lint + typecheck + test + openapi  ← run before every commit
+```
+
+Database tests (`tests/db/*`) only run when `TEST_DATABASE_URL` is set. They
+create and drop their own throwaway databases — point it at a local server only.
+
+```bash
+pnpm db:migrate            # create + apply a migration in development
+pnpm db:migrate:down       # reverse the most recent migration
+pnpm db:reset              # drop, re-apply, re-seed (local only)
 ```
 
 ## Non-negotiables
@@ -39,7 +51,14 @@ genuinely wrong, change the rule deliberately and write an ADR.
 8. **Secrets are server-side only.** Never `NEXT_PUBLIC_*`, never in a client
    component, never logged.
 9. **Payment state comes only from verified webhooks.** Never trust the browser.
-10. **Database changes are migrations.** Never manual production DDL.
+10. **Database changes are migrations.** Never manual production DDL, and
+    **every migration ships a `down.sql`** — the migration tests fail without one.
+11. **Invariants belong in the database as well as the domain.** Money rules are
+    CHECK constraints and triggers, not only TypeScript (ADR-0010). Application
+    checks bind only code that goes through them.
+12. **The ledger is append-only and must balance.** Every money movement is a
+    balanced entry group; use the recipes in `src/domain/ledger/postings.ts`
+    rather than writing entries by hand.
 
 ## Adding things
 
@@ -52,6 +71,13 @@ for the envelope. Money-moving endpoints require `Idempotency-Key`.
 
 **Business logic:** it goes in `src/domain`, with unit tests that need no
 database.
+
+**A money movement:** add a recipe to `src/domain/ledger/postings.ts` with a
+test proving it balances. Never insert ledger entries ad hoc.
+
+**A database constraint:** put it in a migration with matching `down.sql`, and
+add a test in `tests/db/constraints.test.ts` that writes something which should
+be impossible and asserts the database refuses it.
 
 ## Honesty rules
 

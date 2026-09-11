@@ -46,6 +46,10 @@ jobs:
       APP_ENV: test
       NODE_ENV: test
       DATABASE_URL: postgresql://kurdora:kurdora_ci@localhost:5432/kurdora_test?schema=public
+      # Database integration tests (ledger invariant, seed idempotency,
+      # migration reversal) run only when this is set. CI always sets it, so
+      # they can never silently disappear where it matters.
+      TEST_DATABASE_URL: postgresql://kurdora:kurdora_ci@localhost:5432/kurdora_test?schema=public
       REDIS_URL: redis://localhost:6379
 
     steps:
@@ -61,6 +65,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma client
+        # src/generated is not committed, so the client must be produced before
+        # typecheck and tests can resolve it.
+        run: pnpm exec prisma generate
+
       - name: Check formatting
         run: pnpm run format:check
 
@@ -74,6 +83,12 @@ jobs:
 
       - name: Validate database schema
         run: pnpm run db:validate
+
+      - name: Apply migrations
+        run: pnpm exec prisma migrate deploy
+
+      - name: Verify seeds are idempotent
+        run: pnpm run db:seed && pnpm run db:seed
 
       - name: Lint API contract
         run: pnpm run openapi:lint

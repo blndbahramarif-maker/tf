@@ -1,7 +1,29 @@
 # 03 — Database Architecture
 
-PostgreSQL 17. Managed with Prisma migrations. Every change ships as a migration; no
+> **IMPLEMENTED in Phase 2.** The schema described here exists as
+> `prisma/schema.prisma` (55 models, 32 enums) and two migrations. Two
+> deviations from the original design are marked below. See
+> `prisma/migrations/README.md` and ADR-0010.
+
+PostgreSQL. Managed with Prisma migrations. Every change ships as a migration; no
 manual production DDL.
+
+## Deviations from the original design
+
+**1. Category paths use a delimited text column, not `ltree`.**
+`ltree` requires Prisma's `Unsupported()` type, which removes the field from the
+generated client and forces raw SQL for every read. For a tree of tens of
+categories, a delimited `path` (`/cars/`) with a btree index answers subtree
+queries with a prefix scan just as well, and stays fully typed. A CHECK
+constraint enforces the leading and trailing delimiters, so a prefix scan
+cannot match a sibling whose slug merely starts with the same characters.
+
+**2. Three unique constraints needed `NULLS NOT DISTINCT`.**
+`NULL <> NULL` in SQL, so a unique index containing a nullable column does not
+prevent duplicates when that column is null. Prisma's `@@unique` emits exactly
+such an index, leaving `settings`, `conversations` and — most seriously —
+`listing_attribute_values` unenforced, where a listing could hold two different
+values for the same attribute. Fixed in the constraints migration.
 
 ## Cross-cutting conventions
 
@@ -62,8 +84,9 @@ can never disagree by a penny.
   only for *reporting* conversion; never to convert an actual payment.
 
 ### Catalogue
-- **categories** — `parent_id` (self-FK), `path LTREE` *(materialised path for fast
-  subtree queries)*, `slug`, `icon`, `position`, `is_active`, `depth`,
+- **categories** — `parent_id` (self-FK), `path` *(delimited materialised path,
+  e.g. `/cars/`, for prefix-scan subtree queries)*, `slug`, `icon`, `position`,
+  `is_active`, `depth`,
   `transaction_flow` (`buy_now|offer_then_pay|fee_only|contact_only`),
   `allows_online_payment`, `min_price_minor`, `max_online_amount_minor`,
   `requires_approval`, `max_images`, `listing_duration_days`, `seo JSONB`.
@@ -208,7 +231,7 @@ CREATE INDEX ON listings (status, country_id, city_id, price_minor);
 CREATE INDEX ON listings USING GIN (attributes jsonb_path_ops);
 CREATE INDEX ON listings USING GIN (search_document);
 CREATE INDEX ON listings USING GIN (title gin_trgm_ops);
-CREATE INDEX ON categories USING GIST (path);          -- ltree subtree queries
+CREATE INDEX ON categories (path);                     -- prefix-scan subtree queries
 CREATE UNIQUE INDEX ON listing_images (listing_id) WHERE is_primary;
 CREATE UNIQUE INDEX ON reviews (order_id, direction);
 CREATE UNIQUE INDEX ON payments (provider_payment_intent_id);

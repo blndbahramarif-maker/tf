@@ -1,18 +1,20 @@
 // Kurdora database schema.
 //
-// PHASE 1: datasource and generator only. There are deliberately no models yet
-// — the schema from docs/03-database-architecture.md is implemented in Phase 2,
-// as migrations. Defining models here now, ahead of their migrations, would put
-// the schema and the migration history out of step from the first commit.
+// Conventions (docs/03-database-architecture.md, ADR-0006):
+//   - Primary keys are UUIDv7: time-sortable, non-enumerable, safe in URLs.
+//   - Money is BigInt MINOR UNITS plus an ISO-4217 code. £50,000.00 = 5000000.
+//     Never Float. An amount without a currency is meaningless, so they travel
+//     together on every table that holds one.
+//   - Rates are Int BASIS POINTS. 0.5% = 50. No decimal percentages anywhere.
+//   - Timestamps are Timestamptz(6), always UTC.
+//   - Every payment-touching table carries `livemode`, so test-mode data can
+//     never be aggregated with live money.
+//   - Tables and columns are snake_case; the Prisma client stays camelCase.
 //
-// Conventions that Phase 2 must follow (docs/03-database-architecture.md):
-//   - Primary keys are UUIDv7.
-//   - Money is BigInt minor units plus a 3-letter currency code. Never Float,
-//     never Decimal for amounts that must be exact.
-//   - Percentages are Int basis points (0.5% = 50).
-//   - Timestamps are DateTime @db.Timestamptz(6), always UTC.
-//   - Every payment-touching table carries `livemode Boolean`.
-//   - audit_logs and ledger_entries are append-only: no UPDATE or DELETE grant.
+// Objects Prisma cannot express — CHECK constraints, partial unique indexes,
+// append-only triggers and the ledger balance trigger — live in
+// migrations/*/migration.sql and are documented in
+// prisma/migrations/README.md.
 
 generator client {
   provider = "prisma-client-js"
@@ -23,4 +25,1783 @@ datasource db {
   provider = "postgresql"
   // Prisma 7 no longer accepts `url` here. The connection URL for CLI commands
   // lives in prisma.config.ts; the runtime client uses a driver adapter.
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  PENDING_DELETION
+
+  @@map("user_status")
+}
+
+enum SellerType {
+  INDIVIDUAL
+  BUSINESS
+
+  @@map("seller_type")
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
+
+  @@map("verification_status")
+}
+
+/// How a category's transactions work. Read from data, never branched on a
+/// hard-coded category name (docs/06-transaction-flows.md).
+enum TransactionFlow {
+  /// Everyday goods: browse, buy, destination charge, seller payout.
+  BUY_NOW
+  /// High value: negotiate, then pay. What is charged depends on the category.
+  OFFER_THEN_PAY
+  /// Only the platform fee passes through Stripe. The principal never does.
+  FEE_ONLY
+  /// No payment object at all (job ads, enquiries, free items).
+  CONTACT_ONLY
+
+  @@map("transaction_flow")
+}
+
+enum FeePayer {
+  BUYER
+  SELLER
+  SPLIT
+
+  @@map("fee_payer")
+}
+
+enum AttributeDataType {
+  TEXT
+  NUMBER
+  INTEGER
+  BOOLEAN
+  ENUM
+  MULTI_ENUM
+  DATE
+
+  @@map("attribute_data_type")
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  PAUSED
+  SOLD
+  EXPIRED
+  REJECTED
+  REMOVED
+
+  @@map("listing_status")
+}
+
+enum PriceType {
+  FIXED
+  NEGOTIABLE
+  ON_REQUEST
+  FREE
+
+  @@map("price_type")
+}
+
+enum ListingCondition {
+  NEW
+  LIKE_NEW
+  GOOD
+  FAIR
+  FOR_PARTS
+  NOT_APPLICABLE
+
+  @@map("listing_condition")
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  HIDDEN
+  REMOVED
+
+  @@map("moderation_status")
+}
+
+enum ConversationStatus {
+  OPEN
+  ARCHIVED
+  BLOCKED
+  REPORTED
+
+  @@map("conversation_status")
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  SYSTEM
+  OFFER_REF
+
+  @@map("message_type")
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  COUNTERED
+  WITHDRAWN
+  EXPIRED
+  CONVERTED
+
+  @@map("offer_status")
+}
+
+enum OrderStatus {
+  DRAFT
+  PENDING_PAYMENT
+  PAID
+  FULFILLING
+  COMPLETED
+  CANCELLED
+  EXPIRED
+  REFUNDING
+  REFUNDED
+  DISPUTED
+  CHARGEBACK
+
+  @@map("order_status")
+}
+
+enum PaymentStatus {
+  REQUIRES_PAYMENT_METHOD
+  REQUIRES_ACTION
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELED
+
+  @@map("payment_status")
+}
+
+enum PaymentEventStatus {
+  PENDING
+  PROCESSED
+  FAILED
+  IGNORED
+
+  @@map("payment_event_status")
+}
+
+enum PayoutStatus {
+  PENDING
+  IN_TRANSIT
+  PAID
+  FAILED
+  REVERSED
+
+  @@map("payout_status")
+}
+
+enum RefundStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELED
+
+  @@map("refund_status")
+}
+
+enum DisputeStatus {
+  NEEDS_RESPONSE
+  UNDER_REVIEW
+  WON
+  LOST
+  WARNING_CLOSED
+
+  @@map("dispute_status")
+}
+
+/// Double-entry accounts (docs/03-database-architecture.md).
+///
+/// STRIPE_BALANCE is the cash account: money held at Stripe on our behalf.
+/// SELLER_PAYABLE is a liability: what we owe sellers.
+/// Everything else is income or expense.
+enum LedgerAccount {
+  STRIPE_BALANCE
+  SELLER_PAYABLE
+  PLATFORM_REVENUE
+  PAYMENT_FEES
+  REFUNDS
+  DISPUTES
+  TAX_COLLECTED
+  PROMOTIONS
+  SUBSCRIPTIONS
+
+  @@map("ledger_account")
+}
+
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+
+  @@map("ledger_direction")
+}
+
+/// Commission rule scope, resolved most-specific-first
+/// (docs/07-commission-engine.md).
+enum CommissionScope {
+  PROMO
+  SELLER
+  CATEGORY
+  COUNTRY
+  PLATFORM
+
+  @@map("commission_scope")
+}
+
+enum CommissionModel {
+  PERCENTAGE
+  FIXED
+  HYBRID
+
+  @@map("commission_model")
+}
+
+enum CommissionAppliesTo {
+  ORDER
+  SUBSCRIPTION
+  PROMOTION
+
+  @@map("commission_applies_to")
+}
+
+enum ReviewDirection {
+  BUYER_TO_SELLER
+  SELLER_TO_BUYER
+
+  @@map("review_direction")
+}
+
+enum ReviewStatus {
+  PUBLISHED
+  PENDING
+  HIDDEN
+  REMOVED
+
+  @@map("review_status")
+}
+
+enum ReportTargetType {
+  LISTING
+  USER
+  MESSAGE
+  REVIEW
+  CONVERSATION
+
+  @@map("report_target_type")
+}
+
+enum ReportStatus {
+  OPEN
+  TRIAGING
+  ACTIONED
+  DISMISSED
+  ESCALATED
+
+  @@map("report_status")
+}
+
+enum SanctionType {
+  WARNING
+  SUSPENSION
+  BAN
+
+  @@map("sanction_type")
+}
+
+enum ProhibitedRuleType {
+  BLOCK
+  FLAG
+  REQUIRE_APPROVAL
+
+  @@map("prohibited_rule_type")
+}
+
+enum SettingScope {
+  GLOBAL
+  COUNTRY
+
+  @@map("setting_scope")
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSED
+  FAILED
+
+  @@map("outbox_status")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Identity & access control
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id              String     @id @default(uuid(7)) @db.Uuid
+  /// citext in the database: email lookup must be case-insensitive, and
+  /// lower-casing in application code is one forgotten call from a duplicate
+  /// account. Enforced by the migration, not by convention.
+  email           String     @unique @db.Citext
+  emailVerifiedAt DateTime?  @map("email_verified_at") @db.Timestamptz(6)
+  /// Argon2id. Null for accounts that only ever used a social provider.
+  passwordHash    String?    @map("password_hash")
+  phoneE164       String?    @map("phone_e164")
+  phoneVerifiedAt DateTime?  @map("phone_verified_at") @db.Timestamptz(6)
+  preferredLocale String     @default("en") @map("preferred_locale")
+  timezone        String     @default("Europe/London")
+  status          UserStatus @default(ACTIVE)
+
+  lastLoginAt      DateTime? @map("last_login_at") @db.Timestamptz(6)
+  failedLoginCount Int       @default(0) @map("failed_login_count")
+  lockedUntil      DateTime? @map("locked_until") @db.Timestamptz(6)
+
+  /// Encrypted at rest by the application. Never returned by any API.
+  twoFactorSecretEnc String?   @map("two_factor_secret_enc")
+  twoFactorEnabledAt DateTime? @map("two_factor_enabled_at") @db.Timestamptz(6)
+
+  /// Set when an erasure request is fulfilled. Financial records survive in
+  /// pseudonymised form, keyed by this id (docs/03, "GDPR vs retention").
+  anonymisedAt DateTime? @map("anonymised_at") @db.Timestamptz(6)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  profile            Profile?
+  sellerProfile      SellerProfile?
+  roles              UserRole[]
+  refreshTokens      RefreshToken[]
+  orders             Order[]              @relation("BuyerOrders")
+  offersMade         Offer[]              @relation("OfferBuyer")
+  conversationsBuyer Conversation[]       @relation("ConversationBuyer")
+  conversationsSell  Conversation[]       @relation("ConversationSeller")
+  messages           Message[]
+  favourites         Favourite[]
+  reviewsAuthored    Review[]             @relation("ReviewAuthor")
+  reviewsReceived    Review[]             @relation("ReviewSubjectUser")
+  reportsFiled       Report[]             @relation("Reporter")
+  sanctions          UserSanction[]       @relation("SanctionedUser")
+  notifications      Notification[]
+  blocksMade         UserBlock[]          @relation("Blocker")
+  blocksReceived     UserBlock[]          @relation("Blocked")
+  messageReads       MessageRead[]
+  idempotencyKeys    IdempotencyKey[]
+  consents           ConsentRecord[]
+  dataRequests       DataSubjectRequest[]
+
+  @@index([status, createdAt])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model Profile {
+  id          String  @id @default(uuid(7)) @db.Uuid
+  userId      String  @unique @map("user_id") @db.Uuid
+  displayName String  @map("display_name")
+  avatarUrl   String? @map("avatar_url")
+  bio         String?
+  countryId   String? @map("country_id") @db.Uuid
+  cityId      String? @map("city_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  country Country? @relation(fields: [countryId], references: [id], onDelete: SetNull)
+  city    City?    @relation(fields: [cityId], references: [id], onDelete: SetNull)
+
+  @@map("profiles")
+}
+
+model Role {
+  id          String  @id @default(uuid(7)) @db.Uuid
+  /// Stable machine key: buyer, seller, moderator, finance, admin…
+  key         String  @unique
+  description String?
+  /// System roles cannot be deleted from the admin panel.
+  isSystem    Boolean @default(true) @map("is_system")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  permissions RolePermission[]
+  users       UserRole[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(uuid(7)) @db.Uuid
+  /// `resource:action`, e.g. "listing:moderate", "payout:release".
+  key         String  @unique
+  description String?
+  /// Grouping for the admin UI only.
+  category    String
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId     String    @map("user_id") @db.Uuid
+  roleId     String    @map("role_id") @db.Uuid
+  grantedAt  DateTime  @default(now()) @map("granted_at") @db.Timestamptz(6)
+  grantedBy  String?   @map("granted_by") @db.Uuid
+  /// Time-boxed elevation, e.g. temporary moderator access.
+  expiresAt  DateTime? @map("expires_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model RefreshToken {
+  id     String @id @default(uuid(7)) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  /// SHA-256 of the token. The token itself is never stored.
+  tokenHash String @unique @map("token_hash")
+  /// All tokens descended from one login share a family. Detecting reuse of a
+  /// rotated token revokes the whole family (docs/08-security-architecture.md).
+  familyId    String    @map("family_id") @db.Uuid
+  rotatedFrom String?   @map("rotated_from") @db.Uuid
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedReason String? @map("revoked_reason")
+  ip          String?
+  userAgent   String?   @map("user_agent")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model UserBlock {
+  blockerId String   @map("blocker_id") @db.Uuid
+  blockedId String   @map("blocked_id") @db.Uuid
+  reason    String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("user_blocks")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Geography & currency
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Country {
+  id   String @id @default(uuid(7)) @db.Uuid
+  /// ISO-3166-1 alpha-2.
+  code String @unique @db.Char(2)
+  /// ISO-4217 code this country prices in by default.
+  defaultCurrency String @map("default_currency") @db.Char(3)
+  /// Only active countries appear in the UI. Europe-wide expansion is an
+  /// admin toggle, not a deploy (docs/12-decisions-log.md, DL-4).
+  isActive Boolean @default(false) @map("is_active")
+  requiresBusinessVerification Boolean @default(false) @map("requires_business_verification")
+  /// Whether sellers here can be onboarded to the payment provider today.
+  payoutsSupported Boolean @default(false) @map("payouts_supported")
+  phonePrefix      String? @map("phone_prefix")
+  timezone         String  @default("Europe/London")
+  position         Int     @default(0)
+  /// Country-specific rules that do not warrant their own column.
+  settings Json @default("{}")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  translations    CountryTranslation[]
+  cities          City[]
+  profiles        Profile[]
+  sellerProfiles  SellerProfile[]
+  listings        Listing[]
+  commissionRules CommissionRule[]
+  prohibitedRules ProhibitedItemRule[]
+
+  @@index([isActive, position])
+  @@map("countries")
+}
+
+model CountryTranslation {
+  countryId String @map("country_id") @db.Uuid
+  locale    String
+  name      String
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  @@id([countryId, locale])
+  @@map("country_translations")
+}
+
+model City {
+  id        String  @id @default(uuid(7)) @db.Uuid
+  countryId String  @map("country_id") @db.Uuid
+  name      String
+  slug      String
+  latitude  Decimal? @db.Decimal(9, 6)
+  longitude Decimal? @db.Decimal(9, 6)
+  population Int?
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  country        Country           @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  translations   CityTranslation[]
+  profiles       Profile[]
+  sellerProfiles SellerProfile[]
+  listings       Listing[]
+
+  @@unique([countryId, slug])
+  @@index([countryId, isActive, name])
+  @@map("cities")
+}
+
+model CityTranslation {
+  cityId String @map("city_id") @db.Uuid
+  locale String
+  name   String
+
+  city City @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@id([cityId, locale])
+  @@map("city_translations")
+}
+
+model Currency {
+  /// ISO-4217 code, e.g. GBP. Natural primary key.
+  code String @id @db.Char(3)
+  /// Digits in the minor unit: 2 for GBP/EUR, 0 for JPY, 3 for KWD.
+  /// Without this, "minor units" is ambiguous outside the two-digit currencies.
+  minorUnitDigits Int     @map("minor_unit_digits")
+  symbol          String
+  isActive        Boolean @default(false) @map("is_active")
+  position        Int     @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("currencies")
+}
+
+model ExchangeRate {
+  id    String @id @default(uuid(7)) @db.Uuid
+  base  String @db.Char(3)
+  quote String @db.Char(3)
+  /// Reporting only. A payment is never converted using this — Stripe settles
+  /// in real currencies and we record what actually happened.
+  rate   Decimal  @db.Decimal(18, 8)
+  asOf   DateTime @map("as_of") @db.Timestamptz(6)
+  source String
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([base, quote, asOf])
+  @@index([base, quote, asOf(sort: Desc)])
+  @@map("exchange_rates")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Catalogue: categories, attributes, listings
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Category {
+  id       String  @id @default(uuid(7)) @db.Uuid
+  parentId String? @map("parent_id") @db.Uuid
+  /// Materialised path, e.g. "/vehicles/cars/". Makes subtree queries a single
+  /// prefix scan, which is what the commission engine's ancestor walk needs.
+  /// Maintained by the application inside the same transaction as parentId.
+  path     String
+  depth    Int     @default(0)
+  slug     String  @unique
+  icon     String?
+  position Int     @default(0)
+  isActive Boolean @default(true) @map("is_active")
+
+  /// Transaction behaviour is DATA. No code branches on a category name.
+  transactionFlow     TransactionFlow @default(BUY_NOW) @map("transaction_flow")
+  allowsOnlinePayment Boolean         @default(true) @map("allows_online_payment")
+  /// Who pays the platform fee in FEE_ONLY categories.
+  feePayer            FeePayer        @default(BUYER) @map("fee_payer")
+
+  minPriceMinor BigInt? @map("min_price_minor")
+  /// Ceiling for a single online payment in this category. Guards against a
+  /// £50,000 card charge landing in a BUY_NOW flow by accident.
+  maxOnlineAmountMinor BigInt? @map("max_online_amount_minor")
+
+  requiresApproval    Boolean @default(false) @map("requires_approval")
+  requiresVerifiedSeller Boolean @default(false) @map("requires_verified_seller")
+  maxImages           Int     @default(10) @map("max_images")
+  listingDurationDays Int     @default(30) @map("listing_duration_days")
+  seo                 Json    @default("{}")
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  parent          Category?             @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children        Category[]            @relation("CategoryTree")
+  translations    CategoryTranslation[]
+  attributes      AttributeDefinition[]
+  listings        Listing[]
+  commissionRules CommissionRule[]
+  prohibitedRules ProhibitedItemRule[]
+
+  @@index([parentId, position])
+  @@index([isActive, position])
+  @@index([path])
+  @@map("categories")
+}
+
+model CategoryTranslation {
+  categoryId String  @map("category_id") @db.Uuid
+  locale     String
+  name       String
+  description String?
+  seoTitle   String? @map("seo_title")
+  seoDescription String? @map("seo_description")
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([categoryId, locale])
+  @@map("category_translations")
+}
+
+model AttributeDefinition {
+  id         String            @id @default(uuid(7)) @db.Uuid
+  categoryId String            @map("category_id") @db.Uuid
+  /// Machine key, unique per category, e.g. "mileage", "fuel_type".
+  key        String
+  dataType   AttributeDataType @map("data_type")
+  /// Display unit, e.g. "km", "GB". Never part of the stored value.
+  unit       String?
+  isRequired   Boolean @default(false) @map("is_required")
+  isFilterable Boolean @default(true) @map("is_filterable")
+  isSearchable Boolean @default(false) @map("is_searchable")
+  /// Child categories inherit this attribute unless they override it.
+  inheritToChildren Boolean @default(true) @map("inherit_to_children")
+  position   Int     @default(0)
+  /// min/max/regex/step. Validated by the application against dataType.
+  validation Json    @default("{}")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  category     Category                         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  translations AttributeDefinitionTranslation[]
+  options      AttributeOption[]
+  values       ListingAttributeValue[]
+
+  @@unique([categoryId, key])
+  @@index([categoryId, position])
+  @@map("attribute_definitions")
+}
+
+model AttributeDefinitionTranslation {
+  attributeDefinitionId String @map("attribute_definition_id") @db.Uuid
+  locale                String
+  label                 String
+  helpText              String? @map("help_text")
+
+  attributeDefinition AttributeDefinition @relation(fields: [attributeDefinitionId], references: [id], onDelete: Cascade)
+
+  @@id([attributeDefinitionId, locale])
+  @@map("attribute_definition_translations")
+}
+
+model AttributeOption {
+  id                    String @id @default(uuid(7)) @db.Uuid
+  attributeDefinitionId String @map("attribute_definition_id") @db.Uuid
+  value                 String
+  position              Int    @default(0)
+  isActive              Boolean @default(true) @map("is_active")
+
+  attributeDefinition AttributeDefinition          @relation(fields: [attributeDefinitionId], references: [id], onDelete: Cascade)
+  translations        AttributeOptionTranslation[]
+  listingValues       ListingAttributeValue[]
+
+  @@unique([attributeDefinitionId, value])
+  @@index([attributeDefinitionId, position])
+  @@map("attribute_options")
+}
+
+model AttributeOptionTranslation {
+  attributeOptionId String @map("attribute_option_id") @db.Uuid
+  locale            String
+  label             String
+
+  attributeOption AttributeOption @relation(fields: [attributeOptionId], references: [id], onDelete: Cascade)
+
+  @@id([attributeOptionId, locale])
+  @@map("attribute_option_translations")
+}
+
+model Listing {
+  id              String @id @default(uuid(7)) @db.Uuid
+  sellerProfileId String @map("seller_profile_id") @db.Uuid
+  categoryId      String @map("category_id") @db.Uuid
+
+  title       String
+  slug        String
+  description String
+  /// The language the SELLER wrote in. We never silently machine-translate
+  /// a seller's words; translations are separate rows and clearly badged.
+  contentLocale String @default("en") @map("content_locale")
+
+  priceMinor BigInt?   @map("price_minor")
+  currency   String    @db.Char(3)
+  priceType  PriceType @default(FIXED) @map("price_type")
+
+  countryId String           @map("country_id") @db.Uuid
+  cityId    String?          @map("city_id") @db.Uuid
+  condition ListingCondition @default(NOT_APPLICABLE)
+
+  status   ListingStatus @default(DRAFT)
+  quantity Int           @default(1)
+
+  viewCount      Int @default(0) @map("view_count")
+  favouriteCount Int @default(0) @map("favourite_count")
+
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
+  expiresAt     DateTime? @map("expires_at") @db.Timestamptz(6)
+  featuredUntil DateTime? @map("featured_until") @db.Timestamptz(6)
+  bumpedAt      DateTime? @map("bumped_at") @db.Timestamptz(6)
+  soldAt        DateTime? @map("sold_at") @db.Timestamptz(6)
+
+  rejectionReason String? @map("rejection_reason")
+
+  /// Denormalised projection of listing_attribute_values, GIN-indexed for
+  /// fast faceted filtering. Written in the SAME transaction as the
+  /// normalised rows, which remain the source of truth (docs/03).
+  attributes Json @default("{}")
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  sellerProfile   SellerProfile           @relation(fields: [sellerProfileId], references: [id], onDelete: Cascade)
+  category        Category                @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  country         Country                 @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  city            City?                   @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  images          ListingImage[]
+  attributeValues ListingAttributeValue[]
+  translations    ListingTranslation[]
+  favourites      Favourite[]
+  conversations   Conversation[]
+  offers          Offer[]
+  orders          Order[]
+
+  @@unique([slug])
+  @@index([status, categoryId, countryId, publishedAt(sort: Desc)])
+  @@index([status, countryId, cityId, priceMinor])
+  @@index([sellerProfileId, status, createdAt(sort: Desc)])
+  @@index([status, expiresAt])
+  @@map("listings")
+}
+
+model ListingAttributeValue {
+  id                    String @id @default(uuid(7)) @db.Uuid
+  listingId             String @map("listing_id") @db.Uuid
+  attributeDefinitionId String @map("attribute_definition_id") @db.Uuid
+
+  /// Exactly one of these is set, matching the definition's dataType.
+  /// Enforced by a CHECK constraint in the migration.
+  valueText    String?  @map("value_text")
+  valueNumber  Decimal? @map("value_number") @db.Decimal(20, 6)
+  valueInteger BigInt?  @map("value_integer")
+  valueBoolean Boolean? @map("value_boolean")
+  valueDate    DateTime? @map("value_date") @db.Timestamptz(6)
+  optionId     String?  @map("option_id") @db.Uuid
+
+  listing             Listing             @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  attributeDefinition AttributeDefinition @relation(fields: [attributeDefinitionId], references: [id], onDelete: Cascade)
+  option              AttributeOption?    @relation(fields: [optionId], references: [id], onDelete: Restrict)
+
+  @@unique([listingId, attributeDefinitionId, optionId])
+  @@index([attributeDefinitionId, valueInteger])
+  @@index([attributeDefinitionId, optionId])
+  @@map("listing_attribute_values")
+}
+
+model ListingImage {
+  id         String  @id @default(uuid(7)) @db.Uuid
+  listingId  String  @map("listing_id") @db.Uuid
+  storageKey String  @map("storage_key")
+  url        String
+  position   Int     @default(0)
+  /// Only ONE primary image per listing, enforced by a partial unique index.
+  isPrimary  Boolean @default(false) @map("is_primary")
+  width      Int?
+  height     Int?
+  blurhash   String?
+  altText    String? @map("alt_text")
+  /// Images are only visible after processing and moderation.
+  moderationStatus ModerationStatus @default(PENDING) @map("moderation_status")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, position])
+  @@map("listing_images")
+}
+
+model ListingTranslation {
+  listingId String @map("listing_id") @db.Uuid
+  locale    String
+  title     String
+  description String
+  /// True when produced by machine translation, so the UI can badge it and
+  /// always offer the original.
+  isMachineTranslated Boolean @default(true) @map("is_machine_translated")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([listingId, locale])
+  @@map("listing_translations")
+}
+
+model Favourite {
+  userId    String   @map("user_id") @db.Uuid
+  listingId String   @map("listing_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, listingId])
+  @@index([listingId])
+  @@map("favourites")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Selling
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SellerProfile {
+  id          String     @id @default(uuid(7)) @db.Uuid
+  userId      String     @unique @map("user_id") @db.Uuid
+  sellerType  SellerType @default(INDIVIDUAL) @map("seller_type")
+  slug        String     @unique
+  displayName String     @map("display_name")
+  logoUrl     String?    @map("logo_url")
+  about       String?
+  countryId   String     @map("country_id") @db.Uuid
+  cityId      String?    @map("city_id") @db.Uuid
+
+  verificationStatus VerificationStatus @default(UNVERIFIED) @map("verification_status")
+
+  /// Stripe connected account id. We store the REFERENCE only — identity
+  /// documents and bank details live at Stripe, never here (ADR-0007).
+  stripeAccountId String? @unique @map("stripe_account_id")
+  /// Mirrored from the account.updated webhook. Never set from a client.
+  chargesEnabled  Boolean @default(false) @map("charges_enabled")
+  payoutsEnabled  Boolean @default(false) @map("payouts_enabled")
+  /// Stripe's outstanding requirements summary. No document contents.
+  requirementsDue Json    @default("{}") @map("requirements_due")
+  /// Buyer-protection hold before a payout is released, per seller risk tier.
+  payoutDelayDays Int     @default(0) @map("payout_delay_days")
+
+  ratingAvg   Decimal @default(0) @map("rating_avg") @db.Decimal(3, 2)
+  ratingCount Int     @default(0) @map("rating_count")
+  responseRate Int?   @map("response_rate")
+  responseTimeMinutes Int? @map("response_time_minutes")
+
+  memberSince DateTime  @default(now()) @map("member_since") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  user               User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  country            Country                   @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  city               City?                     @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  business           Business?
+  verificationEvents SellerVerificationEvent[]
+  listings           Listing[]
+  orders             Order[]
+  payouts            Payout[]
+  reviews            Review[]                  @relation("ReviewSubjectSeller")
+  commissionRules    CommissionRule[]
+
+  @@index([verificationStatus])
+  @@index([countryId, verificationStatus])
+  @@map("seller_profiles")
+}
+
+model Business {
+  id              String  @id @default(uuid(7)) @db.Uuid
+  sellerProfileId String  @unique @map("seller_profile_id") @db.Uuid
+  legalName       String  @map("legal_name")
+  /// Companies House number for UK entities.
+  registrationNumber String? @map("registration_number")
+  vatNumber       String? @map("vat_number")
+  companyType     String? @map("company_type")
+  registeredAddress Json  @default("{}") @map("registered_address")
+  website         String?
+  verifiedAt      DateTime? @map("verified_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  sellerProfile SellerProfile @relation(fields: [sellerProfileId], references: [id], onDelete: Cascade)
+
+  @@map("businesses")
+}
+
+model SellerVerificationEvent {
+  id              String             @id @default(uuid(7)) @db.Uuid
+  sellerProfileId String             @map("seller_profile_id") @db.Uuid
+  fromStatus      VerificationStatus? @map("from_status")
+  toStatus        VerificationStatus @map("to_status")
+  reason          String?
+  actorId         String?            @map("actor_id") @db.Uuid
+  /// "stripe_webhook", "admin", "system".
+  source          String
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  sellerProfile SellerProfile @relation(fields: [sellerProfileId], references: [id], onDelete: Cascade)
+
+  @@index([sellerProfileId, createdAt(sort: Desc)])
+  @@map("seller_verification_events")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Interaction: conversations, messages, offers
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Conversation {
+  id        String             @id @default(uuid(7)) @db.Uuid
+  listingId String?            @map("listing_id") @db.Uuid
+  buyerId   String             @map("buyer_id") @db.Uuid
+  sellerId  String             @map("seller_id") @db.Uuid
+  status    ConversationStatus @default(OPEN)
+  lastMessageAt DateTime?      @map("last_message_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  listing  Listing?  @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  buyer    User      @relation("ConversationBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller   User      @relation("ConversationSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  messages Message[]
+  offers   Offer[]
+
+  @@unique([listingId, buyerId, sellerId])
+  @@index([buyerId, lastMessageAt(sort: Desc)])
+  @@index([sellerId, lastMessageAt(sort: Desc)])
+  @@map("conversations")
+}
+
+model Message {
+  id             String      @id @default(uuid(7)) @db.Uuid
+  conversationId String      @map("conversation_id") @db.Uuid
+  senderId       String      @map("sender_id") @db.Uuid
+  body           String
+  type           MessageType @default(TEXT)
+  /// 0–100. Messages are SCORED, not blocked. A high score routes the
+  /// conversation to moderation; it never silently edits or deletes
+  /// (docs/08-security-architecture.md).
+  riskScore        Int              @default(0) @map("risk_score")
+  riskSignals      Json             @default("[]") @map("risk_signals")
+  moderationStatus ModerationStatus @default(APPROVED) @map("moderation_status")
+
+  editedAt  DateTime? @map("edited_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  conversation Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  reads        MessageRead[]
+
+  @@index([conversationId, createdAt(sort: Desc)])
+  @@index([moderationStatus, riskScore(sort: Desc)])
+  @@map("messages")
+}
+
+model MessageRead {
+  messageId String   @map("message_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  readAt    DateTime @default(now()) @map("read_at") @db.Timestamptz(6)
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId])
+  @@map("message_reads")
+}
+
+model Offer {
+  id             String      @id @default(uuid(7)) @db.Uuid
+  listingId      String      @map("listing_id") @db.Uuid
+  conversationId String?     @map("conversation_id") @db.Uuid
+  buyerId        String      @map("buyer_id") @db.Uuid
+  amountMinor    BigInt      @map("amount_minor")
+  currency       String      @db.Char(3)
+  message        String?
+  status         OfferStatus @default(PENDING)
+  /// Counter-offers form a chain.
+  parentOfferId  String?     @map("parent_offer_id") @db.Uuid
+
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  acceptedAt DateTime? @map("accepted_at") @db.Timestamptz(6)
+  declinedAt DateTime? @map("declined_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  listing      Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  buyer        User          @relation("OfferBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  parentOffer  Offer?        @relation("OfferChain", fields: [parentOfferId], references: [id], onDelete: SetNull)
+  counterOffers Offer[]      @relation("OfferChain")
+  /// An accepted offer may produce EXACTLY ONE order. Enforced by the
+  /// one-to-one relation plus a unique index on orders.offer_id.
+  order        Order?
+
+  @@index([listingId, status, createdAt(sort: Desc)])
+  @@index([buyerId, status])
+  @@index([status, expiresAt])
+  @@map("offers")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Commerce: orders, payments, ledger, payouts
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Order {
+  id          String @id @default(uuid(7)) @db.Uuid
+  /// Human-readable reference used in support and on receipts.
+  orderNumber String @unique @map("order_number")
+
+  listingId       String  @map("listing_id") @db.Uuid
+  buyerId         String  @map("buyer_id") @db.Uuid
+  sellerProfileId String  @map("seller_profile_id") @db.Uuid
+  offerId         String? @unique @map("offer_id") @db.Uuid
+
+  /// Copied from the category at creation. A later category change must not
+  /// alter how an existing order behaves.
+  flowType TransactionFlow @map("flow_type")
+  status   OrderStatus     @default(DRAFT)
+
+  subtotalMinor BigInt @map("subtotal_minor")
+  shippingMinor BigInt @default(0) @map("shipping_minor")
+  taxMinor      BigInt @default(0) @map("tax_minor")
+  totalMinor    BigInt @map("total_minor")
+  currency      String @db.Char(3)
+
+  // ── Commission snapshot ───────────────────────────────────────────────────
+  // Written once at order creation. Changing a commission rule tomorrow must
+  // NEVER rewrite yesterday's orders, invoices, payouts or reports.
+  // This is the single most important immutability rule in the schema.
+  commissionRuleId       String? @map("commission_rule_id") @db.Uuid
+  commissionPercentBps   Int     @default(0) @map("commission_percent_bps")
+  commissionFixedMinor   BigInt  @default(0) @map("commission_fixed_minor")
+  commissionAmountMinor  BigInt  @map("commission_amount_minor")
+  /// Always totalMinor − commissionAmountMinor. Derived by subtraction so the
+  /// two can never disagree by a penny.
+  sellerAmountMinor      BigInt  @map("seller_amount_minor")
+
+  /// The ACTUAL provider fee, read from the Stripe balance transaction via
+  /// webhook. Never estimated. Null until the payment settles.
+  paymentFeeMinor   BigInt? @map("payment_fee_minor")
+  /// commission − fees − refunds − disputes. Commission is not revenue.
+  platformNetMinor  BigInt? @map("platform_net_minor")
+
+  /// Snapshot for multi-currency reporting. Historical figures are converted
+  /// with the rate captured here, never with a live rate.
+  fxRateToBase        Decimal? @map("fx_rate_to_base") @db.Decimal(18, 8)
+  baseCurrency        String?  @map("base_currency") @db.Char(3)
+  baseCurrencyTotalMinor BigInt? @map("base_currency_total_minor")
+
+  /// Immutable copies of buyer and listing as they were at purchase time.
+  buyerSnapshot   Json @default("{}") @map("buyer_snapshot")
+  listingSnapshot Json @default("{}") @map("listing_snapshot")
+
+  livemode Boolean @default(false)
+
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz(6)
+  paidAt      DateTime? @map("paid_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  cancelledAt DateTime? @map("cancelled_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  listing        Listing         @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  buyer          User            @relation("BuyerOrders", fields: [buyerId], references: [id], onDelete: Restrict)
+  sellerProfile  SellerProfile   @relation(fields: [sellerProfileId], references: [id], onDelete: Restrict)
+  offer          Offer?          @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  commissionRule CommissionRule? @relation(fields: [commissionRuleId], references: [id], onDelete: SetNull)
+
+  items         OrderItem[]
+  events        OrderEvent[]
+  payments      Payment[]
+  refunds       Refund[]
+  ledgerEntries LedgerEntry[]
+  reviews       Review[]
+
+  @@index([buyerId, status, createdAt(sort: Desc)])
+  @@index([sellerProfileId, status, createdAt(sort: Desc)])
+  @@index([status, expiresAt])
+  @@index([livemode, createdAt(sort: Desc)])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String @id @default(uuid(7)) @db.Uuid
+  orderId   String @map("order_id") @db.Uuid
+  /// Single-item orders at launch (D-8). This table exists so a multi-item
+  /// cart is additive rather than a schema migration on live money data.
+  listingId String @map("listing_id") @db.Uuid
+  quantity  Int    @default(1)
+  unitPriceMinor BigInt @map("unit_price_minor")
+  totalMinor     BigInt @map("total_minor")
+  currency       String @db.Char(3)
+  titleSnapshot  String @map("title_snapshot")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+/// Append-only transition log. Enforced by trigger.
+model OrderEvent {
+  id         String       @id @default(uuid(7)) @db.Uuid
+  orderId    String       @map("order_id") @db.Uuid
+  fromStatus OrderStatus? @map("from_status")
+  toStatus   OrderStatus  @map("to_status")
+  reason     String?
+  actorId    String?      @map("actor_id") @db.Uuid
+  /// "buyer", "seller", "admin", "system", "stripe_webhook".
+  actorType  String
+  correlationId String?   @map("correlation_id")
+  metadata   Json         @default("{}")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+  @@map("order_events")
+}
+
+model Payment {
+  id      String @id @default(uuid(7)) @db.Uuid
+  orderId String @map("order_id") @db.Uuid
+
+  provider String @default("stripe")
+  /// Unique: the same PaymentIntent can never produce two payment rows.
+  providerPaymentIntentId String  @unique @map("provider_payment_intent_id")
+  providerChargeId        String? @unique @map("provider_charge_id")
+  providerBalanceTransactionId String? @map("provider_balance_transaction_id")
+
+  status      PaymentStatus @default(REQUIRES_PAYMENT_METHOD)
+  amountMinor BigInt        @map("amount_minor")
+  currency    String        @db.Char(3)
+  paymentMethodType String?  @map("payment_method_type")
+
+  /// Present for destination charges; null for FEE_ONLY, which has no
+  /// transfer leg at all (ADR-0007).
+  applicationFeeAmountMinor BigInt? @map("application_fee_amount_minor")
+  transferId                String? @map("transfer_id")
+  transferGroup             String? @map("transfer_group")
+  destinationAccountId      String? @map("destination_account_id")
+
+  failureCode    String? @map("failure_code")
+  failureMessage String? @map("failure_message")
+
+  /// Deterministic key sent to Stripe, e.g. "order:<id>:pi:v1". Stored so a
+  /// retry after a timeout provably reuses it.
+  idempotencyKey String? @unique @map("idempotency_key")
+  livemode       Boolean @default(false)
+
+  succeededAt DateTime? @map("succeeded_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order    Order     @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  refunds  Refund[]
+  disputes Dispute[]
+
+  @@index([orderId])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([livemode, status])
+  @@map("payments")
+}
+
+/// Raw provider events.
+///
+/// The PRIMARY KEY is the provider's own event id (Stripe `evt_...`). That
+/// single choice gives exactly-once processing for free: a replayed webhook is
+/// a primary-key conflict, not a double credit. Nothing else in the system may
+/// act on a payment event that is not recorded here first.
+model PaymentEvent {
+  /// Stripe event id, e.g. "evt_3Q1...". NOT a generated UUID.
+  id       String @id
+  provider String @default("stripe")
+  type     String
+  /// Verified before this row is written. A row with false must never be acted on.
+  signatureVerified Boolean @default(false) @map("signature_verified")
+  payload  Json
+  livemode Boolean @default(false)
+  /// Stripe's own API version for this event, so a replayed old event can be
+  /// interpreted with the right shape.
+  apiVersion String? @map("api_version")
+
+  status      PaymentEventStatus @default(PENDING)
+  attempts    Int                @default(0)
+  lastError   String?            @map("last_error")
+  receivedAt  DateTime           @default(now()) @map("received_at") @db.Timestamptz(6)
+  processedAt DateTime?          @map("processed_at") @db.Timestamptz(6)
+
+  /// Denormalised for triage; the payload remains authoritative.
+  relatedObjectId String? @map("related_object_id")
+
+  @@index([status, receivedAt])
+  @@index([type, receivedAt(sort: Desc)])
+  @@index([relatedObjectId])
+  @@map("payment_events")
+}
+
+/// Append-only double-entry ledger.
+///
+/// Every money movement writes a balanced GROUP of entries. A database-level
+/// DEFERRABLE constraint trigger verifies at COMMIT that each entry_group_id
+/// sums to zero per currency, where DEBIT is positive and CREDIT is negative.
+/// Rows can never be updated or deleted (trigger-enforced).
+///
+/// This is how we answer "what do we owe sellers" and reconcile against Stripe
+/// without trusting our own mutable tables.
+model LedgerEntry {
+  id String @id @default(uuid(7)) @db.Uuid
+  /// All entries of one balanced transaction share this id.
+  entryGroupId String @map("entry_group_id") @db.Uuid
+
+  account   LedgerAccount
+  direction LedgerDirection
+  /// Always POSITIVE. The direction carries the sign.
+  amountMinor BigInt @map("amount_minor")
+  currency    String @db.Char(3)
+
+  orderId  String? @map("order_id") @db.Uuid
+  payoutId String? @map("payout_id") @db.Uuid
+  refundId String? @map("refund_id") @db.Uuid
+  /// Seller this entry is attributable to, for SELLER_PAYABLE balances.
+  sellerProfileId String? @map("seller_profile_id") @db.Uuid
+
+  description String
+  livemode    Boolean @default(false)
+  occurredAt  DateTime @map("occurred_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order  Order?  @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  payout Payout? @relation(fields: [payoutId], references: [id], onDelete: Restrict)
+  refund Refund? @relation(fields: [refundId], references: [id], onDelete: Restrict)
+
+  @@index([entryGroupId])
+  @@index([account, currency, occurredAt])
+  @@index([sellerProfileId, account, currency])
+  @@index([orderId])
+  @@index([livemode, occurredAt])
+  @@map("ledger_entries")
+}
+
+model Payout {
+  id              String @id @default(uuid(7)) @db.Uuid
+  sellerProfileId String @map("seller_profile_id") @db.Uuid
+
+  provider           String  @default("stripe")
+  providerPayoutId   String? @unique @map("provider_payout_id")
+  providerTransferId String? @unique @map("provider_transfer_id")
+
+  amountMinor BigInt       @map("amount_minor")
+  currency    String       @db.Char(3)
+  status      PayoutStatus @default(PENDING)
+
+  arrivalDate    DateTime? @map("arrival_date") @db.Timestamptz(6)
+  failureCode    String?   @map("failure_code")
+  failureMessage String?   @map("failure_message")
+  /// Deterministic, e.g. "payout:<id>:v1". Protects against duplicate payouts.
+  idempotencyKey String?   @unique @map("idempotency_key")
+  livemode       Boolean   @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  sellerProfile SellerProfile @relation(fields: [sellerProfileId], references: [id], onDelete: Restrict)
+  ledgerEntries LedgerEntry[]
+
+  @@index([sellerProfileId, status, createdAt(sort: Desc)])
+  @@index([status, createdAt])
+  @@map("payouts")
+}
+
+model Refund {
+  id        String @id @default(uuid(7)) @db.Uuid
+  orderId   String @map("order_id") @db.Uuid
+  paymentId String @map("payment_id") @db.Uuid
+
+  providerRefundId String? @unique @map("provider_refund_id")
+  amountMinor      BigInt  @map("amount_minor")
+  currency         String  @db.Char(3)
+  reason           String?
+  status           RefundStatus @default(PENDING)
+
+  /// Whether we pulled the money back from the seller's balance. The Stripe
+  /// DEFAULT is false — seller keeps it, platform absorbs the refund — so this
+  /// is always set explicitly, never left implicit (ADR-0007).
+  reverseTransfer     Boolean @default(true) @map("reverse_transfer")
+  refundApplicationFee Boolean @default(false) @map("refund_application_fee")
+
+  initiatedByType String  @map("initiated_by_type")
+  initiatedById   String? @map("initiated_by_id") @db.Uuid
+  idempotencyKey  String? @unique @map("idempotency_key")
+  livemode        Boolean @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  payment       Payment       @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  ledgerEntries LedgerEntry[]
+
+  @@index([orderId])
+  @@index([status, createdAt])
+  @@map("refunds")
+}
+
+model Dispute {
+  id        String @id @default(uuid(7)) @db.Uuid
+  paymentId String @map("payment_id") @db.Uuid
+
+  providerDisputeId String        @unique @map("provider_dispute_id")
+  amountMinor       BigInt        @map("amount_minor")
+  currency          String        @db.Char(3)
+  reason            String
+  status            DisputeStatus @default(NEEDS_RESPONSE)
+
+  evidenceDueBy DateTime? @map("evidence_due_by") @db.Timestamptz(6)
+  evidence      Json      @default("{}")
+  outcome       String?
+  /// Set when we recover the disputed amount from the seller's balance.
+  transferReversalId String? @map("transfer_reversal_id")
+  livemode      Boolean   @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([status, evidenceDueBy])
+  @@map("disputes")
+}
+
+/// Commission rules, resolved most-specific-first:
+/// PROMO → SELLER → CATEGORY (walking up the tree) → COUNTRY → PLATFORM.
+model CommissionRule {
+  id        String          @id @default(uuid(7)) @db.Uuid
+  scopeType CommissionScope @map("scope_type")
+  /// The category / seller / country this applies to. Null for PLATFORM.
+  categoryId      String? @map("category_id") @db.Uuid
+  sellerProfileId String? @map("seller_profile_id") @db.Uuid
+  countryId       String? @map("country_id") @db.Uuid
+  /// Campaign code for PROMO rules.
+  promoCode       String? @map("promo_code")
+
+  appliesTo CommissionAppliesTo @default(ORDER) @map("applies_to")
+  model     CommissionModel     @default(PERCENTAGE)
+
+  /// BASIS POINTS. 0.5% = 50. Never a decimal percentage.
+  percentBps  Int     @default(0) @map("percent_bps")
+  fixedMinor  BigInt  @default(0) @map("fixed_minor")
+  /// Required when fixedMinor > 0 (CHECK constraint).
+  currency    String? @db.Char(3)
+  minMinor    BigInt? @map("min_minor")
+  maxMinor    BigInt? @map("max_minor")
+
+  priority      Int       @default(0)
+  effectiveFrom DateTime  @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveTo   DateTime? @map("effective_to") @db.Timestamptz(6)
+  isActive      Boolean   @default(true) @map("is_active")
+
+  description String?
+  createdBy   String?  @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  category      Category?      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  sellerProfile SellerProfile? @relation(fields: [sellerProfileId], references: [id], onDelete: Cascade)
+  country       Country?       @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  orders        Order[]
+
+  @@index([scopeType, isActive, effectiveFrom])
+  @@index([categoryId, isActive])
+  @@index([sellerProfileId, isActive])
+  @@map("commission_rules")
+}
+
+/// Inbound request idempotency (ADR-0004). A replayed key returns the stored
+/// response instead of performing the action twice.
+model IdempotencyKey {
+  id       String  @id @default(uuid(7)) @db.Uuid
+  key      String
+  userId   String? @map("user_id") @db.Uuid
+  endpoint String
+  /// Hash of the request body. A same key with a DIFFERENT body is a client
+  /// bug and must be rejected, not silently replayed.
+  requestHash    String  @map("request_hash")
+  responseStatus Int?    @map("response_status")
+  responseBody   Json?   @map("response_body")
+  /// Set while in flight so concurrent duplicates can be rejected.
+  lockedAt  DateTime? @map("locked_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([key, endpoint])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
+/// Transactional outbox. Domain events are written in the SAME transaction as
+/// the state change, then relayed to the queue by the worker. Without this you
+/// eventually get an order marked paid with no notification sent, or a
+/// notification for an order that rolled back.
+model OutboxEvent {
+  id        String       @id @default(uuid(7)) @db.Uuid
+  eventType String       @map("event_type")
+  aggregateType String   @map("aggregate_type")
+  aggregateId   String   @map("aggregate_id") @db.Uuid
+  payload   Json
+  status    OutboxStatus @default(PENDING)
+  attempts  Int          @default(0)
+  lastError String?      @map("last_error")
+  correlationId String?  @map("correlation_id")
+
+  availableAt DateTime  @default(now()) @map("available_at") @db.Timestamptz(6)
+  processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([status, availableAt])
+  @@index([aggregateType, aggregateId])
+  @@map("outbox_events")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Trust & safety
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Review {
+  id      String @id @default(uuid(7)) @db.Uuid
+  /// Reviews REQUIRE a completed order. No order, no review — this single
+  /// constraint eliminates most fake-review vectors.
+  orderId String @map("order_id") @db.Uuid
+  direction ReviewDirection
+
+  authorId String @map("author_id") @db.Uuid
+  /// Set for BUYER_TO_SELLER.
+  subjectSellerId String? @map("subject_seller_id") @db.Uuid
+  /// Set for SELLER_TO_BUYER.
+  subjectUserId   String? @map("subject_user_id") @db.Uuid
+
+  /// 1–5, enforced by CHECK.
+  rating Int
+  title  String?
+  body   String?
+  status ReviewStatus @default(PUBLISHED)
+
+  sellerResponse String?   @map("seller_response")
+  respondedAt    DateTime? @map("responded_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order         Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  author        User           @relation("ReviewAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  subjectSeller SellerProfile? @relation("ReviewSubjectSeller", fields: [subjectSellerId], references: [id], onDelete: Cascade)
+  subjectUser   User?          @relation("ReviewSubjectUser", fields: [subjectUserId], references: [id], onDelete: Cascade)
+
+  /// ONE review per order per direction. Prevents duplicate reviews outright.
+  @@unique([orderId, direction])
+  @@index([subjectSellerId, status, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("reviews")
+}
+
+model Report {
+  id         String           @id @default(uuid(7)) @db.Uuid
+  reporterId String?          @map("reporter_id") @db.Uuid
+  targetType ReportTargetType @map("target_type")
+  /// Polymorphic: no FK, because the target may be any of five tables. The
+  /// pair (targetType, targetId) is validated by the application.
+  targetId   String           @map("target_id") @db.Uuid
+  reasonCode String           @map("reason_code")
+  details    String?
+  status     ReportStatus     @default(OPEN)
+
+  assignedTo     String?   @map("assigned_to") @db.Uuid
+  resolutionNote String?   @map("resolution_note")
+  resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz(6)
+  /// DSA-shaped: a moderation decision owes the user a reason.
+  statementOfReasons String? @map("statement_of_reasons")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  reporter User? @relation("Reporter", fields: [reporterId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+  @@index([assignedTo, status])
+  @@map("reports")
+}
+
+model ModerationAction {
+  id          String  @id @default(uuid(7)) @db.Uuid
+  moderatorId String? @map("moderator_id") @db.Uuid
+  targetType  ReportTargetType @map("target_type")
+  targetId    String  @map("target_id") @db.Uuid
+  /// warn | hide | remove | suspend | ban | reinstate
+  action      String
+  reason      String
+  notes       String?
+  reportId    String? @map("report_id") @db.Uuid
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([targetType, targetId, createdAt(sort: Desc)])
+  @@index([moderatorId, createdAt(sort: Desc)])
+  @@map("moderation_actions")
+}
+
+model UserSanction {
+  id       String       @id @default(uuid(7)) @db.Uuid
+  userId   String       @map("user_id") @db.Uuid
+  type     SanctionType
+  reason   String
+  issuedBy String?      @map("issued_by") @db.Uuid
+  expiresAt DateTime?   @map("expires_at") @db.Timestamptz(6)
+  liftedAt  DateTime?   @map("lifted_at") @db.Timestamptz(6)
+  appealNote String?    @map("appeal_note")
+  appealedAt DateTime?  @map("appealed_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation("SanctionedUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([type, expiresAt])
+  @@map("user_sanctions")
+}
+
+/// Per-country, per-category rules for restricted and prohibited goods.
+/// What is legal in one European country is illegal in another, so a global
+/// rule list would be wrong from day one.
+model ProhibitedItemRule {
+  id         String             @id @default(uuid(7)) @db.Uuid
+  /// Null = applies everywhere.
+  countryId  String?            @map("country_id") @db.Uuid
+  /// Null = applies to all categories.
+  categoryId String?            @map("category_id") @db.Uuid
+  ruleType   ProhibitedRuleType @map("rule_type")
+  /// Case-insensitive pattern matched against listing title and description.
+  pattern    String
+  isRegex    Boolean            @default(false) @map("is_regex")
+  note       String?
+  isActive   Boolean            @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  country  Country?  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([isActive, countryId, categoryId])
+  @@map("prohibited_item_rules")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Platform
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Setting {
+  id       String       @id @default(uuid(7)) @db.Uuid
+  key      String
+  scope    SettingScope @default(GLOBAL)
+  /// Country id for COUNTRY-scoped settings.
+  scopeId  String?      @map("scope_id") @db.Uuid
+  value    Json
+  /// Whether this value may be exposed to unauthenticated clients.
+  isPublic Boolean      @default(false) @map("is_public")
+  description String?
+
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([key, scope, scopeId])
+  @@index([isPublic])
+  @@map("settings")
+}
+
+/// Admin-editable overlay on top of the file-based message catalogues, so
+/// wording can be fixed without a deploy (docs/09-i18n-rtl.md).
+model Translation {
+  id        String  @id @default(uuid(7)) @db.Uuid
+  namespace String
+  key       String
+  locale    String
+  value     String
+  /// True when an admin has overridden the file catalogue value.
+  isOverridden Boolean @default(true) @map("is_overridden")
+
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([namespace, key, locale])
+  @@index([locale])
+  @@map("translations")
+}
+
+model Notification {
+  id     String @id @default(uuid(7)) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  type   String
+  payload Json  @default("{}")
+  /// Channels actually delivered on, e.g. ["in_app","email"].
+  channelsSent Json @default("[]") @map("channels_sent")
+  readAt DateTime? @map("read_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+/// Append-only. No UPDATE or DELETE, enforced by trigger.
+model AuditLog {
+  id        String  @id @default(uuid(7)) @db.Uuid
+  actorId   String? @map("actor_id") @db.Uuid
+  actorRole String? @map("actor_role")
+  /// "user", "admin", "system", "stripe_webhook".
+  actorType String  @map("actor_type")
+  action    String
+  entityType String @map("entity_type")
+  entityId   String? @map("entity_id") @db.Uuid
+  before     Json?
+  after      Json?
+  ip         String?
+  userAgent  String? @map("user_agent")
+  correlationId String? @map("correlation_id")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([entityType, entityId, createdAt(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+/// GDPR consent, versioned. "They ticked a box once" is not a record.
+model ConsentRecord {
+  id       String  @id @default(uuid(7)) @db.Uuid
+  userId   String? @map("user_id") @db.Uuid
+  /// Anonymous visitors are keyed by a cookie id instead.
+  anonymousId String? @map("anonymous_id")
+  /// "necessary" | "analytics" | "marketing" | "terms" | "privacy"
+  consentType String  @map("consent_type")
+  granted     Boolean
+  /// Version of the policy consented to.
+  documentVersion String  @map("document_version")
+  ip          String?
+  userAgent   String? @map("user_agent")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, consentType, createdAt(sort: Desc)])
+  @@index([anonymousId])
+  @@map("consent_records")
+}
+
+/// GDPR export and erasure requests, processed as auditable background jobs
+/// rather than ad-hoc SQL.
+model DataSubjectRequest {
+  id     String @id @default(uuid(7)) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  /// "export" | "deletion"
+  requestType String @map("request_type")
+  /// "pending" | "verifying" | "processing" | "completed" | "rejected"
+  status      String @default("pending")
+  /// Where an export was written. Expires.
+  resultUrl   String?   @map("result_url")
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  note        String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("data_subject_requests")
 }

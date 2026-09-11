@@ -43,13 +43,30 @@ daemon is unavailable in the build sandbox. The compose file parses
 (`docker compose config`) but has not been booted. **First action in Phase 2 is
 to run it on a real machine.**
 
-### Phase 2 — Database  ← **next**
+### Phase 2 — Database  ✅ **COMPLETE (2026-09-11)**
 Full Prisma schema from [03](./03-database-architecture.md), all migrations, seed data
 (countries, cities, currencies, category tree with attributes, commission rules, roles,
 locales). Ledger invariant test.
 *Exit:* migrations reversible; seeds idempotent; `entry_group_id` sums to zero test passes.
 
-### Phase 3 — Authentication & roles
+**Exit gate met.** 170 tests passing (12 files), ~96% coverage of domain/shared.
+Migration reversal proven by applying, reversing and re-applying every migration
+and asserting an identical schema snapshot. Seeds proven idempotent over three
+consecutive runs. The ledger invariant is enforced by a deferred database
+trigger and tested against a raw SQL connection, not only through the ORM.
+
+**Deviations and fixes are documented** in `docs/03-database-architecture.md`
+and ADR-0010: category paths use a delimited text column rather than `ltree`,
+and three unique constraints required `NULLS NOT DISTINCT` because a nullable
+column left them unenforced.
+
+**Not verified:** `docker compose up` still could not be executed — no Docker
+daemon in the build environment. Phase 2 was developed against a locally
+installed PostgreSQL 16 instead. The compose file pins **postgres:17**, which is
+therefore untested; nothing in the schema requires 17 over 16, but this must be
+confirmed on a real machine.
+
+### Phase 3 — Authentication & roles  ← **next**
 Register, verify email, login, refresh rotation with reuse detection, password reset,
 TOTP 2FA, RBAC guards, ownership guards, rate limiting, audit interceptor, session
 management.

@@ -2,11 +2,10 @@
 
 A multi-vendor marketplace for Kurdish communities across Europe.
 
-> **Status: Phase 1 — project skeleton.**
-> No marketplace features are implemented yet: no database models, no
-> authentication, no listings, no payments. This repository currently contains
-> the foundation (structure, contracts, tooling, CI) and the planning
-> documentation. See [`docs/10-roadmap.md`](./docs/10-roadmap.md).
+> **Status: Phase 2 — database foundation.**
+> The schema, migrations, seeds and the double-entry ledger exist. No
+> user-facing features yet: no authentication, no listings, no messaging, no
+> payments. See [`docs/10-roadmap.md`](./docs/10-roadmap.md).
 >
 > "Kurdora" is a working brand name, isolated in `packages/brand` so it can be
 > changed without touching application code.
@@ -18,6 +17,8 @@ pnpm install
 cp .env.example .env.local
 pnpm docker:up          # Postgres 17, Redis 7, MinIO, Mailpit
 pnpm env:check
+pnpm db:deploy          # apply migrations
+pnpm db:seed            # seed configuration — idempotent, safe to re-run
 pnpm dev                # http://localhost:3000/en  ·  /ckb for right-to-left
 ```
 
@@ -48,13 +49,26 @@ worker/       background jobs — a separate process by design
 packages/
   brand/      brand configuration
   i18n/       locale registry + message catalogues
-prisma/       schema and migrations
+prisma/
+  schema.prisma   55 models, 32 enums
+  migrations/     every migration ships a down.sql — reversal is tested
+  seed/           idempotent configuration seeds
 openapi/      API contract (authoritative, linted in CI)
 docs/         architecture, payments, security, roadmap, ADRs
 ```
 
 Dependencies point inward only: `app → lib → infra → domain → shared`.
 This is enforced by ESLint and verified by `tests/architecture.test.ts`.
+
+## Money
+
+Amounts are integer minor units in `bigint` (£50,000.00 is `5000000n`); rates are
+integer basis points (0.5% is `50`). No floating point, anywhere.
+
+Every money movement is a balanced double-entry group. A deferred database
+trigger verifies at COMMIT that each entry group sums to zero **per currency**,
+and `ledger_entries` refuses UPDATE and DELETE. See
+[`docs/adr/0010-database-invariants.md`](./docs/adr/0010-database-invariants.md).
 
 ## Documentation
 

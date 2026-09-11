@@ -148,7 +148,7 @@ export default tseslint.config(
 
   // ---- Tests and tooling ----
   {
-    files: ['tests/**/*.ts', '**/*.test.ts', 'scripts/**/*.ts', 'worker/**/*.ts'],
+    files: ['tests/**/*.ts', '**/*.test.ts', 'scripts/**/*.ts', 'worker/**/*.ts', 'prisma/**/*.ts'],
     rules: {
       'no-console': 'off',
       '@typescript-eslint/no-explicit-any': 'off',

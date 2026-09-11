@@ -20,6 +20,11 @@ const serverSchema = z
     APP_URL: z.url().default('http://localhost:3000'),
 
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+    /** Scratch database for Prisma Migrate diffs. Optional. */
+    SHADOW_DATABASE_URL: z.string().optional(),
+    /** Enables tests/db/*. Must never point at a production database. */
+    TEST_DATABASE_URL: z.string().optional(),
+
     REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
 
     /** Signing secret for sessions and tokens. Phase 3. */
