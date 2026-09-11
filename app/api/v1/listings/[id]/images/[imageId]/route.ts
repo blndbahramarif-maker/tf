@@ -49,7 +49,7 @@ export async function POST(
   // cannot be finalised through this listing.
   const image = await prisma.listingImage.findFirst({
     where: { id: imageId, listingId: owned.value.id },
-    select: { id: true, storageKey: true, uploadStatus: true },
+    select: { id: true, storageKey: true, uploadStatus: true, isPrimary: true },
   });
   if (!image) return notFound(request);
   if (image.uploadStatus === 'READY') {
@@ -116,26 +116,69 @@ export async function POST(
   // Drop the untrusted original now that safe derivatives exist.
   await storage.deleteObject(image.storageKey).catch(() => undefined);
 
-  const updated = await prisma.listingImage.update({
-    where: { id: image.id },
-    data: {
-      uploadStatus: 'READY',
-      // The DETECTED format, not anything the client claimed.
-      contentType: `image/${result.detectedFormat}`,
-      byteSize: result.byteSize,
-      checksumSha256: result.checksumSha256,
-      width: result.width,
-      height: result.height,
-      url: primaryUrl,
-      variants: variants as never,
-      processedAt: new Date(),
-      failureReason: null,
-      ...(body.value.altText === undefined ? {} : { altText: body.value.altText }),
-      // Auto-approved at launch; the moderation queue lands in Phase 9, and
-      // this column is what it will gate on.
-      moderationStatus: 'APPROVED',
-    },
-    select: { id: true, url: true, width: true, height: true, isPrimary: true, position: true },
+  const wantsPrimary = body.value.isPrimary;
+
+  /*
+   * A listing has at most one primary image, enforced by the partial unique
+   * index `listing_images_one_primary_per_listing`. That index is NOT
+   * deferrable, so a promotion must demote the incumbent FIRST or the write is
+   * rejected mid-transaction — which is why this is a transaction and not a
+   * single update.
+   */
+  const updated = await prisma.$transaction(async (tx) => {
+    if (wantsPrimary === true) {
+      await tx.listingImage.updateMany({
+        where: { listingId: owned.value.id, isPrimary: true, id: { not: image.id } },
+        data: { isPrimary: false },
+      });
+    }
+
+    // Demoting the only primary would leave a listing with images and none
+    // marked primary, so the next image by position takes over. If there is no
+    // other image, the demotion is refused rather than breaking the invariant.
+    let nextPrimaryId: string | null = null;
+    let keepPrimary = false;
+    if (wantsPrimary === false && image.isPrimary) {
+      const next = await tx.listingImage.findFirst({
+        where: { listingId: owned.value.id, id: { not: image.id }, uploadStatus: 'READY' },
+        orderBy: { position: 'asc' },
+        select: { id: true },
+      });
+      if (next === null) {
+        keepPrimary = true;
+      } else {
+        nextPrimaryId = next.id;
+      }
+    }
+
+    const row = await tx.listingImage.update({
+      where: { id: image.id },
+      data: {
+        uploadStatus: 'READY',
+        // The DETECTED format, not anything the client claimed.
+        contentType: `image/${result.detectedFormat}`,
+        byteSize: result.byteSize,
+        checksumSha256: result.checksumSha256,
+        width: result.width,
+        height: result.height,
+        url: primaryUrl,
+        variants: variants as never,
+        processedAt: new Date(),
+        failureReason: null,
+        ...(body.value.altText === undefined ? {} : { altText: body.value.altText }),
+        ...(wantsPrimary === undefined || keepPrimary ? {} : { isPrimary: wantsPrimary }),
+        // Auto-approved at launch; the moderation queue lands in Phase 9, and
+        // this column is what it will gate on.
+        moderationStatus: 'APPROVED',
+      },
+      select: { id: true, url: true, width: true, height: true, isPrimary: true, position: true },
+    });
+
+    if (nextPrimaryId !== null) {
+      await tx.listingImage.update({ where: { id: nextPrimaryId }, data: { isPrimary: true } });
+    }
+
+    return row;
   });
 
   await tryWriteAuditLog(prisma, {

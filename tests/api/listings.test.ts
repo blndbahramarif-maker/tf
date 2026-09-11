@@ -34,7 +34,12 @@ async function jpegBytes(width = 800, height = 600): Promise<Buffer> {
 }
 
 /** Runs the full upload pipeline for a listing, returning the image id. */
-async function uploadImage(user: TestUser, listingId: string, bytes: Buffer) {
+async function uploadImage(
+  user: TestUser,
+  listingId: string,
+  bytes: Buffer,
+  finaliseBody: Record<string, unknown> = {},
+) {
   const started = await callRoute(startUpload, `/api/v1/listings/${listingId}/images`, {
     method: 'POST',
     token: user.accessToken,
@@ -58,7 +63,12 @@ async function uploadImage(user: TestUser, listingId: string, bytes: Buffer) {
   const finalised = await callRoute(
     finaliseImage,
     `/api/v1/listings/${listingId}/images/${imageId}`,
-    { method: 'POST', token: user.accessToken, params: { id: listingId, imageId }, body: {} },
+    {
+      method: 'POST',
+      token: user.accessToken,
+      params: { id: listingId, imageId },
+      body: finaliseBody,
+    },
   );
 
   return { started, finalised, imageId };
@@ -793,6 +803,44 @@ describe.skipIf(!hasDatabase)('listings', () => {
         where: { id: second.imageId! },
       });
       expect(remaining.isPrimary).toBe(true);
+    }, 60_000);
+
+    it('honours isPrimary on finalise, moving the flag off the incumbent', async () => {
+      // Regression: `isPrimary` was accepted by the schema and documented in
+      // openapi.yaml, but the finalise route never applied it — the field was
+      // silently dropped. Found by exercising the live API, not by a test,
+      // which is why this test exists now.
+      const listing = await createTestListing({ ownerSellerProfileId: seller.sellerProfileId! });
+
+      const first = await uploadImage(seller, listing.id, await jpegBytes(200, 200));
+      expect(first.finalised?.status).toBe(200);
+      // The first image becomes primary automatically.
+      expect((first.finalised?.body.image as { isPrimary: boolean }).isPrimary).toBe(true);
+
+      const second = await uploadImage(seller, listing.id, await jpegBytes(220, 220), {
+        isPrimary: true,
+      });
+      expect(second.finalised?.status).toBe(200);
+      expect((second.finalised?.body.image as { isPrimary: boolean }).isPrimary).toBe(true);
+
+      // Exactly one primary survives: the partial unique index would reject two,
+      // so a promotion that failed to demote would have thrown instead.
+      const rows = await prisma.listingImage.findMany({
+        where: { listingId: listing.id },
+        select: { id: true, isPrimary: true },
+      });
+      expect(rows.filter((row) => row.isPrimary).map((row) => row.id)).toEqual([second.imageId]);
+    }, 60_000);
+
+    it('refuses to demote the only primary, rather than leaving none', async () => {
+      const listing = await createTestListing({ ownerSellerProfileId: seller.sellerProfileId! });
+      const only = await uploadImage(seller, listing.id, await jpegBytes(200, 200), {
+        isPrimary: false,
+      });
+
+      // A listing with images must have a primary to show in the grid, so the
+      // demotion is ignored when there is nothing to promote in its place.
+      expect((only.finalised?.body.image as { isPrimary: boolean }).isPrimary).toBe(true);
     }, 60_000);
 
     it('enforces the per-category image cap', async () => {
