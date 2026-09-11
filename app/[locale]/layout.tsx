@@ -4,6 +4,9 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { ALL_LOCALES, getDirection, isLocale, type Locale } from '@kurdora/i18n';
 import { brand } from '@kurdora/brand';
+import { loadCategoryTree } from '@/infra/catalogue/read-model';
+import { SiteHeader } from '../_components/site-header';
+import { SiteFooter } from '../_components/site-footer';
 import '@/styles/globals.css';
 
 /** Pre-render every locale shell at build time. */
@@ -28,8 +31,6 @@ export async function generateMetadata({
     },
     description: t('defaultDescription', { brandName: brand.name }),
     metadataBase: new URL(`https://${brand.domains.primary}`),
-    // Per-locale alternates are generated per-route from Phase 4, once real
-    // pages exist to point at.
   };
 }
 
@@ -47,11 +48,25 @@ export default async function LocaleLayout({
   setRequestLocale(locale as Locale);
 
   const direction = getDirection(locale as Locale);
+  // One query for the whole shell rather than one per page.
+  const categories = await loadCategoryTree(locale);
+
+  const t = await getTranslations({ locale, namespace: 'common' });
 
   return (
     <html lang={locale} dir={direction} suppressHydrationWarning>
-      <body>
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+      <body className="flex min-h-screen flex-col">
+        <NextIntlClientProvider>
+          <a
+            href="#main"
+            className="bg-accent text-accent-ink sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-2 focus:rounded focus:px-4 focus:py-2"
+          >
+            {t('skipToContent')}
+          </a>
+          <SiteHeader locale={locale} categories={categories} />
+          <div className="flex-1">{children}</div>
+          <SiteFooter locale={locale} />
+        </NextIntlClientProvider>
       </body>
     </html>
   );

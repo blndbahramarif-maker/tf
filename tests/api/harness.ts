@@ -172,6 +172,62 @@ export async function createTestUser(options: CreateUserOptions = {}): Promise<T
   };
 }
 
+/**
+ * Creates a listing directly in the database, bypassing the API.
+ *
+ * Used to set up fixtures for tests about something OTHER than creation — the
+ * create route itself is tested through the API.
+ */
+export async function createTestListing(options: {
+  ownerSellerProfileId: string;
+  categorySlug?: string;
+  title?: string;
+  status?: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'PENDING_REVIEW';
+  priceMinor?: bigint;
+  attributes?: Record<string, unknown>;
+  withReadyImage?: boolean;
+}): Promise<{ id: string; slug: string }> {
+  const category = await prisma.category.findUniqueOrThrow({
+    where: { slug: options.categorySlug ?? 'mobile-electronics' },
+  });
+  const country = await prisma.country.findUniqueOrThrow({ where: { code: 'GB' } });
+
+  counter += 1;
+  const listing = await prisma.listing.create({
+    data: {
+      sellerProfileId: options.ownerSellerProfileId,
+      categoryId: category.id,
+      title: options.title ?? `Test Listing ${counter}`,
+      slug: `test-listing-${counter}-${Date.now()}`,
+      description: 'A description long enough to pass validation.',
+      priceMinor: options.priceMinor ?? 20_000n,
+      currency: 'GBP',
+      countryId: country.id,
+      status: options.status ?? 'DRAFT',
+      attributes: (options.attributes ?? {}) as never,
+      ...(options.status === 'ACTIVE' ? { publishedAt: new Date() } : {}),
+    },
+    select: { id: true, slug: true },
+  });
+
+  if (options.withReadyImage) {
+    await prisma.listingImage.create({
+      data: {
+        listingId: listing.id,
+        storageKey: `listings/${listing.id}/fixture`,
+        url: 'http://localhost:3000/media/fixture-card.webp',
+        uploadStatus: 'READY',
+        moderationStatus: 'APPROVED',
+        isPrimary: true,
+        width: 720,
+        height: 540,
+      },
+    });
+  }
+
+  return listing;
+}
+
 /** A syntactically valid UUID that belongs to nobody. */
 export function orphanId(): string {
   return randomUUID();

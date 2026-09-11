@@ -12,3 +12,7 @@ process.env.AUTH_SECRET ??= 'test-only-auth-secret-at-least-32-characters-long';
 process.env.AUTH_ENCRYPTION_KEY ??=
   '0000000000000000000000000000000000000000000000000000000000000001';
 process.env.REDIS_URL ??= 'redis://localhost:6379';
+
+// Image uploads write to a real directory under the OS temp dir, so the whole
+// pipeline (upload -> validate -> re-encode -> serve) runs for real in tests.
+process.env.LOCAL_STORAGE_DIR ??= `${process.env.TMPDIR ?? '/tmp'}/kurdora-test-storage`;

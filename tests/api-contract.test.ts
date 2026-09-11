@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 import {
   ERROR_CODES,
   apiErrorSchema,
@@ -128,5 +130,126 @@ describe('health response', () => {
         dependencies: [],
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('OpenAPI covers every implemented route', () => {
+  const root = path.resolve(__dirname, '..');
+
+  /** Every `app/api/v1/**\/route.ts`, as an OpenAPI path template. */
+  function implementedOperations(): Map<string, Set<string>> {
+    const operations = new Map<string, Set<string>>();
+    const base = path.join(root, 'app/api/v1');
+
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+          continue;
+        }
+        if (entry.name !== 'route.ts') continue;
+
+        // `app/api/v1/listings/[id]/images` -> `/listings/{id}/images`
+        const template = `/${path
+          .relative(base, dir)
+          .split(path.sep)
+          .filter((segment) => segment !== '')
+          .map((segment) =>
+            segment.startsWith('[') ? `{${segment.replace(/^\[+|\]+$/g, '')}}` : segment,
+          )
+          .join('/')}`;
+
+        const source = readFileSync(full, 'utf8');
+        const methods = new Set(
+          [...source.matchAll(/export async function (GET|POST|PUT|PATCH|DELETE)\b/g)].map(
+            (match) => match[1]!.toLowerCase(),
+          ),
+        );
+        if (methods.size > 0) operations.set(template, methods);
+      }
+    };
+
+    walk(base);
+    return operations;
+  }
+
+  /**
+   * Documented paths and their methods.
+   *
+   * Read with a line matcher rather than a YAML parser: the shape we care
+   * about is two fixed indentation levels under `paths:`, and adding a parser
+   * dependency to assert it would be the more fragile choice.
+   */
+  function documentedOperations(): Map<string, Set<string>> {
+    const document = readFileSync(path.join(root, 'openapi/openapi.yaml'), 'utf8');
+    const lines = document.split('\n');
+
+    const start = lines.findIndex((line) => line === 'paths:');
+    expect(start).toBeGreaterThan(-1);
+
+    const operations = new Map<string, Set<string>>();
+    let current: string | null = null;
+
+    for (const line of lines.slice(start + 1)) {
+      // A new top-level key ends the paths section.
+      if (/^[a-z]/i.test(line)) break;
+
+      const pathMatch = /^ {2}(\/\S*):\s*$/.exec(line);
+      if (pathMatch) {
+        current = pathMatch[1]!;
+        operations.set(current, new Set());
+        continue;
+      }
+
+      const methodMatch = /^ {4}(get|post|put|patch|delete):\s*$/.exec(line);
+      if (methodMatch && current !== null) operations.get(current)!.add(methodMatch[1]!);
+    }
+
+    return operations;
+  }
+
+  it('documents every route file, with every method it exports', () => {
+    // CLAUDE.md: "An API endpoint: define the schema in src/shared, document it
+    // in openapi/openapi.yaml, implement in app/api/v1/". Without this test
+    // that instruction is a convention nobody enforces, and the contract rots
+    // the first time someone is in a hurry.
+    const implemented = implementedOperations();
+    const documented = documentedOperations();
+
+    const missing: string[] = [];
+    for (const [template, methods] of implemented) {
+      const documentedMethods = documented.get(template);
+      if (documentedMethods === undefined) {
+        missing.push(`${template} (not documented at all)`);
+        continue;
+      }
+      for (const method of methods) {
+        if (!documentedMethods.has(method)) missing.push(`${method.toUpperCase()} ${template}`);
+      }
+    }
+
+    expect(missing.sort()).toEqual([]);
+  });
+
+  it('does not promise endpoints that are not implemented', () => {
+    // A contract that describes routes returning 404 is worse than no contract,
+    // because clients are generated from it.
+    const implemented = implementedOperations();
+    const documented = documentedOperations();
+
+    const phantom: string[] = [];
+    for (const [template, methods] of documented) {
+      const implementedMethods = implemented.get(template);
+      if (implementedMethods === undefined) {
+        phantom.push(`${template} (documented, no route file)`);
+        continue;
+      }
+      for (const method of methods) {
+        if (!implementedMethods.has(method)) phantom.push(`${method.toUpperCase()} ${template}`);
+      }
+    }
+
+    expect(phantom.sort()).toEqual([]);
   });
 });

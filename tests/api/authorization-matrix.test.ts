@@ -10,6 +10,13 @@ import {
   PATCH as patchSellerProfile,
 } from '../../app/api/v1/seller-profiles/[id]/route';
 import { GET as listAdminUsers } from '../../app/api/v1/admin/users/route';
+import { POST as createListing } from '../../app/api/v1/listings/route';
+import {
+  DELETE as deleteListing,
+  PATCH as patchListing,
+} from '../../app/api/v1/listings/[id]/route';
+import { POST as listingTransition } from '../../app/api/v1/listings/[id]/status/route';
+import { POST as startImageUpload } from '../../app/api/v1/listings/[id]/images/route';
 import { POST as logout } from '../../app/api/v1/auth/logout/route';
 import { POST as stepUp } from '../../app/api/v1/auth/step-up/route';
 import { POST as changePassword } from '../../app/api/v1/auth/password/route';
@@ -18,6 +25,7 @@ import { POST as totpVerify } from '../../app/api/v1/auth/totp/verify/route';
 import {
   callRoute,
   clearRateLimits,
+  createTestListing,
   createTestUser,
   disconnect,
   hasDatabase,
@@ -90,8 +98,12 @@ interface RouteCase {
    * enrolling two-factor). Sharing a user across those would make the result
    * depend on the order tests happen to run in, which is not a property any
    * authorization assertion should have.
+   *
+   * `plain` — no seller profile, for cases that CREATE one.
+   * `with-seller-profile` — selling roles already have one, so a refusal
+   *   reflects PERMISSION rather than a missing prerequisite.
    */
-  readonly freshUser?: boolean;
+  readonly freshUser?: 'plain' | 'with-seller-profile';
   run(user: TestUser | null, actors: Actors): Promise<{ status: number }>;
 }
 
@@ -99,6 +111,13 @@ interface Actors {
   /** A seller profile owned by someone else entirely. */
   foreignProfileId: string;
   foreignSessionId: string;
+  /**
+   * Creates a FRESH listing owned by a third party.
+   *
+   * A factory rather than a fixed id because transition cases mutate the
+   * listing; sharing one would make the result depend on test order.
+   */
+  makeForeignListing: (status?: 'DRAFT' | 'ACTIVE') => Promise<string>;
 }
 
 const ALLOWED_ALL: Partial<Record<RoleKey, number>> = {
@@ -198,7 +217,7 @@ const CASES: RouteCase[] = [
     // NOT hold seller:create_profile. super_admin holds every permission.
     expect: { buyer: 201, seller: 201, business_seller: 201, super_admin: 201 },
     denied: 401,
-    freshUser: true,
+    freshUser: 'plain',
     run: (user) =>
       callRoute(createSellerProfile, '/api/v1/seller-profiles', {
         method: 'POST',
@@ -361,7 +380,7 @@ const CASES: RouteCase[] = [
       super_admin: 409,
     },
     denied: 401,
-    freshUser: true,
+    freshUser: 'plain',
     run: (user) =>
       callRoute(totpEnroll, '/api/v1/auth/totp/enroll', {
         method: 'POST',
@@ -387,12 +406,138 @@ const CASES: RouteCase[] = [
       super_admin: 409,
     },
     denied: 401,
-    freshUser: true,
+    freshUser: 'plain',
     run: (user) =>
       callRoute(totpVerify, '/api/v1/auth/totp/verify', {
         method: 'POST',
         token: user?.accessToken ?? null,
         body: { code: '000000' },
+      }),
+  },
+  {
+    id: 'POST /api/v1/listings',
+    method: 'POST',
+    path: '/api/v1/listings',
+    permission: 'listing:create',
+    ownership: 'implicit — seller is the token subject',
+    // Holding the permission is not enough: a seller profile must exist, which
+    // is why super_admin (who holds every permission) is refused at 403.
+    expect: { seller: 201, business_seller: 201 },
+    denied: 401,
+    freshUser: 'with-seller-profile',
+    run: (user) =>
+      callRoute(createListing, '/api/v1/listings', {
+        method: 'POST',
+        token: user?.accessToken ?? null,
+        body: {
+          categorySlug: 'mobile-electronics',
+          title: 'Matrix Test Listing',
+          description: 'A description that is definitely long enough to validate.',
+          priceMinor: '25000',
+          countryCode: 'GB',
+          attributes: { brand: 'Matrix', model: 'One' },
+        },
+      }),
+  },
+  {
+    id: "PATCH /api/v1/listings/{id} (another seller's)",
+    method: 'PATCH',
+    path: '/api/v1/listings/{id}',
+    permission: 'listing:update_own',
+    ownership: 'explicit — owner only, NO override',
+    expect: {
+      buyer: 403,
+      moderator: 403,
+      support: 403,
+      finance: 403,
+      admin: 403,
+      seller: 404,
+      business_seller: 404,
+      super_admin: 404,
+    },
+    denied: 401,
+    run: async (user, actors) =>
+      callRoute(patchListing, '/api/v1/listings/x', {
+        method: 'PATCH',
+        token: user?.accessToken ?? null,
+        params: { id: await actors.makeForeignListing() },
+        body: { title: 'Hijacked by the matrix' },
+      }),
+  },
+  {
+    id: "DELETE /api/v1/listings/{id} (another seller's)",
+    method: 'DELETE',
+    path: '/api/v1/listings/{id}',
+    permission: 'listing:delete_own',
+    ownership: 'explicit — owner only, NO override',
+    expect: {
+      buyer: 403,
+      moderator: 403,
+      support: 403,
+      finance: 403,
+      admin: 403,
+      seller: 404,
+      business_seller: 404,
+      super_admin: 404,
+    },
+    denied: 401,
+    run: async (user, actors) =>
+      callRoute(deleteListing, '/api/v1/listings/x', {
+        method: 'DELETE',
+        token: user?.accessToken ?? null,
+        params: { id: await actors.makeForeignListing() },
+      }),
+  },
+  {
+    id: "POST /api/v1/listings/{id}/status (remove another seller's)",
+    method: 'POST',
+    path: '/api/v1/listings/{id}/status',
+    permission: 'listing:publish OR listing:moderate',
+    ownership: 'owner, or listing:moderate',
+    // Moderation is exactly what SHOULD reach another seller's listing, so
+    // roles holding listing:moderate succeed where sellers get 404.
+    expect: {
+      buyer: 403,
+      support: 403,
+      finance: 403,
+      seller: 404,
+      business_seller: 404,
+      moderator: 200,
+      admin: 200,
+      super_admin: 200,
+    },
+    denied: 401,
+    run: async (user, actors) =>
+      callRoute(listingTransition, '/api/v1/listings/x/status', {
+        method: 'POST',
+        token: user?.accessToken ?? null,
+        params: { id: await actors.makeForeignListing('ACTIVE') },
+        body: { to: 'REMOVED' },
+      }),
+  },
+  {
+    id: "POST /api/v1/listings/{id}/images (another seller's)",
+    method: 'POST',
+    path: '/api/v1/listings/{id}/images',
+    permission: 'listing:update_own',
+    ownership: 'explicit — owner only, NO override',
+    expect: {
+      buyer: 403,
+      moderator: 403,
+      support: 403,
+      finance: 403,
+      admin: 403,
+      seller: 404,
+      business_seller: 404,
+      super_admin: 404,
+    },
+    denied: 401,
+    run: async (user, actors) =>
+      callRoute(startImageUpload, '/api/v1/listings/x/images', {
+        method: 'POST',
+        token: user?.accessToken ?? null,
+        params: { id: await actors.makeForeignListing() },
+        body: {},
       }),
   },
 ];
@@ -402,7 +547,11 @@ const observed: Array<{ route: string; role: RoleKey; expected: number; actual: 
 
 describe.skipIf(!hasDatabase)('authorization matrix', () => {
   const users = new Map<RoleKey, TestUser>();
-  const actors: Actors = { foreignProfileId: '', foreignSessionId: '' };
+  const actors: Actors = {
+    foreignProfileId: '',
+    foreignSessionId: '',
+    makeForeignListing: async () => '',
+  };
 
   beforeAll(async () => {
     await clearRateLimits();
@@ -414,6 +563,14 @@ describe.skipIf(!hasDatabase)('authorization matrix', () => {
       m.prisma.refreshToken.findFirstOrThrow({ where: { userId: stranger.id } }),
     );
     actors.foreignSessionId = session.id;
+    actors.makeForeignListing = async (status = 'DRAFT') => {
+      const listing = await createTestListing({
+        ownerSellerProfileId: stranger.sellerProfileId!,
+        status,
+        withReadyImage: status === 'ACTIVE',
+      });
+      return listing.id;
+    };
 
     for (const role of ROLES) {
       if (role === 'guest') continue;
@@ -478,7 +635,14 @@ describe.skipIf(!hasDatabase)('authorization matrix', () => {
           let user: TestUser | null = null;
           if (role !== 'guest') {
             user = routeCase.freshUser
-              ? await createTestUser({ roles: [role], twoFactor: STAFF.has(role), stepUp: true })
+              ? await createTestUser({
+                  roles: [role],
+                  twoFactor: STAFF.has(role),
+                  stepUp: true,
+                  withSellerProfile:
+                    routeCase.freshUser === 'with-seller-profile' &&
+                    (role === 'seller' || role === 'business_seller'),
+                })
               : (users.get(role) ?? null);
           }
           const result = await routeCase.run(user, actors);

@@ -34,3 +34,7 @@ Thumbs.db
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# Local object storage. The LocalStorageDriver writes uploaded and re-encoded
+# images here when LOCAL_STORAGE_DIR is unset. User content, never committed.
+.storage/

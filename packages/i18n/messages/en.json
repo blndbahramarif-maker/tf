@@ -10,15 +10,142 @@
     "tagline": "The marketplace for Kurdish communities across Europe",
     "defaultDescription": "Buy and sell with Kurdish communities across Europe on {brandName}."
   },
-  "foundation": {
-    "heading": "{brandName} — foundation",
-    "status": "Phase 1: project skeleton. No marketplace features are implemented yet.",
-    "localeLine": "Active locale: {locale} ({nativeName})",
-    "directionLine": "Layout direction: {direction}",
-    "docsHint": "Architecture and roadmap live in the docs directory of this repository."
+  "nav": {
+    "home": "Home",
+    "categories": "Categories",
+    "breadcrumb": "Breadcrumb",
+    "browseAll": "Browse everything",
+    "sell": "Sell"
+  },
+  "home": {
+    "heroHeading": "Buy and sell within the Kurdish community",
+    "heroSubheading": "Cars, electronics, clothing and businesses — listed by people you can find, in the language you speak. {brandName} is where the community trades.",
+    "browseHeading": "Browse by category",
+    "noCategories": "No categories are open yet.",
+    "categoryListingCount": "{count, plural, =0 {No listings yet} one {# listing} other {# listings}}",
+    "categorySubcount": "{count, plural, one {# subcategory} other {# subcategories}}",
+    "recentHeading": "Recently listed",
+    "noListings": "Nothing has been listed yet. Be the first.",
+    "totalActive": "{count} listings are live right now."
+  },
+  "search": {
+    "label": "Search listings",
+    "placeholder": "Search for anything",
+    "submit": "Search",
+    "title": "Browse listings",
+    "titleWithTerm": "Results for “{term}”",
+    "narrowByCategory": "Narrow by category",
+    "noResults": "Nothing matched. Try fewer filters or a shorter search.",
+    "emptyPrompt": "Type something above to start searching.",
+    "resultsCount": "{count, plural, =0 {No results} one {# result} other {# results}}",
+    "resultsCapped": "More than {count} results",
+    "sortLabel": "Sort by",
+    "sort": {
+      "relevance": "Relevance",
+      "newest": "Newest",
+      "price_asc": "Price: low to high",
+      "price_desc": "Price: high to low"
+    },
+    "paginationLabel": "Pagination",
+    "firstPage": "First page",
+    "nextPage": "Next page"
+  },
+  "filters": {
+    "heading": "Filters",
+    "priceRange": "Price ({currency})",
+    "priceFrom": "From",
+    "priceTo": "To",
+    "condition": "Condition",
+    "anyCondition": "Any condition",
+    "any": "Any",
+    "from": "From",
+    "to": "To",
+    "apply": "Apply filters",
+    "clear": "Clear"
+  },
+  "category": {
+    "metaDescription": "Browse {category} listings.",
+    "subcategories": "Subcategories",
+    "results": "Listings",
+    "flowNotice": {
+      "BUY_NOW": "Items in this category are bought and paid for through the platform.",
+      "OFFER_THEN_PAY": "Buyers make an offer in this category, and pay once the seller accepts.",
+      "FEE_ONLY": "High-value sales in this category are arranged directly between buyer and seller. Only the platform fee is paid here — never the purchase price.",
+      "CONTACT_ONLY": "Listings in this category are for contact only. No payment is taken through the platform."
+    }
+  },
+  "listing": {
+    "noImage": "No photo",
+    "gallery": "Photos",
+    "imageNumber": "Photo {number}",
+    "descriptionHeading": "Description",
+    "detailsHeading": "Details",
+    "quantity": "{count, plural, one {# available} other {# available}}",
+    "verifiedSeller": "Verified seller",
+    "location": "Location",
+    "published": "Listed",
+    "seller": "Seller",
+    "price": {
+      "free": "Free",
+      "onRequest": "Price on request",
+      "negotiable": "or nearest offer"
+    },
+    "condition": {
+      "NEW": "New",
+      "LIKE_NEW": "Like new",
+      "GOOD": "Good",
+      "FAIR": "Fair",
+      "FOR_PARTS": "For parts",
+      "NOT_APPLICABLE": "Not applicable"
+    },
+    "contactNotice": {
+      "BUY_NOW": "Buying and messaging are not open yet. Checkout arrives with the payments release.",
+      "OFFER_THEN_PAY": "Making an offer is not open yet. It arrives with the offers release.",
+      "FEE_ONLY": "Contacting the seller is not open yet. For this category the sale is arranged directly and only the platform fee is ever paid online.",
+      "CONTACT_ONLY": "Contacting the seller is not open yet. It arrives with the messaging release."
+    }
+  },
+  "sell": {
+    "title": "How selling works",
+    "intro": "{brandName} is built for sellers who want to reach the Kurdish community directly, with fees that stay small and rules that stay the same for everyone.",
+    "stepsHeading": "What a listing goes through",
+    "steps": {
+      "account": {
+        "title": "Create a seller profile",
+        "body": "A seller profile carries your display name and, once you are verified, a badge buyers can see."
+      },
+      "category": {
+        "title": "Choose a category",
+        "body": "The category decides which details a listing needs, how long it runs, how many photos it takes, and whether a verified account is required."
+      },
+      "details": {
+        "title": "Fill in the details",
+        "body": "Each category asks for its own fields — mileage and fuel type for a car, storage and warranty for a phone. Required fields are checked before a listing can be published."
+      },
+      "images": {
+        "title": "Add photos",
+        "body": "Every photo is re-encoded on upload, and location data embedded by your camera is stripped before anyone else can see it."
+      },
+      "publish": {
+        "title": "Publish",
+        "body": "Some categories publish straight away. Others go to review first, which is why a high-value listing takes longer to appear."
+      }
+    },
+    "categoriesHeading": "Categories open for listings",
+    "availabilityHeading": "What is available today",
+    "availabilityBody": "Listings, photos and search are built and working through the platform's API. The seller dashboard for creating and managing listings in the browser is not built yet — it arrives with the accounts release, together with signing in on the web."
+  },
+  "footer": {
+    "tagline": "The marketplace for Kurdish communities across Europe.",
+    "legalLine": "© {year} {legalName}, registered in {jurisdiction}. {brandName} is a trading name.",
+    "companyNumber": "Company number {companyNumber}.",
+    "contact": "Contact support",
+    "phaseNotice": "This site is under active development. Payments, messaging and seller accounts are not open yet."
   },
   "errors": {
     "notFound": "We could not find that page.",
+    "notFoundHint": "The listing may have been removed, sold, or never published.",
+    "backHome": "Back to the home page",
     "generic": "Something went wrong. Please try again."
   }
 }

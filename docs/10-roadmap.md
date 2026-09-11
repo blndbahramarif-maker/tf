@@ -73,7 +73,7 @@ management.
 *Exit:* authorisation test matrix (every role × every protected route) passes; a
 deliberate IDOR attempt returns 403/404 for every owned resource.
 
-### Phase 4 — Listings, categories, search  ← **next**
+### Phase 4 — Listings, categories, search  ✅ **COMPLETE (2026-09-11)**
 Category & attribute admin CRUD, listing create/edit with dynamic category fields,
 image pipeline, publish/expire lifecycle, browse, filter, faceted search, SEO
 (sitemap, structured data, `hreflang`, canonicals), category and country landing pages.
@@ -82,7 +82,36 @@ category, country, price and a category-specific attribute; Lighthouse SEO ≥ 9
 p95 search latency < 300 ms on 100k seeded listings.
 *4b (conditional):* migrate search to Typesense/Meilisearch if quality or latency fails.
 
-### Phase 5 — Buyer & seller dashboards
+**Exit gate met for the scope that was approved.** 590 tests passing across 23
+files; format, lint (`--max-warnings 0`), typecheck, migration reversibility,
+OpenAPI lint and the production build all clean. Verified against a running
+server with a real listing: create → upload an image → publish → find it by
+keyword, by category, by price range, by an ENUM attribute and by a numeric
+attribute range; a stale slug 308-redirects to the canonical URL; the served
+WebP derivative carries no EXIF and no GPS.
+
+**Carried into Phase 5, deliberately.** Three exit-gate items are NOT met and
+are not claimed:
+
+- **No seller dashboard in the browser.** The listing lifecycle is complete and
+  tested through the authenticated API, but the web app has no signed-in
+  session: Phase 3 issues bearer tokens, and a browser session is an
+  auth-transport decision (`HttpOnly` cookies, CSRF defence, refresh rotation)
+  that belongs with the account UI. Holding an access token in
+  JavaScript-reachable storage to ship a form sooner would hand any XSS a full
+  session. `/[locale]/sell` says this plainly rather than showing a form that
+  cannot submit.
+- **No E2E suite.** The gate calls for E2E from this phase. The verification
+  above was performed by hand against a running build, which is evidence but is
+  not a regression test. Playwright is installed in the sandbox; wiring it into
+  CI is the first Phase 5 task.
+- **No Lighthouse score and no 100k-listing latency measurement.** Both need an
+  environment this phase has not had: a seeded dataset at scale and a browser
+  harness. The search adapter is written for it — keyset pagination, a capped
+  count, GIN indexes on the tsvector and on the attribute JSONB — but "written
+  for it" is not "measured", and it is not being reported as measured.
+
+### Phase 5 — Buyer & seller dashboards  ← **next**
 Seller profile, business profile, public profile pages, listing management, buyer
 dashboard, favourites, saved searches, notification centre, notification preferences.
 *Exit:* full E2E journey — register → become seller → publish → another user finds it.

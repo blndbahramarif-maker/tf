@@ -4,6 +4,13 @@ import { GET as listSessions } from '../../app/api/v1/sessions/route';
 import { DELETE as revokeSession } from '../../app/api/v1/sessions/[id]/route';
 import { POST as createSellerProfile } from '../../app/api/v1/seller-profiles/route';
 import {
+  DELETE as deleteListing,
+  GET as getListing,
+  PATCH as patchListing,
+} from '../../app/api/v1/listings/[id]/route';
+import { POST as listingTransition } from '../../app/api/v1/listings/[id]/status/route';
+import { POST as startImageUpload } from '../../app/api/v1/listings/[id]/images/route';
+import {
   GET as getSellerProfile,
   PATCH as patchSellerProfile,
 } from '../../app/api/v1/seller-profiles/[id]/route';
@@ -11,6 +18,7 @@ import { prisma } from '@/infra/db/client';
 import {
   callRoute,
   clearRateLimits,
+  createTestListing,
   createTestUser,
   disconnect,
   hasDatabase,
@@ -301,6 +309,111 @@ describe.skipIf(!hasDatabase)('IDOR — horizontal privilege escalation', () => 
       });
       expect(created.userId).toBe(fresh.id);
       expect(created.userId).not.toBe(victim.id);
+    });
+  });
+
+  describe('listings — the Phase 4 owned resource', () => {
+    it("404s another seller's draft and leaks no content", async () => {
+      const listing = await createTestListing({
+        ownerSellerProfileId: victim.sellerProfileId!,
+        title: 'Confidential Unlisted Rolex',
+      });
+
+      const result = await callRoute(getListing, '/api/v1/listings/x', {
+        token: attacker.accessToken,
+        params: { id: listing.id },
+      });
+
+      expect(result.status).toBe(404);
+      expect(result.raw).not.toContain('Confidential Unlisted Rolex');
+      expect(result.raw).not.toContain(victim.sellerProfileId!);
+    });
+
+    it("cannot edit another seller's listing, and leaves it unchanged", async () => {
+      const listing = await createTestListing({
+        ownerSellerProfileId: victim.sellerProfileId!,
+        title: 'Victim Original Title',
+      });
+
+      const result = await callRoute(patchListing, '/api/v1/listings/x', {
+        method: 'PATCH',
+        token: attacker.accessToken,
+        params: { id: listing.id },
+        body: { title: 'Owned By Attacker', priceMinor: '1' },
+      });
+
+      expect(result.status).toBe(404);
+      const after = await prisma.listing.findUniqueOrThrow({ where: { id: listing.id } });
+      expect(after.title).toBe('Victim Original Title');
+      expect(after.priceMinor).not.toBe(1n);
+    });
+
+    it("cannot publish another seller's listing", async () => {
+      const listing = await createTestListing({
+        ownerSellerProfileId: victim.sellerProfileId!,
+        withReadyImage: true,
+      });
+
+      const result = await callRoute(listingTransition, '/api/v1/listings/x/status', {
+        method: 'POST',
+        token: attacker.accessToken,
+        params: { id: listing.id },
+        body: { to: 'ACTIVE' },
+      });
+
+      expect(result.status).toBe(404);
+      const after = await prisma.listing.findUniqueOrThrow({ where: { id: listing.id } });
+      expect(after.status).toBe('DRAFT');
+    });
+
+    it("cannot delete another seller's listing", async () => {
+      const listing = await createTestListing({ ownerSellerProfileId: victim.sellerProfileId! });
+
+      const result = await callRoute(deleteListing, '/api/v1/listings/x', {
+        method: 'DELETE',
+        token: attacker.accessToken,
+        params: { id: listing.id },
+      });
+
+      expect(result.status).toBe(404);
+      const after = await prisma.listing.findUniqueOrThrow({ where: { id: listing.id } });
+      expect(after.deletedAt).toBeNull();
+    });
+
+    it("cannot attach an image to another seller's listing", async () => {
+      const listing = await createTestListing({ ownerSellerProfileId: victim.sellerProfileId! });
+
+      const result = await callRoute(startImageUpload, '/api/v1/listings/x/images', {
+        method: 'POST',
+        token: attacker.accessToken,
+        params: { id: listing.id },
+        body: {},
+      });
+
+      expect(result.status).toBe(404);
+      expect(await prisma.listingImage.count({ where: { listingId: listing.id } })).toBe(0);
+    });
+
+    it('gives a foreign listing the same answer as a non-existent one', async () => {
+      const listing = await createTestListing({ ownerSellerProfileId: victim.sellerProfileId! });
+
+      const foreign = await callRoute(patchListing, '/api/v1/listings/x', {
+        method: 'PATCH',
+        token: attacker.accessToken,
+        params: { id: listing.id },
+        body: { title: 'x' },
+      });
+      const missing = await callRoute(patchListing, '/api/v1/listings/x', {
+        method: 'PATCH',
+        token: attacker.accessToken,
+        params: { id: orphanId() },
+        body: { title: 'x' },
+      });
+
+      expect(foreign.status).toBe(missing.status);
+      expect((foreign.body.error as { message: string }).message).toBe(
+        (missing.body.error as { message: string }).message,
+      );
     });
   });
 

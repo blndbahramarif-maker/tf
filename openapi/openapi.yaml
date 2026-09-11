@@ -7,7 +7,7 @@ info:
   description: |
     ## Status
 
-    **v0 — Phase 1 foundation.** This document establishes the conventions every
+    **v0 — Phases 1–4.** This document establishes the conventions every
     future endpoint must follow, and describes the endpoints that actually exist
     today. It deliberately does **not** describe unimplemented resources:
     a contract that promises endpoints which return 404 is worse than no
@@ -18,7 +18,7 @@ info:
     | Phase | Resources |
     |-------|-----------|
     | 3 | ✅ `/auth/*`, `/me`, `/sessions`, `/seller-profiles`, `/admin/users` |
-    | 4 | `/listings`, `/categories`, `/attributes`, `/search`, `/media` |
+    | 4 | ✅ `/categories`, `/listings`, `/listings/{id}/images`, `/uploads` |
     | 5 | `/sellers`, `/businesses`, `/favourites`, `/notifications` |
     | 6 | `/conversations`, `/messages`, `/offers` |
     | 7 | `/payments`, `/connect/onboarding`, `/webhooks/stripe` |
@@ -87,6 +87,25 @@ tags:
   - name: Staff
     description: Permission-gated surfaces. Staff roles additionally require
       two-factor authentication to be enrolled.
+
+  - name: Catalogue
+    description: |
+      Categories and their attribute definitions. Everything here is DATA,
+      editable by an administrator without a deploy: categories, the attributes
+      each one asks for, commission rates and transaction behaviour. No client
+      may branch on a category name or slug.
+  - name: Listings
+    description: |
+      Creating, editing, publishing and searching listings. Listings are owned
+      resources: ownership is verified server-side against the database, and a
+      non-owner receives 404 rather than 403 so ids cannot be enumerated.
+  - name: Media
+    description: |
+      Listing images. Bytes never pass through this API in production — the
+      client uploads to object storage with a presigned ticket, then asks the
+      API to validate and re-encode. Uploads are re-encoded from decoded pixels
+      and stripped of EXIF, so neither a polyglot payload nor the GPS
+      coordinates of a seller's home survives.
 
 paths:
   /health:
@@ -530,6 +549,570 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
+  /categories:
+    get:
+      tags: [Catalogue]
+      summary: The active category tree
+      operationId: listCategories
+      description: |
+        Public. Returns the whole active tree, localised against
+        `Accept-Language` with an English fallback.
+
+        Transaction behaviour (`transactionFlow`, `allowsOnlinePayment`,
+        `requiresApproval`, `maxImages`) is returned as DATA so a client adapts
+        to a category it has never seen. No client may branch on a category
+        name or slug: categories are editable by an administrator without a
+        deploy.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - name: locale
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/Locale' }
+          description: Overrides `Accept-Language`.
+      responses:
+        '200':
+          description: The category tree.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [locale, data]
+                properties:
+                  locale: { $ref: '#/components/schemas/Locale' }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/CategoryNode' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /categories/{slug}:
+    get:
+      tags: [Catalogue]
+      summary: One category with its attribute definitions
+      operationId: getCategory
+      description: |
+        Public. Returns the category plus every attribute definition that
+        applies to it, INCLUDING those inherited from its ancestors, with the
+        nearest definition of a key winning.
+
+        This is what drives the listing form: a client renders whatever fields
+        come back. Adding an attribute in the admin panel changes the form with
+        no deploy and no client release.
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string, maxLength: 120 }
+        - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: The category and its attributes.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [locale, category, attributes]
+                properties:
+                  locale: { $ref: '#/components/schemas/Locale' }
+                  category: { $ref: '#/components/schemas/CategoryDetail' }
+                  attributes:
+                    type: array
+                    items: { $ref: '#/components/schemas/AttributeDefinition' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /listings:
+    get:
+      tags: [Listings]
+      summary: Search and filter listings
+      operationId: searchListings
+      description: |
+        Public — browsing is how a marketplace is discovered. Only `ACTIVE`,
+        non-deleted listings are ever returned.
+
+        **Attribute filters.** Repeatable `attr.<key>=<value>` parameters filter
+        on category attributes. Several values for one key are OR-ed; different
+        keys are AND-ed. A single `attr.<key>=min:<n>` and/or
+        `attr.<key>=max:<n>` expresses a numeric range instead. Keys must match
+        `^[a-z][a-z0-9_]{0,40}$`; anything else is ignored rather than
+        rejected, so a stale bookmark still returns results.
+
+        **Price parameters are integer MINOR units**, matching the money
+        convention. `minPrice=5000` is £50.00.
+
+        **Facets** are only computed inside a category, because the attribute
+        keys come from that category's own definitions. Requesting
+        `facets=true` without `category` returns results with no `facets` key.
+
+        `totalMatches` is capped at 1000: an exact count over a large listing
+        table costs more than it is worth. A value of 1000 means "at least".
+      security: []
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 120 }
+          description: |
+            Free text. Matched against the listing's search vector and, as a
+            fallback, by trigram similarity on the title so a misspelling still
+            finds the listing. Sorani and Kurmanji have no PostgreSQL
+            dictionary, so there is no stemming for them (ADR-0003).
+        - name: category
+          in: query
+          schema: { type: string, maxLength: 200 }
+          description: |
+            Materialised category path, e.g. `/cars/`. Matches the category and
+            its whole subtree.
+        - name: country
+          in: query
+          schema: { type: string, minLength: 2, maxLength: 2 }
+        - name: city
+          in: query
+          schema: { type: string, maxLength: 80 }
+        - name: minPrice
+          in: query
+          schema: { type: string, pattern: '^\d{1,18}$' }
+          description: Integer minor units, inclusive.
+        - name: maxPrice
+          in: query
+          schema: { type: string, pattern: '^\d{1,18}$' }
+          description: Integer minor units, inclusive.
+        - name: condition
+          in: query
+          schema: { $ref: '#/components/schemas/ListingCondition' }
+        - name: sellerType
+          in: query
+          schema: { type: string, enum: [INDIVIDUAL, BUSINESS] }
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [relevance, newest, price_asc, price_desc]
+          description: |
+            Defaults to `relevance` when `q` is present and `newest` otherwise —
+            relevance ranking is meaningless without a search term.
+        - name: facets
+          in: query
+          schema: { type: boolean }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Matching listings.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, page, totalMatches]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ListingSummary' }
+                  page: { $ref: '#/components/schemas/PageInfo' }
+                  totalMatches:
+                    type: integer
+                    description: Capped at 1000.
+                  facets: { $ref: '#/components/schemas/Facets' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+    post:
+      tags: [Listings]
+      summary: Create a draft listing
+      operationId: createListing
+      description: |
+        Requires `listing:create` and a seller profile.
+
+        Creation NEVER publishes. The listing is created in `DRAFT`; it becomes
+        visible only through `POST /listings/{id}/status`, which is where the
+        category's approval rule is applied.
+
+        The seller is taken from the bearer token. There is no seller field in
+        the body, and one supplied would be ignored: identity never comes from
+        the request (CLAUDE.md, non-negotiable 14).
+
+        `attributes` is validated at runtime against the category's own
+        definitions. Unknown keys are REJECTED rather than dropped, so a typo
+        surfaces instead of silently losing data.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateListingRequest' }
+      responses:
+        '201':
+          description: The draft was created.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, slug, status]
+                properties:
+                  id: { type: string, format: uuid }
+                  slug: { type: string }
+                  status: { $ref: '#/components/schemas/ListingStatus' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: |
+            No seller profile, missing permission, or the category requires a
+            verified seller and this account is not verified. The verified-seller
+            rule is a FLAG on the category row, not a check against its name.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /listings/{id}:
+    get:
+      tags: [Listings]
+      summary: Read a listing
+      operationId: getListing
+      description: |
+        An `ACTIVE` listing is public. Any other status is visible only to its
+        owner, and to everyone else is indistinguishable from a listing that
+        does not exist.
+
+        `viewerIsOwner` tells a client whether it is looking at its own listing,
+        so it can show draft controls without a second request. It is derived
+        from the token, never from the request.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ListingId'
+      responses:
+        '200':
+          description: The listing.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [listing, viewerIsOwner]
+                properties:
+                  listing: { $ref: '#/components/schemas/Listing' }
+                  viewerIsOwner: { type: boolean }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+    patch:
+      tags: [Listings]
+      summary: Update the caller's own listing
+      operationId: updateListing
+      description: |
+        Owner only, and only while the listing is in an editable status
+        (`DRAFT`, `REJECTED`, `PAUSED`, `EXPIRED`). Editing a live listing means
+        pausing it first, so a buyer cannot be shown terms that change under
+        them.
+
+        A non-owner receives **404, never 403**: a 403 would confirm the listing
+        exists and turn this route into an oracle for enumerating other
+        people's ids (CLAUDE.md, non-negotiable 15).
+
+        The category cannot be changed — a different category implies a
+        different attribute set. Create a new listing instead.
+      parameters:
+        - $ref: '#/components/parameters/ListingId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateListingRequest' }
+      responses:
+        '200':
+          description: The updated listing.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  listing: { $ref: '#/components/schemas/Listing' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: The listing is in a status that cannot be edited.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+    delete:
+      tags: [Listings]
+      summary: Remove the caller's own listing
+      operationId: deleteListing
+      description: |
+        Soft delete. The row is retained with `deletedAt` set, because a listing
+        is referenced by conversations, offers and orders in later phases, and
+        because removing evidence of a dispute is not something a marketplace
+        should be able to do accidentally.
+      parameters:
+        - $ref: '#/components/parameters/ListingId'
+      responses:
+        '200':
+          description: Removed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [removed] }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /listings/{id}/status:
+    post:
+      tags: [Listings]
+      summary: Move a listing through its lifecycle
+      operationId: transitionListing
+      description: |
+        ONE endpoint driven by the state machine in
+        `src/domain/catalogue/listing-status.ts`, rather than a route per verb.
+        Adding a transition then needs no new route and no new permission
+        surface.
+
+        Which transitions are legal, and who may make them, is table data. An
+        owner publishes, pauses, marks sold and removes; a moderator approves
+        and rejects; expiry is the system's. A transition the table does not
+        contain is refused with 409 whoever asks.
+
+        Publishing resolves to `ACTIVE` or `PENDING_REVIEW` according to the
+        category's `requiresApproval` flag — never according to its name.
+      parameters:
+        - $ref: '#/components/parameters/ListingId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to]
+              properties:
+                to: { $ref: '#/components/schemas/ListingStatus' }
+                reason:
+                  type: string
+                  maxLength: 500
+                  description: Required when a moderator rejects a listing.
+      responses:
+        '200':
+          description: The listing's new status.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status]
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { $ref: '#/components/schemas/ListingStatus' }
+                  publishedAt: { type: [string, 'null'], format: date-time }
+                  expiresAt: { type: [string, 'null'], format: date-time }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: |
+            The transition is not legal from the current status for this actor,
+            or a precondition failed (for example, publishing with no images).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /listings/{id}/images:
+    post:
+      tags: [Media]
+      summary: Begin an image upload
+      operationId: createListingImageUpload
+      description: |
+        Owner only. Returns a short-lived upload ticket and creates a
+        placeholder row in `PENDING_UPLOAD`.
+
+        **Image bytes do not pass through this API.** In production the ticket
+        is an S3 presigned `PUT`, so upload traffic never touches the
+        application (docs/08-security-architecture.md). Locally the ticket
+        points at `/uploads/{token}`, which is the development stand-in for
+        that presigned URL.
+
+        The row is created BEFORE the bytes so an abandoned upload is visible
+        and can be swept, rather than leaving an orphaned object in the bucket.
+
+        The per-category image cap applies here, so an administrator can allow
+        more photos for one category than another without a deploy.
+      parameters:
+        - $ref: '#/components/parameters/ListingId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                declaredContentType:
+                  type: string
+                  maxLength: 100
+                  description: |
+                    Advisory only. The server decides the real format from the
+                    file's magic bytes and ignores this entirely.
+                altText: { type: string, maxLength: 200 }
+      responses:
+        '201':
+          description: The upload ticket.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UploadTicket' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: The category's image limit has been reached.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /listings/{id}/images/{imageId}:
+    post:
+      tags: [Media]
+      summary: Finalise an uploaded image
+      operationId: finaliseListingImage
+      description: |
+        Owner only. Called once the bytes are in storage. This is where the
+        upload is actually validated and made safe:
+
+        1. The real format is detected from MAGIC BYTES, never from the
+           declared content type or the filename. SVG is refused outright — it
+           is a script container, not a photograph.
+        2. Dimensions and pixel count are bounded before decoding, so a
+           decompression bomb is rejected rather than decoded.
+        3. The image is fully RE-ENCODED to WebP at fixed widths. Re-encoding
+           destroys polyglot payloads and any appended archive, because the
+           output is generated from decoded pixels rather than copied bytes.
+        4. EXIF is discarded, which removes the GPS coordinates of the seller's
+           home that a phone camera embeds by default. Orientation is applied
+           first so the picture is not left sideways.
+        5. The original upload is deleted. Only generated derivatives remain,
+           and only those are servable.
+
+        A rejected image leaves the row in `FAILED` rather than deleting it, so
+        a seller can see that the upload was refused and why.
+      parameters:
+        - $ref: '#/components/parameters/ListingId'
+        - name: imageId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                altText: { type: string, maxLength: 200 }
+                isPrimary: { type: boolean }
+      responses:
+        '200':
+          description: The processed image.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  image: { $ref: '#/components/schemas/ListingImage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Already processed, or no uploaded file was found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: |
+            The file was refused — not a supported image, too large, too many
+            pixels, or an SVG.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+    delete:
+      tags: [Media]
+      summary: Delete a listing image
+      operationId: deleteListingImage
+      description: |
+        Owner only. Removes the row and every generated derivative. If the
+        primary image is deleted, the next remaining image is promoted, so a
+        listing is never left with images but no primary.
+      parameters:
+        - $ref: '#/components/parameters/ListingId'
+        - name: imageId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [deleted] }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /uploads/{token}:
+    put:
+      tags: [Media]
+      summary: Upload image bytes (local storage driver only)
+      operationId: putUpload
+      description: |
+        **Development and test only.** This endpoint exists so the full upload
+        pipeline can run without object storage, and it is the local stand-in
+        for an S3 presigned `PUT`. With the S3 driver configured it is not
+        reachable, and in production the application refuses to start without
+        that driver.
+
+        Authorisation is the token itself: an HMAC-signed, expiring ticket that
+        names one storage key and one byte ceiling. It carries no session and
+        grants nothing else. An expired or tampered token is rejected before any
+        bytes are read.
+
+        The body is opaque bytes. Nothing here trusts the content type, and
+        nothing is servable until `POST /listings/{id}/images/{imageId}` has
+        validated and re-encoded it.
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        '200':
+          description: Bytes stored. The file is NOT yet validated or servable.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [uploaded] }
+                  bytes: { type: integer }
+        '401':
+          description: The upload ticket is invalid or has expired.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: The local storage driver is not in use.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Empty upload, or larger than the ticket's ceiling.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -537,16 +1120,15 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: |
-        Short-lived access token (15 minutes). Used by mobile clients and by
-        server-to-server callers. Obtained from `/auth/token` (Phase 3).
-    sessionCookie:
-      type: apiKey
-      in: cookie
-      name: kurdora_session
-      description: |
-        Browser session. The refresh token is held in an `HttpOnly`, `Secure`,
-        `SameSite=Lax` cookie and is rotated on every use, with reuse detection.
-        Cookie-authenticated mutations additionally require a CSRF token.
+        Short-lived access token (15 minutes). Obtained from `/auth/login` and
+        renewed through `/auth/refresh`.
+
+        This is currently the ONLY authentication scheme. A cookie-based browser
+        session — `HttpOnly`, `SameSite`, CSRF-protected, with rotation — is
+        deliberately not described here because it does not exist yet; it
+        arrives with the account UI in Phase 5. Documenting it now would invite
+        a client to store an access token where a cross-site script could read
+        it.
 
   parameters:
     IdempotencyKey:
@@ -584,6 +1166,16 @@ components:
         type: string
         default: en
       description: 'Supported: `en`, `ckb`, `kmr`, `ar`.'
+
+    ListingId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: |
+        Validated as a UUID before it reaches the database. A malformed id is a
+        404, not a 500 — an unparseable id makes PostgreSQL raise, and that
+        error must never reach a client.
 
   schemas:
     Money:
@@ -718,6 +1310,339 @@ components:
           items:
             $ref: '#/components/schemas/DependencyProbe'
 
+    ListingStatus:
+      type: string
+      enum: [DRAFT, PENDING_REVIEW, ACTIVE, PAUSED, SOLD, EXPIRED, REJECTED, REMOVED]
+
+    ListingCondition:
+      type: string
+      enum: [NEW, LIKE_NEW, GOOD, FAIR, FOR_PARTS, NOT_APPLICABLE]
+
+    PriceType:
+      type: string
+      enum: [FIXED, NEGOTIABLE, ON_REQUEST, FREE]
+      description: |
+        A listing with no amount is not an error. `FREE`, `ON_REQUEST` and an
+        unpriced `NEGOTIABLE` listing are all legitimate, and a client must not
+        render them as zero.
+
+    TransactionFlow:
+      type: string
+      enum: [BUY_NOW, OFFER_THEN_PAY, FEE_ONLY, CONTACT_ONLY]
+      description: |
+        How a sale in this category is transacted. Configuration on the category
+        row, editable by an administrator.
+
+        `FEE_ONLY` is the high-value regime: the purchase principal is settled
+        directly between buyer and seller and NEVER passes through the platform
+        or its bank account. Only the commission is charged online
+        (docs/12-decisions-log.md, DL-2; docs/04-payments-architecture.md).
+
+        Payment itself is Phase 7. This field is the configuration surface those
+        flows will read, exposed now so clients are built against data rather
+        than against a list of category names.
+
+    AttributeDataType:
+      type: string
+      enum: [TEXT, NUMBER, INTEGER, BOOLEAN, ENUM, MULTI_ENUM, DATE]
+
+    CategoryNode:
+      type: object
+      required: [id, slug, path, depth, name, transactionFlow, children]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        path:
+          type: string
+          description: |
+            Materialised path, delimited at both ends (`/cars/`). Pass it to
+            `GET /listings?category=` to search a whole subtree.
+          examples: ['/cars/']
+        depth: { type: integer }
+        icon: { type: [string, 'null'] }
+        name:
+          type: string
+          description: Localised, falling back to English. Never a raw slug when a translation exists.
+        description: { type: [string, 'null'] }
+        transactionFlow: { $ref: '#/components/schemas/TransactionFlow' }
+        allowsOnlinePayment: { type: boolean }
+        requiresApproval:
+          type: boolean
+          description: When true, publishing moves the listing to `PENDING_REVIEW` rather than `ACTIVE`.
+        maxImages: { type: integer }
+        activeListingCount: { type: integer }
+        children:
+          type: array
+          items: { $ref: '#/components/schemas/CategoryNode' }
+
+    CategoryDetail:
+      type: object
+      required: [id, slug, path, name, transactionFlow]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        path: { type: string }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        transactionFlow: { $ref: '#/components/schemas/TransactionFlow' }
+        allowsOnlinePayment: { type: boolean }
+        requiresApproval: { type: boolean }
+        requiresVerifiedSeller:
+          type: boolean
+          description: |
+            When true, only a seller whose account is `VERIFIED` may create a
+            listing here. Enforced server-side before attribute validation.
+        maxImages: { type: integer }
+        listingDurationDays: { type: integer }
+
+    AttributeDefinition:
+      type: object
+      required: [key, dataType, isRequired, label, options]
+      properties:
+        key:
+          type: string
+          pattern: '^[a-z][a-z0-9_]{0,40}$'
+          examples: ['mileage']
+        dataType: { $ref: '#/components/schemas/AttributeDataType' }
+        unit:
+          type: [string, 'null']
+          description: Display unit only. Never part of the stored value.
+          examples: ['mi']
+        isRequired: { type: boolean }
+        validation:
+          type: object
+          additionalProperties: true
+          description: |
+            `min`, `max`, `step`, `pattern` or `maxLength`, as set by an
+            administrator. Enforced server-side against the attribute's data
+            type; a client should mirror it for a better form, never rely on it.
+        label: { type: string, description: 'Localised, falling back to English.' }
+        helpText: { type: [string, 'null'] }
+        options:
+          type: array
+          description: Present for ENUM and MULTI_ENUM attributes.
+          items:
+            type: object
+            required: [value, label]
+            properties:
+              value: { type: string }
+              label: { type: string }
+
+    ListingSummary:
+      type: object
+      required: [id, slug, title, currency, priceType, condition, categorySlug]
+      description: One search result. Enough to render a card, no more.
+      properties:
+        id: { type: string, format: uuid }
+        slug:
+          type: string
+          description: |
+            SEO slug. Decorative — the id alone resolves the listing, so a
+            renamed listing never 404s and never loses its inbound links.
+        title: { type: string }
+        contentLocale:
+          $ref: '#/components/schemas/Locale'
+          description: |
+            The language the SELLER wrote in, which may differ from the
+            request's locale. Render it with `dir="auto"` and this `lang`:
+            a Sorani title inside an English page must read right-to-left
+            without mirroring the surrounding layout.
+        priceMinor:
+          type: [string, 'null']
+          pattern: '^\d+$'
+          description: Integer minor units as a string. Null for an unpriced listing.
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        priceType: { $ref: '#/components/schemas/PriceType' }
+        condition: { $ref: '#/components/schemas/ListingCondition' }
+        categorySlug: { type: string }
+        countryCode: { type: string, minLength: 2, maxLength: 2 }
+        citySlug: { type: [string, 'null'] }
+        cityName: { type: [string, 'null'] }
+        publishedAt: { type: [string, 'null'], format: date-time }
+        primaryImageUrl: { type: [string, 'null'] }
+        sellerDisplayName: { type: string }
+        sellerSlug: { type: string }
+
+    Listing:
+      type: object
+      required: [id, slug, title, description, status, currency, priceType, images]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        title: { type: string }
+        description:
+          type: string
+          description: |
+            Plain text as the seller wrote it. It is NEVER HTML and must not be
+            rendered as HTML by any client.
+        contentLocale: { $ref: '#/components/schemas/Locale' }
+        status: { $ref: '#/components/schemas/ListingStatus' }
+        priceMinor: { type: [string, 'null'], pattern: '^\d+$' }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        priceType: { $ref: '#/components/schemas/PriceType' }
+        condition: { $ref: '#/components/schemas/ListingCondition' }
+        quantity: { type: integer }
+        attributes:
+          type: object
+          additionalProperties: true
+          description: |
+            Category attribute values, keyed by attribute key. This is the JSONB
+            projection used for filtering; the normalised
+            `listing_attribute_values` rows remain the source of truth and are
+            written in the same transaction.
+        categorySlug: { type: string }
+        countryCode: { type: string }
+        citySlug: { type: [string, 'null'] }
+        publishedAt: { type: [string, 'null'], format: date-time }
+        expiresAt: { type: [string, 'null'], format: date-time }
+        rejectionReason:
+          type: [string, 'null']
+          description: Set by a moderator when the listing was rejected.
+        createdAt: { type: string, format: date-time }
+        seller:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            slug: { type: string }
+            displayName: { type: string }
+        images:
+          type: array
+          description: Fully processed images only. Anything still in the pipeline is excluded.
+          items: { $ref: '#/components/schemas/ListingImage' }
+        pendingImageCount:
+          type: integer
+          description: Images still being processed. Meaningful to the owner only.
+
+    ListingImage:
+      type: object
+      required: [id, url, position, isPrimary]
+      properties:
+        id: { type: string, format: uuid }
+        url: { type: string }
+        position: { type: integer }
+        isPrimary: { type: boolean }
+        width: { type: [integer, 'null'] }
+        height: { type: [integer, 'null'] }
+        altText: { type: [string, 'null'] }
+        moderationStatus:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+        variants:
+          type: object
+          description: |
+            Generated WebP derivatives keyed by name (`thumb` 320px, `card`
+            720px, `full` 1600px). Build a `srcSet` from these rather than
+            re-scaling the original — there is no original to re-scale, it is
+            deleted after processing.
+          additionalProperties: { type: string }
+
+    UploadTicket:
+      type: object
+      required: [imageId, upload, finaliseUrl]
+      properties:
+        imageId: { type: string, format: uuid }
+        upload:
+          type: object
+          required: [url, method, expiresAt, maxBytes]
+          properties:
+            url:
+              type: string
+              description: |
+                Where to PUT the bytes. An S3 presigned URL in production; the
+                local `/uploads/{token}` stand-in in development.
+            method: { type: string, enum: [PUT] }
+            headers:
+              type: object
+              additionalProperties: { type: string }
+              description: Headers that MUST be sent with the upload.
+            expiresAt: { type: string, format: date-time }
+            maxBytes:
+              type: integer
+              description: Hard ceiling. A larger body is refused before it is read.
+        finaliseUrl:
+          type: string
+          description: Call this after uploading to validate, re-encode and publish the image.
+        position: { type: integer }
+        isPrimary: { type: boolean }
+
+    CreateListingRequest:
+      type: object
+      required: [categorySlug, title, description, countryCode]
+      properties:
+        categorySlug: { type: string, minLength: 1, maxLength: 120 }
+        title: { type: string, minLength: 3, maxLength: 140 }
+        description: { type: string, minLength: 10, maxLength: 10000 }
+        contentLocale:
+          $ref: '#/components/schemas/Locale'
+          description: |
+            The language the seller is writing in. Defaults to `en`. Content is
+            never machine-translated silently.
+        priceMinor: { type: string, pattern: '^\d{1,18}$' }
+        currency: { type: string, minLength: 3, maxLength: 3, default: GBP }
+        priceType: { $ref: '#/components/schemas/PriceType' }
+        countryCode: { type: string, minLength: 2, maxLength: 2 }
+        citySlug: { type: string, maxLength: 80 }
+        condition: { $ref: '#/components/schemas/ListingCondition' }
+        quantity: { type: integer, minimum: 1, maximum: 9999, default: 1 }
+        attributes:
+          type: object
+          additionalProperties: true
+          description: |
+            Category-specific values keyed by attribute key. Validated against
+            the category's definitions from `GET /categories/{slug}`. There is
+            no static schema for these because an administrator can add an
+            attribute without a deploy.
+
+    UpdateListingRequest:
+      type: object
+      description: |
+        Every field is optional. `categorySlug` and `countryCode` are absent on
+        purpose: changing either invalidates the listing's attribute set or its
+        location rules.
+      properties:
+        title: { type: string, minLength: 3, maxLength: 140 }
+        description: { type: string, minLength: 10, maxLength: 10000 }
+        contentLocale: { $ref: '#/components/schemas/Locale' }
+        priceMinor: { type: string, pattern: '^\d{1,18}$' }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        priceType: { $ref: '#/components/schemas/PriceType' }
+        citySlug: { type: [string, 'null'], maxLength: 80 }
+        condition: { $ref: '#/components/schemas/ListingCondition' }
+        quantity: { type: integer, minimum: 1, maximum: 9999 }
+        attributes:
+          type: object
+          additionalProperties: true
+
+    FacetValue:
+      type: object
+      required: [value, count]
+      properties:
+        value: { type: string }
+        count: { type: integer }
+
+    Facets:
+      type: object
+      description: |
+        Counts for what the reader could narrow to next, computed with the
+        current filters applied so they match the result list rather than
+        promising rows the filters would exclude.
+      properties:
+        categories:
+          type: array
+          items: { $ref: '#/components/schemas/FacetValue' }
+        conditions:
+          type: array
+          items: { $ref: '#/components/schemas/FacetValue' }
+        cities:
+          type: array
+          items: { $ref: '#/components/schemas/FacetValue' }
+        attributes:
+          type: object
+          description: Attribute key to observed values with counts.
+          additionalProperties:
+            type: array
+            items: { $ref: '#/components/schemas/FacetValue' }
+
   responses:
     BadRequest:
       description: Validation failed.
@@ -751,5 +1676,4 @@ components:
             $ref: '#/components/schemas/Error'
 
 security:
-  - sessionCookie: []
   - bearerAuth: []

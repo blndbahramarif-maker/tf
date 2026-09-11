@@ -5,11 +5,17 @@ Read `docs/README.md` before making architectural changes. Read
 
 ## Current state
 
-**Phase 3 complete: authentication and authorization.** The schema, migrations,
-seeds, double-entry ledger, auth flows, RBAC guards, rate limiting and audit
-logging exist. There is still no marketplace UI: no listings, no search, no
-messaging, no payments. Phase 4 (listings) has not started.
-See `docs/10-roadmap.md`.
+**Phase 4 complete: listings, categories, search, images and the public
+marketplace UI.** On top of Phases 1-3 (schema, migrations, seeds, ledger, auth,
+RBAC, rate limiting, audit logging) there is now a dynamic category tree with
+inherited attributes, the listing lifecycle, image upload with re-encoding, a
+PostgreSQL search adapter, and server-rendered browse, category, search and
+listing pages in English and Sorani with the SEO surface.
+
+There is still NO messaging, NO payments and NO seller dashboard in the browser:
+creating and managing listings goes through the authenticated API, because the
+web app has no signed-in session yet. Browser sessions arrive with the account
+UI in Phase 5. See `docs/10-roadmap.md`.
 
 ## Commands
 
@@ -21,7 +27,11 @@ pnpm db:seed          # seed configuration (idempotent)
 pnpm dev              # http://localhost:3000/en
 pnpm worker           # background worker (separate process)
 
-pnpm verify           # format + lint + typecheck + test + openapi  ← run before every commit
+pnpm verify           # format + lint + typecheck + migrations + test + openapi
+                      # ← run before every commit
+pnpm build            # production build. Do NOT export NODE_ENV from .env.local:
+                      # Next sets it itself, and forcing `development` makes the
+                      # build fail to prerender.
 ```
 
 Database tests (`tests/db/*`) only run when `TEST_DATABASE_URL` is set. They
@@ -77,7 +87,17 @@ Set `enabled: true` only after native-speaker review.
 
 **An API endpoint:** define the schema in `src/shared`, document it in
 `openapi/openapi.yaml`, implement in `app/api/v1/`, use `src/lib/api/respond.ts`
-for the envelope. Money-moving endpoints require `Idempotency-Key`.
+for the envelope. Money-moving endpoints require `Idempotency-Key`. The
+documentation is enforced: `tests/api-contract.test.ts` fails if a route file
+exports a method the OpenAPI document does not describe, and if the document
+describes an endpoint with no route file.
+
+**A page:** server component by default. Read data through
+`src/infra/catalogue/read-model.ts` rather than fetching our own HTTP API, keep
+filters in the URL with a plain GET form so they are shareable and work without
+JavaScript, and give every page `alternates` from `src/lib/seo/urls.ts` so the
+Sorani version is discoverable. Seller-written text is rendered with `dir="auto"`
+and its own `lang`, never as HTML.
 
 **Business logic:** it goes in `src/domain`, with unit tests that need no
 database.

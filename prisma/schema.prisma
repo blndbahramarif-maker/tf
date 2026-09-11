@@ -125,6 +125,20 @@ enum ListingCondition {
   @@map("listing_condition")
 }
 
+/// Where an image is in the upload → validate → re-encode → serve pipeline.
+enum ImageUploadStatus {
+  /// A presigned URL has been issued; no bytes have been validated yet.
+  PENDING_UPLOAD
+  /// Bytes received; magic-byte checks and re-encoding in progress.
+  PROCESSING
+  /// Derivatives generated and safe to serve.
+  READY
+  /// Rejected — wrong magic bytes, too large, or unreadable.
+  FAILED
+
+  @@map("image_upload_status")
+}
+
 enum ModerationStatus {
   PENDING
   APPROVED
@@ -883,6 +897,12 @@ model Listing {
   /// normalised rows, which remain the source of truth (docs/03).
   attributes Json @default("{}")
 
+  /// Full-text search vector, maintained by a database trigger so it can never
+  /// drift from the row. Typed as Unsupported because Prisma has no tsvector:
+  /// it is written by the trigger and read through raw SQL, never by the
+  /// client. See the search_documents migration.
+  searchDocument Unsupported("tsvector")?  @map("search_document")
+
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
@@ -934,8 +954,11 @@ model ListingAttributeValue {
 model ListingImage {
   id         String  @id @default(uuid(7)) @db.Uuid
   listingId  String  @map("listing_id") @db.Uuid
+  /// Key of the ORIGINAL upload. Never served to users directly — only the
+  /// re-encoded derivatives are, because the original is attacker-supplied.
   storageKey String  @map("storage_key")
-  url        String
+  /// Public URL of the primary derivative. Empty until processing succeeds.
+  url        String  @default("")
   position   Int     @default(0)
   /// Only ONE primary image per listing, enforced by a partial unique index.
   isPrimary  Boolean @default(false) @map("is_primary")
@@ -943,14 +966,29 @@ model ListingImage {
   height     Int?
   blurhash   String?
   altText    String? @map("alt_text")
-  /// Images are only visible after processing and moderation.
+
+  /// Upload pipeline state. An image is servable only at READY.
+  uploadStatus ImageUploadStatus @default(PENDING_UPLOAD) @map("upload_status")
+  /// Format DETECTED from magic bytes, never the client's Content-Type.
+  contentType  String?           @map("content_type")
+  byteSize     Int?              @map("byte_size")
+  /// SHA-256 of the stored original, for deduplication and audit.
+  checksumSha256 String?         @map("checksum_sha256")
+  /// Derivative keys by size, e.g. { "thumb": "...", "card": "...", "full": "..." }.
+  variants     Json              @default("{}")
+  failureReason String?          @map("failure_reason")
+  processedAt   DateTime?        @map("processed_at") @db.Timestamptz(6)
+
+  /// Images are only visible after processing AND moderation.
   moderationStatus ModerationStatus @default(PENDING) @map("moderation_status")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([listingId, position])
+  @@index([uploadStatus, createdAt])
   @@map("listing_images")
 }
 

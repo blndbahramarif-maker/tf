@@ -2,23 +2,150 @@
   "common": {
     "skipToContent": "Biçe naveroka sereke",
     "languageLabel": "Ziman",
-    "directionLabel": "Arasteya nivîsê",
+    "directionLabel": "Araseteya nivîsê",
     "loading": "Tê barkirin…"
   },
   "meta": {
     "siteName": "{brandName}",
-    "tagline": "Bazara civakên kurd li seranserê Ewrûpayê",
-    "defaultDescription": "Li {brandName} bi civakên kurd ên Ewrûpayê re bikirin û bifroşin."
+    "tagline": "Bazara civakên kurd li seranserê Ewropayê",
+    "defaultDescription": "Li {brandName} bi civakên kurd ên li seranserê Ewropayê re bikirin û bifiroşin."
   },
-  "foundation": {
-    "heading": "{brandName} — bingeh",
-    "status": "Qonaxa 1: skeleta projeyê. Hê tu taybetmendiyên bazarê nehatine çêkirin.",
-    "localeLine": "Zimanê çalak: {locale} ({nativeName})",
-    "directionLine": "Arasteya sêwiranê: {direction}",
-    "docsHint": "Mîmarî û rênexşe di peldanka docs a vê depoyê de ne."
+  "nav": {
+    "home": "Destpêk",
+    "categories": "Kategorî",
+    "breadcrumb": "Rêwîtî",
+    "browseAll": "Hemûyan bibîne",
+    "sell": "Bifiroşe"
+  },
+  "home": {
+    "heroHeading": "Di nav civaka kurd de bikirin û bifiroşin",
+    "heroSubheading": "Otomobîl, elektronîk, cil û berg û karsazî — ji aliyê kesên ku tu dikarî bibînî ve, bi zimanê ku tu diaxivî. {brandName} cihê ku civak lê bazirganiyê dike.",
+    "browseHeading": "Li gorî kategoriyê bigere",
+    "noCategories": "Hîn tu kategorî vekirî nîne.",
+    "categoryListingCount": "{count, plural, =0 {Hîn tu îlan nîne} one {# îlan} other {# îlan}}",
+    "categorySubcount": "{count, plural, one {# jêrkategorî} other {# jêrkategorî}}",
+    "recentHeading": "Îlanên dawî",
+    "noListings": "Hîn tiştek nehatiye danîn. Bibe yê yekem.",
+    "totalActive": "{count} îlan niha çalak in."
+  },
+  "search": {
+    "label": "Li îlanan bigere",
+    "placeholder": "Li her tiştî bigere",
+    "submit": "Bigere",
+    "title": "Îlanan bibîne",
+    "titleWithTerm": "Encamên bo «{term}»",
+    "narrowByCategory": "Li gorî kategoriyê teng bike",
+    "noResults": "Tiştek li hev nehat. Kêmtir parzûn an lêgerîneke kurttir biceribîne.",
+    "emptyPrompt": "Ji bo destpêkirina lêgerînê li jor tiştekî binivîse.",
+    "resultsCount": "{count, plural, =0 {Tu encam nîne} one {# encam} other {# encam}}",
+    "resultsCapped": "Zêdetirî {count} encaman",
+    "sortLabel": "Rêz bike li gorî",
+    "sort": {
+      "relevance": "Girêdayîbûn",
+      "newest": "Ya herî nû",
+      "price_asc": "Biha: ji kêm bo zêde",
+      "price_desc": "Biha: ji zêde bo kêm"
+    },
+    "paginationLabel": "Rûpel",
+    "firstPage": "Rûpela yekem",
+    "nextPage": "Rûpela pêş"
+  },
+  "filters": {
+    "heading": "Parzûn",
+    "priceRange": "Biha ({currency})",
+    "priceFrom": "Ji",
+    "priceTo": "Heta",
+    "condition": "Rewş",
+    "anyCondition": "Her rewşek",
+    "any": "Her yek",
+    "from": "Ji",
+    "to": "Heta",
+    "apply": "Parzûnan bicîh bike",
+    "clear": "Paqij bike"
+  },
+  "category": {
+    "metaDescription": "Îlanên {category} bibîne.",
+    "subcategories": "Jêrkategorî",
+    "results": "Îlan",
+    "flowNotice": {
+      "BUY_NOW": "Tiştên vê kategoriyê bi rêya platformê têne kirîn û pere lê tê dayîn.",
+      "OFFER_THEN_PAY": "Di vê kategoriyê de kirryar pêşniyara bihayê dike, û dema firoşyar qebûl kir pere dide.",
+      "FEE_ONLY": "Firotinên bi biha yên vê kategoriyê rasterast di navbera kirryar û firoşyar de tên rêkxistin. Li vir tenê heqê platformê tê dayîn — qet bihayê tiştî na.",
+      "CONTACT_ONLY": "Îlanên vê kategoriyê tenê ji bo têkiliyê ne. Bi rêya platformê tu pere nayê girtin."
+    }
+  },
+  "listing": {
+    "noImage": "Wêne nîne",
+    "gallery": "Wêne",
+    "imageNumber": "Wêneya {number}",
+    "descriptionHeading": "Danasîn",
+    "detailsHeading": "Hûragahî",
+    "quantity": "{count, plural, one {# heye} other {# hene}}",
+    "verifiedSeller": "Firoşyarê pejirandî",
+    "location": "Cih",
+    "published": "Hatiye weşandin",
+    "seller": "Firoşyar",
+    "price": {
+      "free": "Belaş",
+      "onRequest": "Biha bi daxwazê",
+      "negotiable": "an pêşniyara herî nêz"
+    },
+    "condition": {
+      "NEW": "Nû",
+      "LIKE_NEW": "Wek nû",
+      "GOOD": "Baş",
+      "FAIR": "Navîn",
+      "FOR_PARTS": "Ji bo parçeyan",
+      "NOT_APPLICABLE": "Ne girêdayî ye"
+    },
+    "contactNotice": {
+      "BUY_NOW": "Kirîn û peyamnîşandan hîn vekirî nînin. Dayîn bi weşana pereyan re tê.",
+      "OFFER_THEN_PAY": "Pêşniyarkirin hîn vekirî nîne. Bi weşana pêşniyaran re tê.",
+      "FEE_ONLY": "Têkiliya bi firoşyar re hîn vekirî nîne. Di vê kategoriyê de firotin rasterast tê rêkxistin û tenê heqê platformê bi rêya înternetê tê dayîn.",
+      "CONTACT_ONLY": "Têkiliya bi firoşyar re hîn vekirî nîne. Bi weşana peyaman re tê."
+    }
+  },
+  "sell": {
+    "title": "Firotin çawa dixebite",
+    "intro": "{brandName} ji bo firoşyarên ku dixwazin rasterast bigihîjin civaka kurd hatiye çêkirin, bi heqên biçûk û rêzikên ku ji bo herkesî wek hev in.",
+    "stepsHeading": "Îlanek di çi re derbas dibe",
+    "steps": {
+      "account": {
+        "title": "Profîleke firoşyarê çêke",
+        "body": "Profîla firoşyarê navê te yê xuyakirinê hildigire, û piştî ku hatî pejirandin, nîşanek ku kirryar dibînin."
+      },
+      "category": {
+        "title": "Kategoriyekê hilbijêre",
+        "body": "Kategorî diyar dike ka îlanek çi hûragahî hewce dike, çiqas dimîne, çend wêneyan digire, û ka hesabeke pejirandî pêwîst e."
+      },
+      "details": {
+        "title": "Hûragahiyan tije bike",
+        "body": "Her kategorî qadên xwe dixwaze — mesafe û cureyê sotemeniyê ji bo otomobîlekê, bîrgeh û garantî ji bo telefonekê. Qadên pêwîst berî weşandinê têne kontrolkirin."
+      },
+      "images": {
+        "title": "Wêneyan zêde bike",
+        "body": "Her wêne di dema barkirinê de ji nû ve tê kodkirin, û agahiya cihê ku kameraya te tê de bi cih kiriye berî ku kesek bibîne tê rakirin."
+      },
+      "publish": {
+        "title": "Biweşîne",
+        "body": "Hin kategorî rasterast têne weşandin. Hinên din pêşî diçin nirxandinê, ji ber vê yekê îlaneke bi biha dereng xuya dibe."
+      }
+    },
+    "categoriesHeading": "Kategoriyên vekirî ji bo îlanan",
+    "availabilityHeading": "Ya ku îro berdest e",
+    "availabilityBody": "Îlan, wêne û lêgerîn hatine çêkirin û bi rêya API ya platformê dixebitin. Panela firoşyarê ji bo çêkirin û birêvebirina îlanan di geroka webê de hîn nehatiye çêkirin — bi weşana hesaban re tê, tevî têketina li ser webê."
+  },
+  "footer": {
+    "tagline": "Bazara civakên kurd li seranserê Ewropayê.",
+    "legalLine": "© {year} {legalName}, li {jurisdiction} qeydkirî. {brandName} navekî bazirganî ye.",
+    "companyNumber": "Hejmara pargîdaniyê {companyNumber}.",
+    "contact": "Bi piştgiriyê re têkilî daynin",
+    "phaseNotice": "Ev malper di bin pêşxistinê de ye. Dayîn, peyam û hesabên firoşyar hîn vekirî nînin."
   },
   "errors": {
-    "notFound": "Me nekarî wê rûpelê bibînin.",
+    "notFound": "Me nikarî wê rûpelê bibînin.",
+    "notFoundHint": "Dibe ku îlan hatibe rakirin, hatibe firotin, an qet nehatibe weşandin.",
+    "backHome": "Vegere rûpela destpêkê",
     "generic": "Tiştek çewt çû. Ji kerema xwe dîsa biceribîne."
   }
 }
