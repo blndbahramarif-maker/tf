@@ -111,12 +111,22 @@ are not claimed:
   count, GIN indexes on the tsvector and on the attribute JSONB — but "written
   for it" is not "measured", and it is not being reported as measured.
 
-### Phase 5 — Buyer & seller dashboards  ← **next**
+### Phase 5 — Seller dashboard & browser sessions  ✅ **COMPLETE (2026-09-11)**
 Seller profile, business profile, public profile pages, listing management, buyer
 dashboard, favourites, saved searches, notification centre, notification preferences.
 *Exit:* full E2E journey — register → become seller → publish → another user finds it.
 
-### Phase 6 — Messaging & offers
+**Delivered:** cookie session transport (ADR-0012), CSRF, sign-up/verify/sign-in/
+sign-out, seller dashboard (overview, listings, create/edit, images,
+publish/pause/sold, profile, session visibility), 25 Playwright E2E tests, CI
+E2E job.
+
+**NOT delivered, carried to a later phase:** buyer dashboard, favourites, saved
+searches, notification centre and preferences, business profile, public seller
+profile pages. Phase 5's scope as approved was the SELLER dashboard and the
+browser authentication transport; those items were not in it.
+
+### Phase 6 — Messaging & offers  ← **next**
 Realtime conversations, read receipts, attachments, block, report, offer lifecycle
 (make/counter/accept/decline/expire), risk scoring feeding the moderation queue.
 *Exit:* message delivery survives a server restart; offer state machine fully tested

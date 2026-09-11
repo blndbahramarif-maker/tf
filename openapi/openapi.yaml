@@ -287,6 +287,51 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '429': { $ref: '#/components/responses/RateLimited' }
 
+  /auth/session:
+    get:
+      tags: [Authentication]
+      summary: Browser silent refresh
+      operationId: refreshBrowserSession
+      description: |
+        **Browser only.** Rotates the session using the `kurdora_rt` cookie and
+        redirects back to `next`, writing fresh cookies on the way.
+
+        It exists because a React Server Component can READ cookies but cannot
+        WRITE them. A page whose access cookie has expired therefore cannot
+        rotate its own session; it redirects here instead.
+
+        A GET is acceptable for something that changes state here because the
+        refresh cookie is `SameSite=Strict` and scoped to `/api/v1/auth`: a
+        cross-site request cannot carry it at all, so a CSRF attempt against
+        this endpoint arrives with no token and rotates nothing. The worst an
+        attacker achieves by forcing a same-site navigation is making the
+        victim's session rotate, which costs the victim nothing.
+
+        Reuse detection is unchanged — this calls the same rotation the API
+        uses, so replaying an already-rotated token still revokes the entire
+        family and signs the browser out.
+
+        `next` is constrained to a path on this origin. An absolute URL, a
+        protocol-relative `//host` or a backslash-escaped path all fall back to
+        `/`, so this cannot be used as an open redirect.
+      security: []
+      parameters:
+        - name: next
+          in: query
+          required: false
+          schema: { type: string }
+          description: Relative path to return to. Anything off-origin is ignored.
+      responses:
+        '303':
+          description: |
+            Redirect to `next`. Carries `Set-Cookie` for the rotated session, or
+            cleared cookies when the refresh token was absent, expired or reused.
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+            Location:
+              schema: { type: string }
+
   /auth/logout:
     post:
       tags: [Authentication]
@@ -1123,12 +1168,41 @@ components:
         Short-lived access token (15 minutes). Obtained from `/auth/login` and
         renewed through `/auth/refresh`.
 
-        This is currently the ONLY authentication scheme. A cookie-based browser
-        session — `HttpOnly`, `SameSite`, CSRF-protected, with rotation — is
-        deliberately not described here because it does not exist yet; it
-        arrives with the account UI in Phase 5. Documenting it now would invite
-        a client to store an access token where a cross-site script could read
-        it.
+        Used by API and mobile clients. The browser uses the cookie scheme
+        below instead, and must NOT store this token: putting an access token
+        in `localStorage` turns any XSS on the origin into a durable account
+        takeover.
+
+    sessionCookies:
+      type: apiKey
+      in: cookie
+      name: kurdora_at
+      description: |
+        **Browser session.** Three cookies, with deliberately different scopes:
+
+        | Cookie | Contents | Flags | Path |
+        |---|---|---|---|
+        | `kurdora_at` | access token | `HttpOnly`, `SameSite=Lax` | `/` |
+        | `kurdora_rt` | refresh token | `HttpOnly`, `SameSite=Strict` | `/api/v1/auth` |
+        | `kurdora_csrf` | CSRF token | readable by script | `/` |
+        | `kurdora_sess` | presence marker, no secret | `HttpOnly` | `/` |
+
+        `Secure` is set on all of them except over plain-HTTP local development.
+
+        The refresh token is scoped to the only path that consumes it, so it is
+        not attached to ordinary page loads at all. `kurdora_csrf` is readable
+        on purpose — it is echoed back by forms and authenticates nobody by
+        itself. `kurdora_sess` exists only so a page can tell "signed out" from
+        "access token expired", since the refresh cookie is not visible to page
+        routes.
+
+        **Every cookie-authenticated state-changing request requires a CSRF
+        token**, sent either as an `X-CSRF-Token` header or a `_csrf` form
+        field. The token is an HMAC over the session family, so a token minted
+        for another session — or planted by an attacker who can write cookies
+        on the domain — is refused. Bearer-authenticated requests do not
+        require one, because a cross-origin page cannot set an `Authorization`
+        header.
 
   parameters:
     IdempotencyKey:
@@ -1677,3 +1751,4 @@ components:
 
 security:
   - bearerAuth: []
+  - sessionCookies: []

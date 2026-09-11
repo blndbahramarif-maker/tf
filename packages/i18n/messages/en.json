@@ -147,5 +147,225 @@
     "notFoundHint": "The listing may have been removed, sold, or never published.",
     "backHome": "Back to the home page",
     "generic": "Something went wrong. Please try again."
+  },
+  "auth": {
+    "errors": {
+      "unauthenticated": "Email or password is incorrect.",
+      "forbidden": "That account cannot sign in right now.",
+      "conflict": "That email address is already registered.",
+      "validation_failed": "Please check the details you entered.",
+      "rate_limited": "Too many attempts. Please wait and try again.",
+      "unknown": "Something went wrong. Please try again."
+    },
+    "login": {
+      "title": "Sign in",
+      "subtitle": "Manage your listings and your seller profile.",
+      "email": "Email address",
+      "password": "Password",
+      "totpCode": "Authentication code",
+      "totpHint": "Only needed if you have two-factor authentication enabled.",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "noAccount": "No account yet?",
+      "registerLink": "Create one",
+      "verifiedNotice": "Your email is verified. You can sign in now."
+    },
+    "register": {
+      "title": "Create an account",
+      "subtitle": "Sell to the Kurdish community across Europe.",
+      "displayName": "Your name",
+      "email": "Email address",
+      "password": "Password",
+      "passwordHint": "At least 12 characters. Length beats complexity.",
+      "acceptTerms": "I accept the terms and the privacy policy.",
+      "submit": "Create account",
+      "submitting": "Creating…",
+      "haveAccount": "Already have an account?",
+      "loginLink": "Sign in",
+      "checkEmail": "Check your email for a verification link.",
+      "devOnly": "Development only — verification token"
+    },
+    "verify": {
+      "title": "Verify your email",
+      "subtitle": "Paste the token from your verification email.",
+      "token": "Verification token",
+      "tokenHint": "This is filled in automatically when you follow the emailed link.",
+      "submit": "Verify",
+      "submitting": "Verifying…"
+    }
+  },
+  "dashboard": {
+    "nav": {
+      "sectionLabel": "Dashboard sections",
+      "overview": "Overview",
+      "listings": "Listings",
+      "profile": "Seller profile",
+      "security": "Security",
+      "signOut": "Sign out",
+      "verifyEmailNotice": "Verify your email address to publish listings."
+    },
+    "errors": {
+      "unauthenticated": "Please sign in again.",
+      "session_expired": "Your session expired. Please sign in again.",
+      "suspended": "This account is not active.",
+      "csrf": "Your session could not be verified. Reload the page and try again.",
+      "forbidden": "You do not have permission to do that.",
+      "not_found": "That listing could not be found.",
+      "conflict": "That change is not allowed in the listing's current state.",
+      "validation": "Please check the details you entered.",
+      "unknown": "Something went wrong. Please try again."
+    },
+    "status": {
+      "DRAFT": "Draft",
+      "PENDING_REVIEW": "In review",
+      "ACTIVE": "Live",
+      "PAUSED": "Paused",
+      "SOLD": "Sold",
+      "EXPIRED": "Expired",
+      "REJECTED": "Rejected",
+      "REMOVED": "Removed"
+    },
+    "home": {
+      "title": "Overview",
+      "verified": "Verified",
+      "newListing": "New listing",
+      "recentHeading": "Recently updated",
+      "noListings": "You have not created any listings yet.",
+      "noSellerProfile": "You need a seller profile before you can list anything.",
+      "createSellerProfile": "Set up your seller profile"
+    },
+    "listings": {
+      "title": "Your listings",
+      "newListing": "New listing",
+      "filterLabel": "Filter by status",
+      "all": "All",
+      "empty": "Nothing here yet.",
+      "columnTitle": "Listing",
+      "columnStatus": "Status",
+      "columnCategory": "Category",
+      "columnPrice": "Price",
+      "columnImages": "Photos",
+      "columnUpdated": "Updated"
+    },
+    "listingForm": {
+      "chooseCategory": "What are you selling?",
+      "chooseCategoryHint": "The category decides which details a listing needs.",
+      "newIn": "New listing in {category}",
+      "verifiedSellerRequired": "This category requires a verified seller account. You can prepare a draft now.",
+      "title": "Title",
+      "titleError": "Between 3 and 140 characters.",
+      "description": "Description",
+      "descriptionError": "Between 10 and 10,000 characters.",
+      "priceMinor": "Price",
+      "priceHint": "In pence. £649.99 is 64999.",
+      "priceType": "Price type",
+      "condition": "Condition",
+      "choose": "Choose…",
+      "create": "Create draft",
+      "creating": "Creating…",
+      "save": "Save changes",
+      "saving": "Saving…",
+      "saved": "Changes saved.",
+      "working": "Working…",
+      "publish": "Publish",
+      "pause": "Pause",
+      "resume": "Resume",
+      "markSold": "Mark as sold",
+      "unpublish": "Back to draft",
+      "viewPublic": "View public page",
+      "backToListings": "Back to listings",
+      "detailsHeading": "Listing details",
+      "pauseToEdit": "Pause this listing to edit it.",
+      "removeImage": "Remove",
+      "priceTypes": {
+        "FIXED": "Fixed price",
+        "NEGOTIABLE": "Negotiable",
+        "ON_REQUEST": "Price on request",
+        "FREE": "Free"
+      },
+      "conditions": {
+        "NEW": "New",
+        "LIKE_NEW": "Like new",
+        "GOOD": "Good",
+        "FAIR": "Fair",
+        "FOR_PARTS": "For parts",
+        "NOT_APPLICABLE": "Not applicable"
+      },
+      "priceError": {
+        "required_for_fixed_price": "A fixed-price listing needs a price.",
+        "not_an_integer": "Enter the price in pence, digits only.",
+        "below_category_minimum": "Below the minimum for this category."
+      },
+      "attributeError": {
+        "required": "This field is required.",
+        "unknown_attribute": "That field does not belong to this category.",
+        "wrong_type": "That value is the wrong type.",
+        "not_an_option": "Choose one of the available options.",
+        "out_of_range": "That value is out of range.",
+        "too_long": "That value is too long.",
+        "invalid_date": "That is not a valid date."
+      }
+    },
+    "images": {
+      "heading": "Photos",
+      "limit": "Up to {max} photos. Location data is removed from every upload.",
+      "addLabel": "Add a photo",
+      "altLabel": "Describe the photo",
+      "makePrimary": "Use as the main photo",
+      "upload": "Upload",
+      "primary": "Main photo",
+      "removeLabel": "Remove this photo",
+      "status": {
+        "PENDING_UPLOAD": "Waiting",
+        "PROCESSING": "Processing",
+        "READY": "Ready",
+        "FAILED": "Rejected"
+      },
+      "errors": {
+        "forbidden": "You cannot add photos to that listing.",
+        "not_found": "That listing could not be found.",
+        "no_file": "Choose a file first.",
+        "too_large": "That file is too large.",
+        "image_limit": "This category's photo limit has been reached.",
+        "image_rejected": "That file was rejected. Photos only — not documents or archives."
+      }
+    },
+    "profile": {
+      "title": "Seller profile",
+      "noProfile": "You do not have a seller profile yet.",
+      "publicSlug": "Public address",
+      "verification": "Verification",
+      "totalListings": "Listings",
+      "displayName": "Display name",
+      "displayNameError": "Between 2 and 120 characters.",
+      "about": "About you",
+      "save": "Save profile",
+      "saving": "Saving…",
+      "saved": "Profile saved.",
+      "verificationStatus": {
+        "UNVERIFIED": "Not verified",
+        "PENDING": "In review",
+        "VERIFIED": "Verified",
+        "REJECTED": "Rejected"
+      }
+    },
+    "security": {
+      "title": "Security",
+      "emailVerified": "Email verified",
+      "twoFactor": "Two-factor",
+      "roles": "Roles",
+      "yes": "Yes",
+      "no": "No",
+      "enabled": "Enabled",
+      "disabled": "Not enabled",
+      "sessionsHeading": "Active sessions",
+      "sessionsHint": "Every device currently signed in to your account.",
+      "thisSession": "This device",
+      "columnStarted": "Started",
+      "columnLastUsed": "Last used",
+      "columnIp": "IP address",
+      "columnDevice": "Device",
+      "stepUpNotice": "Changing your password and revoking other sessions require re-authentication, which is not available in the browser yet."
+    }
   }
 }

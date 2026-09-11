@@ -27,6 +27,7 @@ export type AuditAction =
   | 'auth.totp_enrolled'
   | 'auth.totp_verification_failed'
   | 'authz.denied'
+  | 'authz.csrf_rejected'
   | 'listing.created'
   | 'listing.updated'
   | 'listing.transitioned'

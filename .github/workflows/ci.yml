@@ -93,6 +93,12 @@ jobs:
       - name: Verify seeds are idempotent
         run: pnpm run db:seed && pnpm run db:seed
 
+      - name: Check migration reversibility
+        # Every migration must ship a down.sql, and none may drop a raw-SQL
+        # object without recreating it. Prisma has generated spurious DROP
+        # INDEX statements for the hand-written indexes twice.
+        run: pnpm run check:migrations
+
       - name: Lint API contract
         run: pnpm run openapi:lint
 
@@ -101,6 +107,83 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+  e2e:
+    name: End-to-end (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: kurdora
+          POSTGRES_PASSWORD: kurdora_ci
+          POSTGRES_DB: kurdora_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U kurdora -d kurdora_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    env:
+      APP_ENV: test
+      # NODE_ENV is deliberately NOT set here. `next build` sets it to
+      # production itself, and forcing `development` produces a development
+      # bundle that fails to prerender.
+      DATABASE_URL: postgresql://kurdora:kurdora_ci@localhost:5432/kurdora_test?schema=public
+      # The E2E run creates its OWN database (kurdora_e2e) from this connection,
+      # so it never touches the unit-test database.
+      TEST_DATABASE_URL: postgresql://kurdora:kurdora_ci@localhost:5432/kurdora_test?schema=public
+      REDIS_URL: redis://localhost:6379
+      AUTH_SECRET: ci-only-auth-secret-at-least-32-characters-long
+      AUTH_ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000001'
+      E2E_PORT: '3100'
+      APP_URL: http://localhost:3100
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate
+
+      - name: Install Playwright browser
+        # Chromium only, with its system dependencies. Installing all three
+        # engines triples the download for no extra coverage at this stage.
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Run end-to-end tests
+        # The Playwright config starts the app itself and prepares the E2E
+        # database as the first half of that command, so there is no ordering
+        # to get wrong here.
+        run: pnpm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: test-results/
+          retention-days: 7
 
   secrets:
     name: Secret scan

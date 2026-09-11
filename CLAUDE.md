@@ -5,17 +5,15 @@ Read `docs/README.md` before making architectural changes. Read
 
 ## Current state
 
-**Phase 4 complete: listings, categories, search, images and the public
-marketplace UI.** On top of Phases 1-3 (schema, migrations, seeds, ledger, auth,
-RBAC, rate limiting, audit logging) there is now a dynamic category tree with
-inherited attributes, the listing lifecycle, image upload with re-encoding, a
-PostgreSQL search adapter, and server-rendered browse, category, search and
-listing pages in English and Sorani with the SEO surface.
+**Phase 5 complete: browser sessions and the seller dashboard.** On top of
+Phases 1-4 there is now a cookie-based browser session (HttpOnly access and
+refresh cookies, signed double-submit CSRF), sign-up / verify / sign-in / sign-out
+pages, and a signed-in seller dashboard covering the listing lifecycle, image
+management, seller profile and session visibility. A Playwright E2E suite runs
+against a production build and is wired into CI.
 
-There is still NO messaging, NO payments and NO seller dashboard in the browser:
-creating and managing listings goes through the authenticated API, because the
-web app has no signed-in session yet. Browser sessions arrive with the account
-UI in Phase 5. See `docs/10-roadmap.md`.
+There is still NO messaging, NO payments, NO offers, NO subscriptions, NO
+advertising, NO reviews and NO moderation UI. See `docs/10-roadmap.md`.
 
 ## Commands
 
@@ -29,6 +27,8 @@ pnpm worker           # background worker (separate process)
 
 pnpm verify           # format + lint + typecheck + migrations + test + openapi
                       # ← run before every commit
+pnpm test:e2e         # Playwright. Requires a CURRENT production build —
+                      # `next start` serves whatever .next contains.
 pnpm build            # production build. Do NOT export NODE_ENV from .env.local:
                       # Next sets it itself, and forcing `development` makes the
                       # build fail to prerender.
@@ -79,6 +79,17 @@ genuinely wrong, change the rule deliberately and write an ADR.
     A 403 there confirms the resource exists and enumerates other people's ids.
 16. **Validate an id with `isUuid()` before querying.** An unparseable id makes
     Postgres throw and leaks a database error in a 500.
+17. **No authentication material in JavaScript's reach.** Access and refresh
+    tokens live in `HttpOnly` cookies only — never `localStorage`,
+    `sessionStorage`, a JS variable, or rendered into HTML. An E2E test asserts
+    both storages are empty after login. (ADR-0012)
+18. **Every cookie-authenticated state change requires a CSRF token.** Enforced
+    inside `requireAccess` and `requireActionAccess`, so a route or action that
+    forgets fails closed. Bearer callers are exempt by design — a cross-origin
+    page cannot set an `Authorization` header.
+19. **A Server Action is a public POST endpoint.** It re-runs the full guard —
+    session, account status, CSRF, permissions — and then verifies ownership
+    against the database. Being "internal" is not a security property.
 
 ## Adding things
 
@@ -91,6 +102,12 @@ for the envelope. Money-moving endpoints require `Idempotency-Key`. The
 documentation is enforced: `tests/api-contract.test.ts` fails if a route file
 exports a method the OpenAPI document does not describe, and if the document
 describes an endpoint with no route file.
+
+**A dashboard action:** `"use server"`, first line `requireActionAccess(form, ...)`,
+then load the resource scoped by the session's user id, then act. An id from a
+form field is a lookup key, never proof of ownership. A non-owner gets
+`not_found`, never `forbidden`. A `"use server"` module may only export async
+functions — put shared constants and types in a sibling file.
 
 **A page:** server component by default. Read data through
 `src/infra/catalogue/read-model.ts` rather than fetching our own HTTP API, keep

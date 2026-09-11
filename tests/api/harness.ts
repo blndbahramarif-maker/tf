@@ -25,6 +25,14 @@ export interface CallOptions {
   params?: Record<string, string>;
   searchParams?: Record<string, string>;
   ip?: string;
+  /**
+   * Cookies to send, exercising the BROWSER transport rather than the bearer
+   * one. Set this to test what a browser can do, including what it should be
+   * refused when a CSRF token is absent or forged.
+   */
+  cookies?: Record<string, string>;
+  /** Convenience: sets the `X-CSRF-Token` header. */
+  csrfHeader?: string | null;
 }
 
 export interface CallResult {
@@ -61,6 +69,16 @@ export async function callRoute(
     ...options.headers,
   });
   if (options.token) headers.set('authorization', `Bearer ${options.token}`);
+
+  if (options.cookies) {
+    headers.set(
+      'cookie',
+      Object.entries(options.cookies)
+        .map(([name, value]) => `${name}=${encodeURIComponent(value)}`)
+        .join('; '),
+    );
+  }
+  if (options.csrfHeader) headers.set('x-csrf-token', options.csrfHeader);
 
   const request = new Request(url, {
     method: options.method ?? 'GET',

@@ -12,6 +12,7 @@ import {
 } from '@/domain/rbac/ownership';
 import { STEP_UP_WINDOW_MS } from '@/domain/auth/step-up';
 import { resolvePrincipal, type ResolvedPrincipal } from './principal';
+import { enforceCsrf } from './csrf-guard';
 import { fail, requestId } from './respond';
 import { prisma } from '@/infra/db/client';
 import { tryWriteAuditLog } from '@/infra/audit/audit-log';
@@ -94,7 +95,7 @@ function denialResponse(request: Request, reason: DenialReason, missing?: string
 export async function requireAccess(
   request: Request,
   requirement: AccessRequirement,
-  options: { now?: Date } = {},
+  options: { now?: Date; csrfFormToken?: string | null } = {},
 ): Promise<GuardResult<ResolvedPrincipal>> {
   const now = options.now ?? new Date();
   const resolution = await resolvePrincipal(request);
@@ -103,6 +104,33 @@ export async function requireAccess(
     const reason: DenialReason =
       resolution.reason === 'suspended' ? 'account_suspended' : 'unauthenticated';
     return { ok: false, response: denialResponse(request, reason) };
+  }
+
+  /*
+   * CSRF is enforced HERE rather than per route, for the same reason
+   * permissions are: a route that forgets to ask must fail closed, not open.
+   * It is a no-op for bearer callers and for safe methods, so API clients are
+   * unaffected — but no cookie-authenticated mutation can reach a handler
+   * without a valid token, whatever the handler remembered to do.
+   */
+  const csrf = enforceCsrf(request, {
+    transport: resolution.value.transport,
+    familyId: resolution.value.familyId,
+    formToken: options.csrfFormToken,
+  });
+  if (!csrf.ok) {
+    await tryWriteAuditLog(prisma, {
+      action: 'authz.csrf_rejected',
+      actorType: 'user',
+      actorId: resolution.value.principal.userId,
+      entityType: 'route',
+      entityId: null,
+      after: { method: request.method, path: new URL(request.url).pathname },
+      ip: clientIp(request),
+      userAgent: request.headers.get('user-agent'),
+      correlationId: requestId(request),
+    });
+    return { ok: false, response: csrf.response };
   }
 
   const decision = checkAccess(resolution.value.principal, requirement, {
