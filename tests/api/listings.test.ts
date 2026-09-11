@@ -1040,6 +1040,38 @@ describe.skipIf(!hasDatabase)('listings', () => {
       expect(secondIds.filter((id) => firstIds.includes(id))).toEqual([]);
     });
 
+    it('keeps totalMatches stable across pages', async () => {
+      // Regression: the count query shared its WHERE with the page query, so
+      // the cursor predicate narrowed it too and `totalMatches` counted down as
+      // the reader paged. The results header then reported the remainder as the
+      // total. Found by walking the live API, not by a test.
+      for (let i = 0; i < 5; i += 1) {
+        await createTestListing({
+          ownerSellerProfileId: seller.sellerProfileId!,
+          status: 'ACTIVE',
+          withReadyImage: true,
+          title: `Pagination stability probe ${i}`,
+        });
+      }
+
+      const first = await callRoute(listSearch, '/api/v1/listings', {
+        searchParams: { limit: '2', sort: 'newest' },
+      });
+      expect(first.status).toBe(200);
+      const firstTotal = first.body.totalMatches as number;
+      expect(firstTotal).toBeGreaterThanOrEqual(5);
+
+      const cursor = (first.body.page as { nextCursor: string | null }).nextCursor;
+      expect(cursor).not.toBeNull();
+
+      const second = await callRoute(listSearch, '/api/v1/listings', {
+        searchParams: { limit: '2', sort: 'newest', cursor: cursor! },
+      });
+      expect(second.status).toBe(200);
+      // The query did not change, so neither may the total.
+      expect(second.body.totalMatches).toBe(firstTotal);
+    }, 60_000);
+
     it('does not execute injected SQL in the query string', async () => {
       const result = await callRoute(listSearch, '/api/v1/listings', {
         searchParams: {

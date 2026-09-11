@@ -149,6 +149,16 @@ export class PostgresSearchAdapter implements SearchPort {
         break;
     }
 
+    /*
+     * The count describes the WHOLE result set for this query, so it is built
+     * BEFORE the cursor predicate narrows `conditions` to "rows after this
+     * one". Sharing one `where` between the page and the count made
+     * `totalMatches` count down as the reader paged — 7, then 4, then 1 for an
+     * unchanged query — and the results header reported the remainder as if it
+     * were the total.
+     */
+    const countWhere = Prisma.join(conditions, ' AND ');
+
     if (cursor !== null) {
       conditions.push(Prisma.sql`(${sortKey}, l."id"::text) > (${cursor.value}, ${cursor.id})`);
     }
@@ -194,7 +204,7 @@ export class PostgresSearchAdapter implements SearchPort {
     const countRows = await prisma.$queryRaw<{ total: bigint }[]>(Prisma.sql`
       SELECT count(*)::bigint AS total
       FROM (
-        SELECT l."id" ${FROM_CLAUSE} WHERE ${where} LIMIT ${MAX_COUNT}
+        SELECT l."id" ${FROM_CLAUSE} WHERE ${countWhere} LIMIT ${MAX_COUNT}
       ) capped
     `);
 
