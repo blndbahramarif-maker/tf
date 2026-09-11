@@ -170,6 +170,28 @@
     text-shadow:0 0 22px rgba(0,0,0,.9);
   }
 
+
+  /* contact, under the mark */
+  .card{
+    position:absolute; left:0; right:0; top:72%;
+    margin:0; padding:0 24px;
+    display:flex; gap:1em; align-items:center; justify-content:center;
+    flex-wrap:wrap;
+    font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:clamp(10px, .86vw, 13px); font-weight:500;
+    letter-spacing:.16em; text-transform:uppercase;
+    opacity:0;
+  }
+  .card a{
+    color:rgba(242,242,242,.8); text-decoration:none;
+    border-bottom:1px solid rgba(242,242,242,.24);
+    padding-bottom:.3em;
+    transition:color .3s ease, border-color .3s ease;
+  }
+  .card a:hover, .card a:focus-visible{ color:#fff; border-color:var(--blue) }
+  .card .sep{ width:5px; height:5px; background:var(--blue); flex:none }
+  .card .slot{ color:rgba(242,242,242,.42); border-bottom-style:dashed }
+
   /* the beat counter */
   .ticks{
     position:absolute; right:22px; top:50%; transform:translateY(-50%);
@@ -342,6 +364,14 @@
     <canvas aria-hidden="true"></canvas>
     <p class="say">Build what you want with</p>
     <h2 class="sr-mark">BLND</h2>
+
+    <p class="card">
+      <a href="mailto:blnd.123@outlook.com">blnd.123@outlook.com</a>
+      <span class="sep" aria-hidden="true"></span>
+      <!-- TODO: replace with the real number, then make this
+           <a href="tel:+44..."> and drop the slot class -->
+      <a class="slot" href="#">Phone number to add</a>
+    </p>
   </div>
 </section>
 
@@ -1070,6 +1100,7 @@
   if (!sec || !window.requestAnimationFrame) return;
   var cv  = sec.querySelector('canvas');
   var say = sec.querySelector('.say');
+  var card = sec.querySelector('.card');
   var ctx = cv && cv.getContext && cv.getContext('2d');
   if (!ctx) return;
 
@@ -1264,7 +1295,8 @@
       paint(blue[b], 'rgba(30,95,255,',   (b + 1) / BUCK);
     }
 
-    if (say) say.style.opacity = (ramp((form - 0.45) / 0.4) * (1 - loose)).toFixed(3);
+    if (say)  say.style.opacity  = (ramp((form - 0.45) / 0.4) * (1 - loose)).toFixed(3);
+    if (card) card.style.opacity = (ramp((form - 0.62) / 0.34) * (1 - loose)).toFixed(3);
 
     requestAnimationFrame(frame);
   }
