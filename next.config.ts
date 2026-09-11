@@ -25,9 +25,12 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   transpilePackages: ['@kurdora/brand', '@kurdora/i18n'],
-  experimental: {
-    typedRoutes: true,
-  },
+  typedRoutes: true,
+  /**
+   * Prisma's generated client is CommonJS and loads its runtime dynamically;
+   * bundling it breaks module resolution. Kept external on the server.
+   */
+  serverExternalPackages: ['@prisma/client', '@prisma/client-runtime-utils'],
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

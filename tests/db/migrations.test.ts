@@ -101,15 +101,26 @@ describe.skipIf(!hasDatabase)('migrations', () => {
   }, 120_000);
 
   it('reverses one step at a time', async () => {
+    // Reverses only the MOST RECENT migration, whichever that is, then
+    // re-applies. Deliberately does not name the newest migration: this test
+    // must keep working as migrations are added.
     const reversed = await migrateDown(url, 1, quiet);
     expect(reversed).toHaveLength(1);
 
     const partial = await withClient(url, snapshotSchema);
-    // The constraints migration is gone…
-    expect(partial.functions).not.toContain('kurdora_assert_ledger_balanced');
-    expect(partial.triggers).not.toContain('ledger_entries_must_balance');
-    // …but the tables from the init migration remain.
-    expect(partial.tables.length).toBeGreaterThan(40);
+
+    // Something was removed…
+    expect(partial.tables.length).toBeLessThanOrEqual(afterFirstUp.tables.length);
+    const removed =
+      afterFirstUp.tables.length -
+      partial.tables.length +
+      (afterFirstUp.enums.length - partial.enums.length) +
+      (afterFirstUp.checkConstraints.length - partial.checkConstraints.length);
+    expect(removed).toBeGreaterThan(0);
+
+    // …but the core schema from the init migration is still standing.
+    expect(partial.tables).toContain('users');
+    expect(partial.tables).toContain('ledger_entries');
 
     await runMigrations(url);
     const restored = await withClient(url, snapshotSchema);

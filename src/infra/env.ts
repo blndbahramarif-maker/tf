@@ -27,8 +27,13 @@ const serverSchema = z
 
     REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
 
-    /** Signing secret for sessions and tokens. Phase 3. */
+    /** Signs access tokens (HS256). Phase 3. */
     AUTH_SECRET: z.string().min(32).optional(),
+    /** Encrypts TOTP secrets at rest (AES-256-GCM). 32 bytes as 64 hex chars. */
+    AUTH_ENCRYPTION_KEY: z
+      .string()
+      .regex(/^[0-9a-f]{64}$/i, 'AUTH_ENCRYPTION_KEY must be 64 hex characters (32 bytes)')
+      .optional(),
 
     /** Object storage. Phase 4. */
     S3_ENDPOINT: z.string().optional(),
@@ -52,6 +57,7 @@ const serverSchema = z
     // them here means a misconfigured deploy fails at startup, visibly.
     const requiredInProduction: Array<keyof typeof env> = [
       'AUTH_SECRET',
+      'AUTH_ENCRYPTION_KEY',
       'S3_BUCKET',
       'S3_ACCESS_KEY_ID',
       'S3_SECRET_ACCESS_KEY',

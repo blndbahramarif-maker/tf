@@ -342,6 +342,13 @@ enum SettingScope {
   @@map("setting_scope")
 }
 
+enum VerificationPurpose {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+
+  @@map("verification_purpose")
+}
+
 enum OutboxStatus {
   PENDING
   PROCESSED
@@ -373,7 +380,12 @@ model User {
   failedLoginCount Int       @default(0) @map("failed_login_count")
   lockedUntil      DateTime? @map("locked_until") @db.Timestamptz(6)
 
-  /// Encrypted at rest by the application. Never returned by any API.
+  /// Set whenever the password changes. Sessions minted before this instant
+  /// are refused at refresh, so a password change kicks out a thief.
+  passwordChangedAt DateTime? @map("password_changed_at") @db.Timestamptz(6)
+
+  /// Encrypted at rest by the application (AES-256-GCM). Never returned by
+  /// any API, never logged.
   twoFactorSecretEnc String?   @map("two_factor_secret_enc")
   twoFactorEnabledAt DateTime? @map("two_factor_enabled_at") @db.Timestamptz(6)
 
@@ -406,6 +418,8 @@ model User {
   idempotencyKeys    IdempotencyKey[]
   consents           ConsentRecord[]
   dataRequests       DataSubjectRequest[]
+  verificationTokens VerificationToken[]
+  recoveryCodes      TwoFactorRecoveryCode[]
 
   @@index([status, createdAt])
   @@index([deletedAt])
@@ -438,6 +452,10 @@ model Role {
   description String?
   /// System roles cannot be deleted from the admin panel.
   isSystem    Boolean @default(true) @map("is_system")
+  /// Holders must have TOTP enrolled before the role grants anything.
+  /// A column rather than a hard-coded list of role names, so the owner can
+  /// require two-factor for a new role without a deploy.
+  requiresTwoFactor Boolean @default(false) @map("requires_two_factor")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -502,6 +520,9 @@ model RefreshToken {
   expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
   revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(6)
   revokedReason String? @map("revoked_reason")
+  /// When this session last re-authenticated. Carried forward on rotation.
+  stepUpAt    DateTime? @map("step_up_at") @db.Timestamptz(6)
+  lastUsedAt  DateTime? @map("last_used_at") @db.Timestamptz(6)
   ip          String?
   userAgent   String?   @map("user_agent")
 
@@ -527,6 +548,49 @@ model UserBlock {
   @@id([blockerId, blockedId])
   @@index([blockedId])
   @@map("user_blocks")
+}
+
+/// Single-use, time-limited tokens for email verification and password reset.
+///
+/// Only a SHA-256 hash is stored: a database leak must not hand the attacker
+/// working verification links.
+model VerificationToken {
+  id        String                @id @default(uuid(7)) @db.Uuid
+  userId    String                @map("user_id") @db.Uuid
+  purpose   VerificationPurpose
+  tokenHash String                @unique @map("token_hash")
+  expiresAt DateTime              @map("expires_at") @db.Timestamptz(6)
+  consumedAt DateTime?            @map("consumed_at") @db.Timestamptz(6)
+  /// For password reset: the email the request was made for, so changing the
+  /// address invalidates in-flight links.
+  targetEmail String?             @map("target_email")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose, consumedAt])
+  @@index([expiresAt])
+  @@map("verification_tokens")
+}
+
+/// Single-use recovery codes for two-factor authentication.
+///
+/// Mandatory TOTP without recovery codes is an operational lockout waiting to
+/// happen — a lost phone would permanently lock the only super_admin out of
+/// the platform (R-13, key-person risk). Stored hashed, like passwords.
+model TwoFactorRecoveryCode {
+  id       String    @id @default(uuid(7)) @db.Uuid
+  userId   String    @map("user_id") @db.Uuid
+  codeHash String    @map("code_hash")
+  usedAt   DateTime? @map("used_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, usedAt])
+  @@map("two_factor_recovery_codes")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

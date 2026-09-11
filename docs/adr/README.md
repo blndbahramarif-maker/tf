@@ -19,3 +19,4 @@ The record of what we believed at the time is the valuable part.
 | [0008](./0008-toolchain-versions.md) | Toolchain version constraints | Accepted |
 | [0009](./0009-security-baseline.md) | Phase 1 security baseline and deferred controls | Accepted |
 | [0010](./0010-database-invariants.md) | Correctness enforced by the database, not only by application code | Accepted |
+| [0011](./0011-authentication-and-authorization.md) | Authentication and authorization design | Accepted |

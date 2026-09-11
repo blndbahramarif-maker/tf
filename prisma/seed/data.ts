@@ -644,6 +644,27 @@ export interface PermissionSeed {
 }
 
 export const PERMISSIONS: PermissionSeed[] = [
+  // Self-service. Held by EVERY role, staff included: using a business
+  // permission such as `order:read_own` as a proxy for "is authenticated"
+  // would deny a moderator access to their own profile.
+  {
+    key: 'account:read_self',
+    category: 'account',
+    description: 'View own account and sessions',
+  },
+  { key: 'account:update_self', category: 'account', description: 'Update own profile' },
+  {
+    key: 'account:manage_security',
+    category: 'account',
+    description: 'Change password, manage two-factor, revoke own sessions',
+  },
+  // Selling
+  { key: 'seller:create_profile', category: 'selling', description: 'Create a seller profile' },
+  {
+    key: 'seller:update_own_profile',
+    category: 'selling',
+    description: 'Edit own seller profile',
+  },
   // Listings
   { key: 'listing:create', category: 'listing', description: 'Create a listing' },
   { key: 'listing:update_own', category: 'listing', description: 'Edit own listings' },
@@ -713,6 +734,12 @@ export interface RoleSeed {
   key: string;
   description: string;
   permissions: string[] | '*';
+  /**
+   * Holders must have TOTP enrolled before the role grants anything. Stored as
+   * a column rather than a hard-coded list of role names, so the owner can
+   * require two-factor for a new role without a deploy.
+   */
+  requiresTwoFactor: boolean;
 }
 
 /**
@@ -725,12 +752,25 @@ export const ROLES: RoleSeed[] = [
   {
     key: 'buyer',
     description: 'Registered buyer',
-    permissions: ['order:read_own'],
+    requiresTwoFactor: false,
+    permissions: [
+      'account:read_self',
+      'account:update_self',
+      'account:manage_security',
+      'seller:create_profile',
+      'order:read_own',
+    ],
   },
   {
     key: 'seller',
     description: 'Individual seller',
+    requiresTwoFactor: false,
     permissions: [
+      'account:read_self',
+      'account:update_self',
+      'account:manage_security',
+      'seller:create_profile',
+      'seller:update_own_profile',
       'listing:create',
       'listing:update_own',
       'listing:delete_own',
@@ -742,7 +782,13 @@ export const ROLES: RoleSeed[] = [
   {
     key: 'business_seller',
     description: 'Verified business seller',
+    requiresTwoFactor: false,
     permissions: [
+      'account:read_self',
+      'account:update_self',
+      'account:manage_security',
+      'seller:create_profile',
+      'seller:update_own_profile',
       'listing:create',
       'listing:update_own',
       'listing:delete_own',
@@ -755,7 +801,11 @@ export const ROLES: RoleSeed[] = [
   {
     key: 'moderator',
     description: 'Trust and safety. No financial permissions.',
+    requiresTwoFactor: true,
     permissions: [
+      'account:read_self',
+      'account:update_self',
+      'account:manage_security',
       'listing:moderate',
       'listing:approve',
       'message:read_reported',
@@ -768,7 +818,11 @@ export const ROLES: RoleSeed[] = [
   {
     key: 'support',
     description: 'Customer support. Read-only on money.',
+    requiresTwoFactor: true,
     permissions: [
+      'account:read_self',
+      'account:update_self',
+      'account:manage_security',
       'user:read',
       'order:read_any',
       'payment:read_any',
@@ -779,7 +833,11 @@ export const ROLES: RoleSeed[] = [
   {
     key: 'finance',
     description: 'Finance. No content moderation.',
+    requiresTwoFactor: true,
     permissions: [
+      'account:read_self',
+      'account:update_self',
+      'account:manage_security',
       'order:read_any',
       'payment:read_any',
       'refund:issue',
@@ -795,7 +853,11 @@ export const ROLES: RoleSeed[] = [
   {
     key: 'admin',
     description: 'Platform administrator',
+    requiresTwoFactor: true,
     permissions: [
+      'account:read_self',
+      'account:update_self',
+      'account:manage_security',
       'listing:moderate',
       'listing:approve',
       'listing:feature',
@@ -822,6 +884,7 @@ export const ROLES: RoleSeed[] = [
   {
     key: 'super_admin',
     description: 'Platform owner. All permissions, including role assignment.',
+    requiresTwoFactor: true,
     permissions: '*',
   },
 ];

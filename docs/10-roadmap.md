@@ -66,14 +66,14 @@ installed PostgreSQL 16 instead. The compose file pins **postgres:17**, which is
 therefore untested; nothing in the schema requires 17 over 16, but this must be
 confirmed on a real machine.
 
-### Phase 3 — Authentication & roles  ← **next**
+### Phase 3 — Authentication & roles  ✅ **COMPLETE (2026-09-11)**
 Register, verify email, login, refresh rotation with reuse detection, password reset,
 TOTP 2FA, RBAC guards, ownership guards, rate limiting, audit interceptor, session
 management.
 *Exit:* authorisation test matrix (every role × every protected route) passes; a
 deliberate IDOR attempt returns 403/404 for every owned resource.
 
-### Phase 4 — Listings, categories, search
+### Phase 4 — Listings, categories, search  ← **next**
 Category & attribute admin CRUD, listing create/edit with dynamic category fields,
 image pipeline, publish/expire lifecycle, browse, filter, faceted search, SEO
 (sitemap, structured data, `hreflang`, canonicals), category and country landing pages.

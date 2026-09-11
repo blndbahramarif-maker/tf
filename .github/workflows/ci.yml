@@ -51,6 +51,9 @@ jobs:
       # they can never silently disappear where it matters.
       TEST_DATABASE_URL: postgresql://kurdora:kurdora_ci@localhost:5432/kurdora_test?schema=public
       REDIS_URL: redis://localhost:6379
+      # Test-only values. Production reads from a managed secret store.
+      AUTH_SECRET: ci-only-auth-secret-at-least-32-characters-long
+      AUTH_ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000001'
 
     steps:
       - uses: actions/checkout@v4

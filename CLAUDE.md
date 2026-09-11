@@ -5,10 +5,11 @@ Read `docs/README.md` before making architectural changes. Read
 
 ## Current state
 
-**Phase 2 complete: database foundation.** The schema, migrations, seeds and the
-double-entry ledger exist. There are still no user-facing features: no
-authentication, no listings UI, no messaging, no payments. Phase 3
-(authentication) has not started. See `docs/10-roadmap.md`.
+**Phase 3 complete: authentication and authorization.** The schema, migrations,
+seeds, double-entry ledger, auth flows, RBAC guards, rate limiting and audit
+logging exist. There is still no marketplace UI: no listings, no search, no
+messaging, no payments. Phase 4 (listings) has not started.
+See `docs/10-roadmap.md`.
 
 ## Commands
 
@@ -59,6 +60,15 @@ genuinely wrong, change the rule deliberately and write an ADR.
 12. **The ledger is append-only and must balance.** Every money movement is a
     balanced entry group; use the recipes in `src/domain/ledger/postings.ts`
     rather than writing entries by hand.
+13. **Every protected route declares a permission.** An empty requirement is
+    DENIED — that is the deny-by-default rule, not an oversight to work around.
+14. **Identity comes from the bearer token, never from the request.** No route
+    may accept a user id from a path, query or body as proof of who is calling.
+15. **Every id-addressed route verifies ownership** against the database, and
+    answers `notFound(request)` — never 403 — when the caller is not the owner.
+    A 403 there confirms the resource exists and enumerates other people's ids.
+16. **Validate an id with `isUuid()` before querying.** An unparseable id makes
+    Postgres throw and leaks a database error in a 500.
 
 ## Adding things
 
@@ -78,6 +88,15 @@ test proving it balances. Never insert ledger entries ad hoc.
 **A database constraint:** put it in a migration with matching `down.sql`, and
 add a test in `tests/db/constraints.test.ts` that writes something which should
 be impossible and asserts the database refuses it.
+
+**A protected route:** declare its permission requirement, add a row to
+`CASES` in `tests/api/authorization-matrix.test.ts` with the expected status for
+EVERY role, and — if it is addressed by id — add an IDOR test in
+`tests/api/idor.test.ts` asserting 404 and that the victim's data is unchanged.
+
+**A permission:** add it to `PERMISSIONS` in `prisma/seed/data.ts` and grant it
+to the roles that need it. The seed REVOKES grants removed from the definition,
+so privileges cannot quietly accumulate.
 
 ## Honesty rules
 

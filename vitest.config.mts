@@ -10,6 +10,13 @@ export default defineConfig({
     // Database tests create throwaway databases and run real migrations.
     testTimeout: 30_000,
     hookTimeout: 120_000,
+    // API tests share one migrated + seeded database, created once per run.
+    globalSetup: ['tests/api/global-setup.ts'],
+    setupFiles: ['tests/api/setup.ts'],
+    // Route handlers share a Prisma client and Redis connection, and several
+    // suites assert on global state such as rate-limit counters and audit
+    // rows. Running files sequentially keeps those assertions meaningful.
+    fileParallelism: false,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],

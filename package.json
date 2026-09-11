@@ -37,9 +37,14 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@node-rs/argon2": "^2.2.1",
     "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client-runtime-utils": "7.10.0",
+    "ioredis": "^6.0.0",
+    "jose": "^6.2.12",
     "next": "^16.3.4",
     "next-intl": "^4.14.3",
+    "otplib": "^13.5.0",
     "pg": "^8.23.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

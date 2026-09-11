@@ -2,10 +2,11 @@
 
 A multi-vendor marketplace for Kurdish communities across Europe.
 
-> **Status: Phase 2 — database foundation.**
-> The schema, migrations, seeds and the double-entry ledger exist. No
-> user-facing features yet: no authentication, no listings, no messaging, no
-> payments. See [`docs/10-roadmap.md`](./docs/10-roadmap.md).
+> **Status: Phase 3 — authentication and authorization.**
+> Schema, migrations, seeds, the double-entry ledger, authentication, RBAC,
+> rate limiting and audit logging exist. No marketplace UI yet: no listings,
+> no search, no messaging, no payments.
+> See [`docs/10-roadmap.md`](./docs/10-roadmap.md).
 >
 > "Kurdora" is a working brand name, isolated in `packages/brand` so it can be
 > changed without touching application code.
@@ -59,6 +60,18 @@ docs/         architecture, payments, security, roadmap, ADRs
 
 Dependencies point inward only: `app → lib → infra → domain → shared`.
 This is enforced by ESLint and verified by `tests/architecture.test.ts`.
+
+## Security
+
+Authorization is enforced server-side, deny-by-default, on every protected
+route. Identity comes from the bearer token only — no route accepts a user id
+from a path, query or body as proof of who is calling.
+
+The role × protected-route matrix is executed as automated tests and written to
+`test-results/authorization-matrix.txt` on every run, so it cannot drift from
+the code. Deliberate IDOR attempts are tested against every owned resource.
+
+See [`docs/adr/0011-authentication-and-authorization.md`](./docs/adr/0011-authentication-and-authorization.md).
 
 ## Money
 

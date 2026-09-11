@@ -17,7 +17,7 @@ info:
 
     | Phase | Resources |
     |-------|-----------|
-    | 3 | `/auth`, `/users`, `/sessions` |
+    | 3 | ✅ `/auth/*`, `/me`, `/sessions`, `/seller-profiles`, `/admin/users` |
     | 4 | `/listings`, `/categories`, `/attributes`, `/search`, `/media` |
     | 5 | `/sellers`, `/businesses`, `/favourites`, `/notifications` |
     | 6 | `/conversations`, `/messages`, `/offers` |
@@ -70,6 +70,23 @@ servers:
 tags:
   - name: System
     description: Health and contract discovery.
+  - name: Authentication
+    description: |
+      Registration, sessions and credential management.
+
+      Access tokens are JWTs valid for 15 minutes. Refresh tokens are opaque,
+      stored hashed, and ROTATE on every use: presenting one twice revokes the
+      entire session family, because we cannot tell a replaying user from a
+      thief.
+  - name: Account
+    description: The caller's own account and sessions. Identity always comes
+      from the bearer token, never from a path, query or body parameter.
+  - name: Selling
+    description: Seller profiles. Owned resources — ownership is verified
+      server-side against the database before any read or write.
+  - name: Staff
+    description: Permission-gated surfaces. Staff roles additionally require
+      two-factor authentication to be enrolled.
 
 paths:
   /health:
@@ -125,6 +142,393 @@ paths:
                 type: string
         '429':
           $ref: '#/components/responses/RateLimited'
+
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Create an account
+      operationId: register
+      description: |
+        Creates an account and sends an email-verification token. Does NOT sign
+        the user in — email ownership is proven first.
+
+        The response is IDENTICAL whether or not the address is already
+        registered, so this endpoint cannot be used to enumerate accounts.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, displayName]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 12, maxLength: 256 }
+                displayName: { type: string, minLength: 2, maxLength: 80 }
+      responses:
+        '202':
+          description: Accepted. Verification required.
+        '422': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/verify-email:
+    post:
+      tags: [Authentication]
+      summary: Verify an email address
+      operationId: verifyEmail
+      description: Consumes a single-use token. Tokens are stored hashed.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string }
+      responses:
+        '200': { description: 'Verified.' }
+        '422':
+          description: |
+            Invalid, already consumed, or expired. One message covers all
+            three: the distinction helps an attacker more than a user.
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Sign in
+      operationId: login
+      description: |
+        Returns an access token and a refresh token.
+
+        Every failure returns the same generic message and spends comparable
+        CPU, so neither account existence nor password proximity is revealed.
+        Backed by per-account lockout with exponential backoff, which — unlike
+        IP rate limiting — cannot be evaded by rotating addresses.
+
+        Accounts with two-factor enabled must supply `totpCode` or
+        `recoveryCode`. Staff accounts CANNOT sign in until two-factor is
+        enrolled.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+                totpCode: { type: string, pattern: '^\d{6}$' }
+                recoveryCode: { type: string }
+      responses:
+        '200':
+          description: Signed in.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Account not active, or staff two-factor not enrolled.
+        '429':
+          description: Rate limited, or the account is temporarily locked.
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Rotate the refresh token
+      operationId: refreshSession
+      description: |
+        Revokes the presented token and issues a new one, so each token is
+        valid exactly once.
+
+        Presenting an already-used token revokes the ENTIRE family. The
+        response is deliberately identical to that for an unknown token: an
+        attacker must not learn that they hold a real one.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          description: Rotated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: End the current session
+      operationId: logout
+      responses:
+        '200': { description: 'Signed out.' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/step-up:
+    post:
+      tags: [Authentication]
+      summary: Re-authenticate for a sensitive action
+      operationId: stepUp
+      description: |
+        Returns a NEW access token carrying a fresh step-up timestamp, valid
+        for 15 minutes. Required by routes that can lock a user out of their
+        own account, and — from Phase 7 — by refunds, payout release and
+        commission changes.
+
+        Where two-factor is enrolled it must be presented again: a stolen
+        session plus a known password must not reach money operations.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string }
+                totpCode: { type: string, pattern: '^\d{6}$' }
+      responses:
+        '200': { description: 'Stepped up.' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/password:
+    post:
+      tags: [Authentication]
+      summary: Change password
+      operationId: changePassword
+      description: |
+        Requires step-up. On success EVERY session is revoked, including the
+        caller's — if the password was changed because of a compromise,
+        leaving the attacker signed in would defeat the point.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string }
+                newPassword: { type: string, minLength: 12 }
+      responses:
+        '200': { description: 'Changed. All sessions revoked.' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Step-up required or expired.
+        '422': { $ref: '#/components/responses/BadRequest' }
+
+  /auth/totp/enroll:
+    post:
+      tags: [Authentication]
+      summary: Begin two-factor enrolment
+      operationId: enrollTotp
+      description: |
+        Returns the secret, an `otpauth://` URI and ten single-use recovery
+        codes. The secret is stored encrypted and is NOT active until a valid
+        code is submitted to `/auth/totp/verify`.
+
+        Recovery codes are shown exactly once. Without them, mandatory staff
+        two-factor turns a lost phone into permanent loss of the account.
+      responses:
+        '200': { description: 'Enrolment started.' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { description: 'Two-factor is already enabled.' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/totp/verify:
+    post:
+      tags: [Authentication]
+      summary: Activate two-factor enrolment
+      operationId: verifyTotp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, pattern: '^\d{6}$' }
+      responses:
+        '200': { description: 'Enabled.' }
+        '401': { description: 'Invalid code.' }
+        '409': { description: 'Enrolment not started, or already enabled.' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /me:
+    get:
+      tags: [Account]
+      summary: The current user
+      operationId: getMe
+      description: |
+        Resolved from the bearer token ONLY. There is deliberately no
+        `/users/{id}` self-read: an endpoint taking an id is an endpoint
+        someone will eventually point at another id.
+      responses:
+        '200': { description: "The caller's account." }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    patch:
+      tags: [Account]
+      summary: Update the current user
+      operationId: updateMe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName: { type: string, minLength: 2, maxLength: 80 }
+                preferredLocale: { $ref: '#/components/schemas/Locale' }
+                timezone: { type: string }
+      responses:
+        '200': { description: 'Updated.' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/BadRequest' }
+
+  /sessions:
+    get:
+      tags: [Account]
+      summary: List the caller's own sessions
+      operationId: listSessions
+      description: Scoped to the token subject. No parameter can widen it.
+      responses:
+        '200': { description: 'Active sessions.' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    delete:
+      tags: [Account]
+      summary: Revoke every session
+      operationId: revokeAllSessions
+      description: Requires step-up — this is how a user locks out an attacker.
+      responses:
+        '200': { description: 'Revoked.' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: 'Step-up required.' }
+
+  /sessions/{id}:
+    delete:
+      tags: [Account]
+      summary: Revoke one session
+      operationId: revokeSession
+      description: |
+        Owned resource. A session belonging to another user returns 404 —
+        identical to a non-existent id, so this cannot be used to discover
+        which ids are real.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: 'Revoked.' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /seller-profiles:
+    post:
+      tags: [Selling]
+      summary: Create the caller's seller profile
+      operationId: createSellerProfile
+      description: |
+        The owner is taken from the token; the body has no owner field, so
+        there is nothing to tamper with.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [displayName, countryCode]
+              properties:
+                displayName: { type: string, minLength: 2, maxLength: 120 }
+                sellerType: { type: string, enum: [INDIVIDUAL, BUSINESS] }
+                countryCode: { type: string, minLength: 2, maxLength: 2 }
+                about: { type: string, maxLength: 2000 }
+      responses:
+        '201': { description: 'Created.' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: 'This account already has a seller profile.' }
+        '422': { $ref: '#/components/responses/BadRequest' }
+
+  /seller-profiles/{id}:
+    get:
+      tags: [Selling]
+      summary: Read a seller profile
+      operationId: getSellerProfile
+      description: |
+        Owned resource. The owner sees payment-account fields; staff holding
+        `user:read` may read the profile for support but do NOT receive those
+        fields. Anyone else receives 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: 'The profile.' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Selling]
+      summary: Update the caller's own seller profile
+      operationId: updateSellerProfile
+      description: |
+        Owner only. There is NO staff override: nobody writes someone else's
+        profile through this route, including an administrator.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName: { type: string, minLength: 2, maxLength: 120 }
+                about: { type: string, maxLength: 2000 }
+      responses:
+        '200': { description: 'Updated.' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /admin/users:
+    get:
+      tags: [Staff]
+      summary: List users
+      operationId: listUsers
+      description: |
+        Requires `user:read`. Held by support, moderator, admin and
+        super_admin — NOT by finance: the role that moves money does not browse
+        the user base. Every call is written to the audit log.
+
+        This is the Phase 3 RBAC test surface, not the admin console (Phase 11).
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200': { description: 'Users.' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
 
 components:
   securitySchemes:
@@ -277,6 +681,22 @@ components:
         detail:
           type: string
           description: Non-sensitive failure summary. Never contains credentials.
+
+    Session:
+      type: object
+      required: [accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt, tokenType]
+      properties:
+        accessToken:
+          type: string
+          description: 'JWT, valid 15 minutes. Send as an `Authorization` bearer header.'
+        accessTokenExpiresAt: { type: string, format: date-time }
+        refreshToken:
+          type: string
+          description: |
+            Opaque. Rotates on every use — the previous value is revoked
+            immediately. Store securely and never log it.
+        refreshTokenExpiresAt: { type: string, format: date-time }
+        tokenType: { type: string, enum: [Bearer] }
 
     HealthResponse:
       type: object

@@ -154,8 +154,16 @@ export async function seed(options: SeedOptions): Promise<SeedResult> {
     for (const role of ROLES) {
       const record = await prisma.role.upsert({
         where: { key: role.key },
-        create: { key: role.key, description: role.description, isSystem: true },
-        update: { description: role.description },
+        create: {
+          key: role.key,
+          description: role.description,
+          isSystem: true,
+          requiresTwoFactor: role.requiresTwoFactor,
+        },
+        update: {
+          description: role.description,
+          requiresTwoFactor: role.requiresTwoFactor,
+        },
       });
 
       const keys = role.permissions === '*' ? PERMISSIONS.map((p) => p.key) : role.permissions;
