@@ -3,6 +3,7 @@ import { brand } from '@kurdora/brand';
 import {
   assertTransferShape,
   type CreateIntentInput,
+  type GatewayChargeSettlement,
   type GatewayEvent,
   type GatewayIntent,
   type GatewayIntentStatus,
@@ -68,6 +69,79 @@ function toGatewayIntent(intent: Stripe.PaymentIntent): GatewayIntent {
         ? transferDestination
         : (transferDestination?.id ?? null),
     livemode: intent.livemode,
+  };
+}
+
+/**
+ * Narrows Stripe's charge status to the three documented values.
+ *
+ * The SDK types this field as an OPEN union — the three values plus an escape
+ * hatch for anything Stripe adds later. That openness is why this is a switch
+ * and not a cast: an unrecognised status must not be waved through as
+ * `succeeded`. It becomes `pending`, the conservative reading, because
+ * "we do not know yet" is the only honest thing to say about a status this
+ * code has never seen, and `pending` is the one value that causes nothing to
+ * happen.
+ */
+function toChargeStatus(status: string): GatewayChargeSettlement['status'] {
+  if (status === 'succeeded' || status === 'failed') return status;
+  return 'pending';
+}
+
+/**
+ * A `Stripe.Charge` reduced to the facts Kurdora records.
+ *
+ * The two money figures come from the BALANCE TRANSACTION and nowhere else.
+ * Verified against Stripe's documentation on 2026-09-12: `fee` is "Fees (in the
+ * smallest currency unit) paid for this transaction. Represented as a positive
+ * integer when assessed", and `net` is the "Net impact to a Stripe balance…
+ * You can calculate the net impact of a transaction on a balance by
+ * `amount` - `fee`".
+ *
+ * Both stay NULL when the balance transaction is absent or unexpanded. A
+ * pending charge genuinely has none, and writing 0 there would be a figure
+ * that reconciles against nothing.
+ *
+ * One thing this does NOT claim: for a destination charge, `net` is the impact
+ * on the PLATFORM balance "not including refunds or disputes" — the transfer to
+ * the connected account is its own balance transaction. So this is the
+ * platform-side figure, not the seller's.
+ */
+function toChargeSettlement(charge: Stripe.Charge): GatewayChargeSettlement {
+  const balanceTransaction = charge.balance_transaction;
+  const expanded = typeof balanceTransaction === 'object' ? balanceTransaction : null;
+
+  const transferDestination = charge.transfer_data?.destination ?? null;
+
+  return {
+    chargeId: charge.id,
+    paymentIntentId:
+      typeof charge.payment_intent === 'string'
+        ? charge.payment_intent
+        : (charge.payment_intent?.id ?? null),
+    balanceTransactionId:
+      typeof balanceTransaction === 'string' ? balanceTransaction : (expanded?.id ?? null),
+    status: toChargeStatus(charge.status),
+    amountMinor: BigInt(charge.amount),
+    currency: charge.currency.toUpperCase(),
+    amountRefundedMinor: BigInt(charge.amount_refunded ?? 0),
+    // Stripe: "Whether the charge has been fully refunded. If the charge is
+    // only partially refunded, this attribute will still be false." Mirrored
+    // verbatim rather than re-derived, so our column means what Stripe's does.
+    refunded: charge.refunded ?? false,
+    disputed: charge.disputed ?? false,
+    paymentMethodType: charge.payment_method_details?.type ?? null,
+    transferId:
+      typeof charge.transfer === 'string' ? charge.transfer : (charge.transfer?.id ?? null),
+    destinationAccountId:
+      typeof transferDestination === 'string'
+        ? transferDestination
+        : (transferDestination?.id ?? null),
+    providerFeeMinor: expanded === null ? null : BigInt(expanded.fee),
+    netMinor: expanded === null ? null : BigInt(expanded.net),
+    failureCode: charge.failure_code ?? null,
+    failureMessage: charge.failure_message ?? null,
+    livemode: charge.livemode,
   };
 }
 
@@ -145,6 +219,28 @@ export class StripeGateway implements PaymentGateway {
   async retrievePaymentIntent(id: string): Promise<GatewayIntent | null> {
     try {
       return toGatewayIntent(await this.stripe.paymentIntents.retrieve(id));
+    } catch (error) {
+      if (error instanceof Stripe.errors.StripeInvalidRequestError && error.statusCode === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async retrieveCharge(chargeId: string): Promise<GatewayChargeSettlement | null> {
+    try {
+      /*
+       * `balance_transaction` is EXPANDED. Verified against Stripe's Charge
+       * object documentation on 2026-09-12: unexpanded it is "ID of the
+       * balance transaction that describes the impact of this charge on your
+       * account balance", i.e. a bare `txn_…` string carrying no figures. One
+       * expanded read is cheaper than a second round trip, and it is the only
+       * way to record the REAL fee rather than an estimate of it.
+       */
+      const charge = await this.stripe.charges.retrieve(chargeId, {
+        expand: ['balance_transaction'],
+      });
+      return toChargeSettlement(charge);
     } catch (error) {
       if (error instanceof Stripe.errors.StripeInvalidRequestError && error.statusCode === 404) {
         return null;

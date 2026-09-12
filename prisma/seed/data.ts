@@ -698,6 +698,17 @@ export const PERMISSIONS: PermissionSeed[] = [
   { key: 'payment:read_any', category: 'commerce', description: 'View any payment' },
   { key: 'refund:issue', category: 'commerce', description: 'Issue a refund' },
   { key: 'payout:read_own', category: 'commerce', description: 'View own payouts' },
+  {
+    /*
+     * Separate from `seller:update_own_profile` on purpose. Editing a shop
+     * description and opening a connected account that will receive money are
+     * not the same capability, and a future role that may do the first must
+     * not silently acquire the second.
+     */
+    key: 'seller:manage_payouts',
+    category: 'commerce',
+    description: 'Start and view own connected-account onboarding',
+  },
   { key: 'payout:read_any', category: 'commerce', description: 'View any payout' },
   { key: 'payout:release', category: 'commerce', description: 'Release a held payout' },
   { key: 'payout:hold', category: 'commerce', description: 'Hold a payout' },
@@ -797,6 +808,7 @@ export const ROLES: RoleSeed[] = [
       'payment:create',
       'order:read_own',
       'payout:read_own',
+      'seller:manage_payouts',
       'message:read_own',
       'message:send',
       // A seller is also a buyer elsewhere on the platform, so they get both
@@ -824,6 +836,7 @@ export const ROLES: RoleSeed[] = [
       'payment:create',
       'order:read_own',
       'payout:read_own',
+      'seller:manage_payouts',
       'analytics:read_basic',
       'message:read_own',
       'message:send',

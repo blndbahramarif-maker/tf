@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   assertTransferShape,
   type CreateIntentInput,
+  type GatewayChargeSettlement,
   type GatewayEvent,
   type GatewayIntent,
   type PaymentGateway,
@@ -81,6 +82,29 @@ export class FakePaymentGateway implements PaymentGateway {
 
   async retrievePaymentIntent(id: string): Promise<GatewayIntent | null> {
     return this.byId.get(id) ?? null;
+  }
+
+  /**
+   * Charges the fake knows about, keyed by charge id.
+   *
+   * A test PUTS one here with `settleCharge` to say what the provider would
+   * report. Nothing is invented: an unknown charge id returns null, exactly as
+   * a 404 from Stripe does, so a code path that assumes a charge always
+   * settles fails here rather than in production.
+   */
+  private readonly charges = new Map<string, GatewayChargeSettlement>();
+
+  async retrieveCharge(chargeId: string): Promise<GatewayChargeSettlement | null> {
+    this.chargeReads.push(chargeId);
+    return this.charges.get(chargeId) ?? null;
+  }
+
+  /** Every `retrieveCharge`, in order. Proves the balance transaction was read. */
+  readonly chargeReads: string[] = [];
+
+  /** Declares what the provider would report for a charge. */
+  settleCharge(settlement: GatewayChargeSettlement): void {
+    this.charges.set(settlement.chargeId, settlement);
   }
 
   /**

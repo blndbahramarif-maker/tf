@@ -57,11 +57,18 @@ function modeOfSecretKey(key: string): StripeMode | null {
  */
 export const LIVE_MODE_PERMITTED = false;
 
-export function readStripeConfig(): StripeConfigResult {
-  const env = serverEnv();
-  const secretKey = env.STRIPE_SECRET_KEY;
-  const webhookSecret = env.STRIPE_WEBHOOK_SECRET;
-
+/**
+ * The decision itself, as a pure function of the two values.
+ *
+ * Split out from `readStripeConfig` so the live-mode refusal can be asserted
+ * directly. `serverEnv()` memoises, so a test that mutated `process.env` would
+ * be asserting against a cached parse and would pass for the wrong reason —
+ * which on this particular rule would be worse than having no test.
+ */
+export function decideStripeConfig(
+  secretKey: string | undefined,
+  webhookSecret: string | undefined,
+): StripeConfigResult {
   // Neither set is the normal state before Phase 7 is deployed anywhere. It is
   // "off", not "broken", and the payment routes answer 503 rather than crash.
   if (!secretKey && !webhookSecret) return { ok: false, reason: 'not_configured' };
@@ -77,6 +84,11 @@ export function readStripeConfig(): StripeConfigResult {
   }
 
   return { ok: true, config: { secretKey, webhookSecret, mode } };
+}
+
+export function readStripeConfig(): StripeConfigResult {
+  const env = serverEnv();
+  return decideStripeConfig(env.STRIPE_SECRET_KEY, env.STRIPE_WEBHOOK_SECRET);
 }
 
 /** True when Stripe is usable. Routes branch on this rather than throwing. */

@@ -12,6 +12,9 @@ import {
 } from '@/infra/catalogue/listing-service';
 import { prisma } from '@/infra/db/client';
 import { tryWriteAuditLog } from '@/infra/audit/audit-log';
+import { connectGateway, PaymentsUnavailableError } from '@/infra/payments/gateway-provider';
+import { refreshAccountState, startOnboarding } from '@/infra/payments/onboarding-service';
+import { connectRefreshUrl, connectReturnUrl } from '@/lib/payments/onboarding-urls';
 import { requireActionAccess } from '@/lib/auth/action-guard';
 import type { ActionState } from './action-state';
 
@@ -379,5 +382,94 @@ export async function updateSellerProfileAction(
   });
 
   revalidatePath(`/${field(form, 'locale') || 'en'}/dashboard/profile`);
+  return { error: null, ok: true };
+}
+
+/**
+ * Starts (or resumes) connected-account onboarding and sends the seller to
+ * Stripe.
+ *
+ * Takes **no meaningful form input**. The only field it reads is the CSRF
+ * token; the country, the email and the business name come from the caller's
+ * own seller profile row, found by the session's user id. A seller who adds
+ * fields to this form in devtools changes nothing, because nothing here looks
+ * at them.
+ *
+ * On success it REDIRECTS to a Stripe-hosted URL. `redirect` throws a control
+ * flow signal that Next catches, which is why there is no `return` after it
+ * and why it must sit outside any `try`.
+ */
+export async function startPayoutOnboardingAction(
+  _previous: ActionState,
+  form: FormData,
+): Promise<ActionState> {
+  const access = await requireActionAccess(form, { all: ['seller:manage_payouts'] });
+  if (!access.ok) return { error: access.error };
+
+  let gateway;
+  try {
+    gateway = connectGateway();
+  } catch (error) {
+    if (error instanceof PaymentsUnavailableError) {
+      // Payments switched off, half-configured, or a LIVE key refused. All
+      // three are operational states the seller should be told about plainly.
+      return { error: 'conflict' };
+    }
+    throw error;
+  }
+
+  const result = await startOnboarding({
+    userId: access.principal.userId,
+    gateway,
+    returnUrl: connectReturnUrl(),
+    refreshUrl: connectRefreshUrl(),
+  });
+
+  if (!result.ok) return { error: result.issue === 'no_seller_profile' ? 'not_found' : 'conflict' };
+
+  await tryWriteAuditLog(prisma, {
+    action: result.created ? 'connect.account_created' : 'connect.onboarding_link_issued',
+    actorType: 'user',
+    actorId: access.principal.userId,
+    entityType: 'connected_account',
+    entityId: result.accountId,
+    // Never the URL: it grants access to the account holder's personal
+    // information, which is the one thing an audit table must not hold.
+    after: { expiresAt: result.expiresAt.toISOString(), testMode: gateway.isTestMode },
+  });
+
+  redirect(result.url);
+}
+
+/**
+ * Re-reads the connected account from the provider.
+ *
+ * The button behind this exists because onboarding state is the provider's to
+ * declare: nothing the seller does on Kurdora can change it, and this asks
+ * rather than asserts. `account.updated` normally gets there first; this is
+ * for when a seller is looking at the page right now and wants to be sure.
+ */
+export async function refreshPayoutStatusAction(
+  _previous: ActionState,
+  form: FormData,
+): Promise<ActionState> {
+  const access = await requireActionAccess(form, { all: ['seller:manage_payouts'] });
+  if (!access.ok) return { error: access.error };
+
+  let gateway;
+  try {
+    gateway = connectGateway();
+  } catch (error) {
+    if (error instanceof PaymentsUnavailableError) return { error: 'conflict' };
+    throw error;
+  }
+
+  const result = await refreshAccountState({
+    userId: access.principal.userId,
+    gateway,
+  });
+  if (!result.ok) return { error: result.issue === 'no_seller_profile' ? 'not_found' : 'conflict' };
+
+  revalidatePath('/dashboard/payouts');
   return { error: null, ok: true };
 }

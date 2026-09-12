@@ -47,6 +47,12 @@ export type AuditAction =
   | 'payment.succeeded'
   | 'webhook.rejected'
   | 'webhook.processed'
+  // Phase 7 Part 2. Connected accounts: creating one is a durable object at
+  // the provider and issuing a link grants access to someone's personal
+  // information, so both are recorded even though neither moves money.
+  | 'connect.account_created'
+  | 'connect.onboarding_link_issued'
+  | 'connect.account_updated'
   | 'seller_profile.created'
   | 'seller_profile.updated'
   | 'session.revoked'

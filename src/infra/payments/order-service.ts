@@ -8,6 +8,11 @@ import {
   type TransactionFlow,
 } from '@/domain/payments/order-amounts';
 import { orderExpiryFrom, type OrderStatus } from '@/domain/payments/order-status';
+import { checkSellerEligibility } from '@/domain/payments/onboarding-status';
+// A sibling in this directory, not a layering violation: both mirror provider
+// facts, and one parser for the stored requirements JSON is better than two
+// that can drift.
+import { readRequirements } from './onboarding-service';
 
 /**
  * Orders: creation, and reading one as a party to it.
@@ -235,6 +240,9 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
           stripeAccountId: true,
           chargesEnabled: true,
           payoutsEnabled: true,
+          stripeDisabledReason: true,
+          requirementsDue: true,
+          verificationStatus: true,
         },
       },
       category: {
@@ -242,6 +250,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
           transactionFlow: true,
           maxOnlineAmountMinor: true,
           allowsOnlinePayment: true,
+          requiresVerifiedSeller: true,
         },
       },
     },
@@ -255,17 +264,44 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   if (!listing.category.allowsOnlinePayment) return { ok: false, issue: 'not_purchasable' };
 
   /*
-   * Seller eligibility, re-read from the database every time.
+   * Seller eligibility, re-read from the database every time and decided in
+   * the DOMAIN.
    *
-   * FEE_ONLY needs NO connected account: Kurdora is charging for its own
-   * service and there is no transfer leg. That is exactly why a high-value
-   * seller can transact before they have onboarded at all.
+   * Every input is a fact mirrored from a signature-verified `account.updated`
+   * event or a direct account read — plus this category's own
+   * `requiresVerifiedSeller` flag, which is admin-editable data rather than a
+   * constant in code. Nothing a request carries reaches this decision; there is
+   * no parameter through which it could.
+   *
+   * It checks more than "has an account". A seller with outstanding
+   * `currently_due` requirements still shows `charges_enabled` until Stripe's
+   * deadline passes, at which point their capabilities are withdrawn and money
+   * already taken has nowhere to go. Refusing the order now is cheaper for
+   * everyone than refunding a buyer later.
+   *
+   * FEE_ONLY needs NONE of it: Kurdora is charging for its own service and
+   * there is no transfer leg. That is exactly why a high-value seller can
+   * transact before they have onboarded at all.
    */
   if (!isFeeOnly(flow)) {
     const seller = listing.sellerProfile;
-    if (seller.stripeAccountId === null || !seller.chargesEnabled || !seller.payoutsEnabled) {
-      return { ok: false, issue: 'seller_not_payable' };
-    }
+    const requirements = readRequirements(seller.requirementsDue);
+    const eligibility = checkSellerEligibility({
+      stripeAccountId: seller.stripeAccountId,
+      chargesEnabled: seller.chargesEnabled,
+      payoutsEnabled: seller.payoutsEnabled,
+      currentlyDue: requirements.currentlyDue,
+      pastDue: requirements.pastDue,
+      disabledReason: seller.stripeDisabledReason,
+      verificationStatus: seller.verificationStatus,
+      categoryRequiresVerifiedSeller: listing.category.requiresVerifiedSeller,
+    });
+    /*
+     * The ISSUES are deliberately not returned to the buyer. "This seller has
+     * an identity document outstanding" is the seller's business, and telling
+     * a stranger would leak the state of someone else's verification.
+     */
+    if (!eligibility.eligible) return { ok: false, issue: 'seller_not_payable' };
   }
 
   // The agreed price: an accepted offer if there is one, otherwise the asking

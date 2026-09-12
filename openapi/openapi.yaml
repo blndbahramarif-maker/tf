@@ -142,6 +142,24 @@ tags:
       Nothing a browser sends decides an amount, a currency, a seller, a
       connected account or a commission. Nothing but a verified webhook marks
       an order paid.
+  - name: Payouts
+    description: |
+      Connected-account onboarding, so a seller can be paid for BUY_NOW sales.
+      **Stripe TEST MODE only**, like everything else in this document.
+
+      Onboarding is Stripe-hosted. Kurdora collects no identity document, no
+      date of birth and no bank detail; it stores an account id and a mirror of
+      the capability flags Stripe reports.
+
+      The rule that shapes both endpoints: **the platform may record that it
+      issued an onboarding link, and nothing else.** Every other state change
+      is derived from an `account.updated` event or a direct account read.
+      Stripe's own words about the return URL — it "only means the flow was
+      entered and exited properly" — are why returning from it triggers a
+      re-read rather than a status change.
+
+      FEE_ONLY needs none of this. A Cars or Business seller transacts with no
+      connected account at all, because there is no transfer leg.
   - name: Offers
     description: |
       Offers on listings, as an explicit state machine. Legal moves and who may
@@ -1892,6 +1910,89 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
 
+  /connect/onboarding:
+    post:
+      tags: [Payouts]
+      summary: Begin or resume connected-account onboarding
+      operationId: startConnectOnboarding
+      description: |
+        Takes **no request body**, and that absence is the security property.
+        The country, the email and the business name come from the caller's own
+        seller profile row, found by the session's user id. There is no
+        `stripeAccountId` field, no `country` field and no `capabilities`
+        field in the schema, so a forged one has nowhere to arrive.
+
+        Returns a Stripe-hosted URL and says nothing about whether the seller
+        is payable — that is a separate read, because arriving back from Stripe
+        proves only that the flow was entered and exited.
+
+        **A fresh link is minted on every call.** Stripe's Account Links are
+        single-use and short-lived, so a cached one would hand the next caller
+        a dead URL and a stored one would be a stored credential. The connected
+        account itself is created at most once, under a deterministic
+        idempotency key: a retried request must never leave a seller with two
+        connected accounts.
+
+        A seller Stripe has REJECTED gets `409`. That decision is terminal and
+        another link could not help them.
+      responses:
+        '200':
+          description: A fresh onboarding link for an account that already existed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OnboardingLink' }
+        '201':
+          description: The connected account was created, and here is its first link.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OnboardingLink' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: |
+            No seller profile, or an account Stripe has rejected.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503':
+          description: |
+            Payments are not configured, or a LIVE key was refused because
+            Stripe has not approved the business model.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /connect/status:
+    get:
+      tags: [Payouts]
+      summary: The caller's own payout standing
+      operationId: getConnectStatus
+      description: |
+        Scoped by the session's user id. There is no id to address and so no
+        IDOR surface: a seller can ask about themselves, and the question
+        cannot be phrased any other way.
+
+        **This endpoint never calls Stripe.** Everything it returns is mirrored
+        from a verified `account.updated` event or a direct account read, so a
+        page poll cannot drive traffic at the provider and a degraded Stripe
+        cannot make a seller's own dashboard unreadable.
+
+        The connected account id is deliberately absent from the response.
+      responses:
+        '200':
+          description: The mirrored onboarding state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectStatus' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: This account has no seller profile.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
   /webhooks/stripe:
     post:
       tags: [Orders]
@@ -2698,6 +2799,77 @@ components:
         currency: { type: string, minLength: 3, maxLength: 3 }
         note: { type: [string, 'null'] }
         createdAt: { type: string, format: date-time }
+
+    OnboardingLink:
+      type: object
+      required: [url, expiresAt, testMode]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: |
+            Stripe-hosted. SINGLE-USE and short-lived — never cache it, never
+            store it, never log it. It grants access to the account holder's
+            personal information.
+        expiresAt: { type: string, format: date-time }
+        testMode:
+          type: boolean
+          description: |
+            True in Stripe TEST MODE. Present so a sandbox onboarding can never
+            be mistaken for the real thing.
+
+    OnboardingStatus:
+      type: string
+      description: |
+        Derived from the provider's account, never asserted by Kurdora and
+        never influenced by a request. `REJECTED` is terminal.
+      enum:
+        - NOT_STARTED
+        - ONBOARDING_STARTED
+        - PENDING_VERIFICATION
+        - ACTIVE
+        - RESTRICTED
+        - REJECTED
+        - DISABLED
+
+    ConnectStatus:
+      type: object
+      required: [status, hasAccount, chargesEnabled, payoutsEnabled]
+      properties:
+        status: { $ref: '#/components/schemas/OnboardingStatus' }
+        hasAccount:
+          type: boolean
+          description: |
+            Whether a connected account exists. The account ID itself is NOT
+            returned: a seller has no use for it, and omitting it keeps it out
+            of page source, browser history and support screenshots.
+        chargesEnabled: { type: boolean }
+        payoutsEnabled: { type: boolean }
+        detailsSubmitted:
+          type: boolean
+          description: |
+            The seller finished the hosted form. NOT the same as being payable —
+            Stripe may still be reviewing, or may add requirements later.
+        disabledReason:
+          type: [string, 'null']
+          description: Stripe's `requirements.disabled_reason`, mirrored verbatim.
+        currentlyDue:
+          type: array
+          items: { type: string }
+          description: |
+            Requirement KEYS only, e.g. `individual.verification.document`.
+            They name what Stripe is waiting for. No value a seller submitted
+            is stored or returned, and no identity document reaches Kurdora.
+        pastDue:
+          type: array
+          items: { type: string }
+        payoutDelayDays:
+          type: [integer, 'null']
+          description: Stripe's payout schedule delay, where the account exposes one.
+        syncedAt:
+          type: [string, 'null']
+          format: date-time
+          description: When this mirror was last confirmed against the provider.
 
     OrderStatus:
       type: string

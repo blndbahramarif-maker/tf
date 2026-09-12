@@ -206,7 +206,8 @@
       "signOut": "Sign out",
       "verifyEmailNotice": "Verify your email address to publish listings.",
       "messages": "Messages",
-      "offers": "Offers"
+      "offers": "Offers",
+      "payouts": "Dayînên drav"
     },
     "errors": {
       "unauthenticated": "Please sign in again.",
@@ -370,6 +371,46 @@
       "columnIp": "IP address",
       "columnDevice": "Device",
       "stepUpNotice": "Changing your password and revoking other sessions require re-authentication, which is not available in the browser yet."
+    },
+    "payouts": {
+      "title": "Dayînên drav",
+      "noProfile": "Hîn profîla te ya firoşyariyê tune ye.",
+      "statusLabel": "Rewş",
+      "chargesEnabled": "Dikare drav bigire",
+      "payoutsEnabled": "Dikare dayînan bistîne",
+      "payoutDelay": "Dereng mayîna dayînê",
+      "payoutDelayDays": "{days} roj",
+      "yes": "Erê",
+      "no": "Na",
+      "outstanding": "Stripe hîn pêdivî pê heye",
+      "start": "Dayînan saz bike",
+      "resume": "Sazkirina dayînan biqedîne",
+      "starting": "Tê vekirin…",
+      "refresh": "Nûvekirinan kontrol bike",
+      "refreshing": "Tê kontrolkirin…",
+      "refreshed": "Rewş hate nûkirin.",
+      "handoffNote": "Tu yê were birin Stripe, pêşkêşkarê me yê dravdanê, ji bo piştrastkirina nasname û agahiyên bankê. {brandName} tu carî belgeyên te nabîne.",
+      "linkExpired": "Ew girêdana sazkirinê qediya. Girêdan tenê carekê tên bikaranîn, ji xwarê dîsa dest pê bike.",
+      "rejectedHelp": "Stripe nikare vê hesabê ji bo dayînan pejirîne. Heke tu difikirî ev şaşî ye, bi piştgiriyê re têkilî deyne.",
+      "lastSynced": "Kontrola dawî bi Stripe re: {at}",
+      "status": {
+        "NOT_STARTED": "Dest pê nekiriye",
+        "ONBOARDING_STARTED": "Di pêvajoyê de",
+        "PENDING_VERIFICATION": "Tê nirxandin",
+        "ACTIVE": "Çalak",
+        "RESTRICTED": "Pêdivî bi kiryarê heye",
+        "REJECTED": "Hate redkirin",
+        "DISABLED": "Neçalak"
+      },
+      "explain": {
+        "NOT_STARTED": "Dayînan saz bike da ku tu tiştên li {brandName} tên dayîn bifiroşî.",
+        "ONBOARDING_STARTED": "Te dest pê kiriye lê neqedandiye. Ji cihê ku tu mayî berdewam bike.",
+        "PENDING_VERIFICATION": "Stripe agahiyên te dinirxîne. Tiştek ji bo te tune ye ku tu bikî.",
+        "ACTIVE": "Tu dikarî drav bigirî û dayînan bistînî.",
+        "RESTRICTED": "Berî ku drav ji te re were dayîn, Stripe tiştek ji te dixwaze.",
+        "REJECTED": "Stripe nikare vê hesabê ji bo dayînan bipejirîne.",
+        "DISABLED": "Dayîn ji bo vê hesabê hatine girtin."
+      }
     }
   },
   "messaging": {

@@ -161,7 +161,7 @@ E2E tests pass.
 - **No money, anywhere.** An accepted offer records agreement. It creates no
   order, no payment, no ledger entry and no payout, and a test asserts that.
 
-### Phase 7 — Stripe Connect  ⚠️ the highest-risk phase  ← **Part 1 complete (TEST MODE), Part 2 not started**
+### Phase 7 — Stripe Connect  ⚠️ the highest-risk phase  ← **Parts 1 and 2 complete (TEST MODE), Part 3 not started**
 
 **Part 1 delivered (2026-09-12):** the `stripe` package behind a
 `PaymentGateway` port; orders priced entirely server-side; BUY_NOW destination
@@ -170,10 +170,21 @@ leg; database-durable idempotency; a raw-body, signature-verified webhook with
 three independent layers of duplicate protection; the Order / Payment /
 PaymentAttempt state machines. 856 tests pass.
 
-**Part 1 did NOT deliver, and does not claim to:** any payment UI, seller
-onboarding, payouts, refunds, disputes, reconciliation, or a single real
-payment. **The real Stripe API was never called** — this environment has no
-credentials, so `tests/api/stripe-live.test.ts` is written and SKIPPED.
+**Part 2 delivered (2026-09-12):** a `ConnectGateway` port with a Stripe
+adapter; server-side connected-account creation under a deterministic
+idempotency key; Stripe-hosted onboarding links, minted fresh every time;
+`account.updated` handling that is out-of-order safe and cannot re-enable a
+rejected seller; `charge.*` handling that completes a PaymentAttempt with the
+REAL provider fee and net from an expanded balance transaction; seller
+eligibility hardened to include outstanding requirements; a seller payouts page
+in four languages. 917 tests and 49 E2E tests pass.
+
+**Part 2 did NOT deliver, and does not claim to:** any payment UI, payouts,
+refunds, disputes, reconciliation, or a single real payment. **The real Stripe
+API was never called, and no webhook was ever received from Stripe** — this
+environment has no credentials and no Stripe CLI, so
+`tests/api/stripe-live.test.ts` is written and SKIPPED. See
+[16 — Phase 7 Part 2](./16-phase-7-part-2.md) for exactly what is unverified.
 
 
 **Gate report:** [15 — Phase 7 gate](./15-phase-7-gate.md) · **ADR:** [0013](./adr/0013-phase-7-payment-architecture.md)

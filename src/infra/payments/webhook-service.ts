@@ -1,5 +1,8 @@
 import { prisma } from '@/infra/db/client';
-import type { GatewayEvent } from '@/domain/payments/payment-gateway';
+import type { GatewayEvent, PaymentGateway } from '@/domain/payments/payment-gateway';
+import { accountStateFromEventObject } from '@/infra/stripe/connect';
+import { tryWriteAuditLog } from '@/infra/audit/audit-log';
+import { applyAccountState, findSellerByAccountId } from './onboarding-service';
 import { canTransitionOrder, type OrderStatus } from '@/domain/payments/order-status';
 import {
   canTransitionPayment,
@@ -42,14 +45,55 @@ export type RecordResult =
   /** Already seen. The caller returns 200 and does nothing. */
   | { readonly ok: true; readonly duplicate: true };
 
-/** Event types Part 1 acts on. Anything else is recorded and IGNORED. */
+/** Event types acted on. Anything else is recorded and IGNORED. */
 export const HANDLED_EVENT_TYPES = new Set([
+  // Part 1: the payment lifecycle.
   'payment_intent.succeeded',
   'payment_intent.processing',
   'payment_intent.payment_failed',
   'payment_intent.canceled',
   'payment_intent.requires_action',
+  // Part 2: connected-account onboarding, and settlement figures.
+  'account.updated',
+  'charge.succeeded',
+  'charge.updated',
+  'charge.failed',
 ]);
+
+/**
+ * Event types for which a SECOND event about the same object is a duplicate.
+ *
+ * This distinction is load-bearing and easy to get wrong. Stripe documents
+ * that "in some cases, two separate Event objects are generated and sent" for
+ * one underlying change, which is why semantic dedup on `(type, objectId)`
+ * exists at all. But that reasoning only holds for events describing a
+ * ONCE-ONLY transition.
+ *
+ * `account.updated` and `charge.updated` are the opposite: an account emits
+ * one every time a requirement changes, and every one of them carries real new
+ * state. Treating the second as a duplicate would silently discard the event
+ * that says a seller has been restricted — a seller who then keeps taking
+ * money they can no longer be paid for. So these are excluded, and the guarded
+ * transitions plus the primary key on the event id remain their protection
+ * against genuine replays.
+ */
+const SEMANTICALLY_UNIQUE_EVENT_TYPES = new Set([
+  'payment_intent.succeeded',
+  'payment_intent.payment_failed',
+  'payment_intent.canceled',
+  'charge.succeeded',
+  'charge.failed',
+]);
+
+/** Events about a connected account rather than a payment. */
+function isAccountEvent(type: string): boolean {
+  return type.startsWith('account.');
+}
+
+/** Events about a charge rather than an intent or an account. */
+function isChargeEvent(type: string): boolean {
+  return type.startsWith('charge.');
+}
 
 /**
  * Writes the event down before anything acts on it.
@@ -103,7 +147,15 @@ export type ProcessOutcome =
  * Returns rather than throws for every expected outcome, so a caller can tell
  * "nothing to do" from "come back later" from "this broke".
  */
-export async function processEvent(eventId: string): Promise<ProcessOutcome> {
+export async function processEvent(
+  eventId: string,
+  /**
+   * Needed to read a charge's balance transaction back. Passed in rather than
+   * resolved here so a test drives the whole path with no network and no
+   * credentials, and so this module never decides which provider is configured.
+   */
+  gateway: PaymentGateway,
+): Promise<ProcessOutcome> {
   const event = await prisma.paymentEvent.findUnique({
     where: { id: eventId },
     select: {
@@ -129,21 +181,30 @@ export async function processEvent(eventId: string): Promise<ProcessOutcome> {
    * (type, object) as one we already processed is the duplicate Stripe warns
    * about, and acting on it twice would double a ledger entry.
    */
-  const alreadyProcessed = await prisma.paymentEvent.findFirst({
-    where: {
-      type: event.type,
-      relatedObjectId: event.relatedObjectId,
-      status: 'PROCESSED',
-      id: { not: event.id },
-    },
-    select: { id: true },
-  });
-  if (alreadyProcessed !== null) {
-    await prisma.paymentEvent.update({
-      where: { id: event.id },
-      data: { status: 'IGNORED', processedAt: new Date(), lastError: 'semantic_duplicate' },
+  if (SEMANTICALLY_UNIQUE_EVENT_TYPES.has(event.type)) {
+    const alreadyProcessed = await prisma.paymentEvent.findFirst({
+      where: {
+        type: event.type,
+        relatedObjectId: event.relatedObjectId,
+        status: 'PROCESSED',
+        id: { not: event.id },
+      },
+      select: { id: true },
     });
-    return 'duplicate';
+    if (alreadyProcessed !== null) {
+      await prisma.paymentEvent.update({
+        where: { id: event.id },
+        data: { status: 'IGNORED', processedAt: new Date(), lastError: 'semantic_duplicate' },
+      });
+      return 'duplicate';
+    }
+  }
+
+  // Two different kinds of event, two different handlers. Neither touches the
+  // other's tables.
+  if (isAccountEvent(event.type)) return processAccountEvent(event.id, event.payload);
+  if (isChargeEvent(event.type)) {
+    return processChargeEvent(event.id, event.relatedObjectId, gateway);
   }
 
   const payment = await prisma.payment.findUnique({
@@ -258,6 +319,172 @@ export async function processEvent(eventId: string): Promise<ProcessOutcome> {
       where: { id: event.id },
       data: { status: 'PROCESSED', processedAt: now, lastError: null },
     });
+  });
+
+  return 'processed';
+}
+
+/**
+ * `account.updated` — the only way a seller becomes payable.
+ *
+ * The Account object arrives inside the verified payload, so no provider read
+ * is needed: the event IS the read, and its signature is what makes it
+ * trustworthy. It is narrowed by the same `accountStateFromEventObject` the
+ * direct-read path uses, because two mappings of one object is how the two
+ * quietly disagree.
+ *
+ * **Out-of-order delivery is expected, not exceptional.** Stripe does not
+ * guarantee ordering, so a stale event describing a healthy account can arrive
+ * after a rejection. `applyAccountState` is where that is handled: it refuses a
+ * status transition the domain table disallows while still recording the facts.
+ * Nothing in this function tries to reason about ordering itself.
+ */
+async function processAccountEvent(eventId: string, payload: unknown): Promise<ProcessOutcome> {
+  const account = accountStateFromEventObject(
+    (payload as { data?: { object?: unknown } } | null)?.data?.object,
+  );
+  if (account === null) {
+    await prisma.paymentEvent.update({
+      where: { id: eventId },
+      data: { status: 'FAILED', lastError: 'account_payload_unreadable' },
+    });
+    return 'failed';
+  }
+
+  const sellerProfileId = await findSellerByAccountId(account.accountId);
+
+  /*
+   * No seller for this account. Deferred rather than ignored: an
+   * `account.updated` can beat our own write of `stripe_account_id`, which is
+   * the same out-of-order case the payment path has. Dropping it would lose a
+   * capability change permanently.
+   */
+  if (sellerProfileId === null) {
+    await prisma.paymentEvent.update({
+      where: { id: eventId },
+      data: { attempts: { increment: 1 }, lastError: 'seller_not_found_yet' },
+    });
+    return 'deferred';
+  }
+
+  const now = new Date();
+  const settled = await applyAccountState(sellerProfileId, account, now);
+
+  await prisma.paymentEvent.update({
+    where: { id: eventId },
+    data: { status: 'PROCESSED', processedAt: now, lastError: null },
+  });
+
+  // Recorded because "when did this seller stop being payable, and on whose
+  // say-so" is the first question asked when a payout fails.
+  await tryWriteAuditLog(prisma, {
+    action: 'connect.account_updated',
+    actorType: 'system',
+    actorId: null,
+    entityType: 'connected_account',
+    entityId: account.accountId,
+    after: {
+      sellerProfileId,
+      status: settled,
+      chargesEnabled: account.chargesEnabled,
+      payoutsEnabled: account.payoutsEnabled,
+      disabledReason: account.disabledReason,
+      // A COUNT, not the list. Requirement keys name what Stripe wants from a
+      // specific person, and an audit table is not where that belongs.
+      currentlyDue: account.currentlyDue.length,
+    },
+  });
+
+  return 'processed';
+}
+
+/**
+ * `charge.*` — completes the payment attempt with SETTLEMENT figures.
+ *
+ * This is the answer to "is `latest_charge` enough?", and it is no. The intent
+ * payload names the charge; it does not carry what Stripe actually took in fees
+ * or what actually landed in the balance. Those live on the charge's balance
+ * transaction, so the charge is read back with it expanded and the real numbers
+ * are written down. Kurdora never estimates a fee.
+ *
+ * **What this deliberately does NOT do.** It records `refunded`, `disputed` and
+ * `amount_refunded_minor` as mirrored facts, and it stops there. No ledger
+ * entry is reversed, no order status changes, no payout is held. Refund and
+ * dispute HANDLING is not in this phase, and a column quietly acquiring a true
+ * value is not the same as the platform having handled the thing it describes.
+ */
+async function processChargeEvent(
+  eventId: string,
+  chargeId: string,
+  gateway: PaymentGateway,
+): Promise<ProcessOutcome> {
+  const attempt = await prisma.paymentAttempt.findUnique({
+    where: { providerChargeId: chargeId },
+    select: { id: true, paymentId: true, status: true },
+  });
+
+  /*
+   * The attempt row is created by the intent handler. A charge event that
+   * arrives first is the ordinary out-of-order case — deferred for retry, never
+   * dropped, and never invented as a new attempt row (which would orphan it
+   * from any payment).
+   */
+  if (attempt === null) {
+    await prisma.paymentEvent.update({
+      where: { id: eventId },
+      data: { attempts: { increment: 1 }, lastError: 'attempt_not_found_yet' },
+    });
+    return 'deferred';
+  }
+
+  const settlement = await gateway.retrieveCharge(chargeId);
+  if (settlement === null) {
+    await prisma.paymentEvent.update({
+      where: { id: eventId },
+      data: { attempts: { increment: 1 }, lastError: 'charge_not_readable' },
+    });
+    return 'deferred';
+  }
+
+  const now = new Date();
+
+  await prisma.paymentAttempt.update({
+    where: { id: attempt.id },
+    data: {
+      status:
+        settlement.status === 'succeeded'
+          ? 'SUCCEEDED'
+          : settlement.status === 'failed'
+            ? 'FAILED'
+            : 'PENDING',
+      providerBalanceTransactionId: settlement.balanceTransactionId,
+      providerPaymentIntentId: settlement.paymentIntentId,
+      paymentMethodType: settlement.paymentMethodType,
+      /*
+       * Null for FEE_ONLY, and that is the invariant showing up in the data:
+       * a fee-only charge has no transfer leg, so there is no transfer id and
+       * no destination account to record.
+       */
+      providerTransferId: settlement.transferId,
+      destinationAccountId: settlement.destinationAccountId,
+      // The REAL figures. Null while the charge is unsettled — honest, where a
+      // zero would be a number that reconciles against nothing.
+      providerFeeMinor: settlement.providerFeeMinor,
+      providerNetMinor: settlement.netMinor,
+      amountRefundedMinor: settlement.amountRefundedMinor,
+      refunded: settlement.refunded,
+      disputed: settlement.disputed,
+      failureCode: settlement.failureCode,
+      failureMessage: settlement.failureMessage,
+      livemode: settlement.livemode,
+      ...(settlement.status === 'succeeded' ? { succeededAt: now } : {}),
+      ...(settlement.status === 'failed' ? { failedAt: now } : {}),
+    },
+  });
+
+  await prisma.paymentEvent.update({
+    where: { id: eventId },
+    data: { status: 'PROCESSED', processedAt: now, lastError: null },
   });
 
   return 'processed';

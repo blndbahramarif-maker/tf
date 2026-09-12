@@ -52,6 +52,7 @@ export default async function DashboardLayout({
     { href: '/dashboard/listings', label: t('listings') },
     { href: '/dashboard/messages', label: t('messages') },
     { href: '/dashboard/offers', label: t('offers') },
+    { href: '/dashboard/payouts', label: t('payouts') },
     { href: '/dashboard/profile', label: t('profile') },
     { href: '/dashboard/security', label: t('security') },
   ] as const;

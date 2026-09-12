@@ -11,6 +11,8 @@ import {
 } from '../../app/api/v1/seller-profiles/[id]/route';
 import { GET as listAdminUsers } from '../../app/api/v1/admin/users/route';
 import { POST as createListing } from '../../app/api/v1/listings/route';
+import { POST as startConnectOnboarding } from '../../app/api/v1/connect/onboarding/route';
+import { GET as getConnectStatus } from '../../app/api/v1/connect/status/route';
 import {
   DELETE as deleteListing,
   PATCH as patchListing,
@@ -437,6 +439,62 @@ const CASES: RouteCase[] = [
           countryCode: 'GB',
           attributes: { brand: 'Matrix', model: 'One' },
         },
+      }),
+  },
+  {
+    id: 'POST /api/v1/connect/onboarding',
+    method: 'POST',
+    path: '/api/v1/connect/onboarding',
+    permission: 'seller:manage_payouts',
+    ownership: 'implicit — seller profile found by the token subject',
+    /*
+     * 503, and that is a PASS for this matrix's purpose.
+     *
+     * `seller:manage_payouts` is held only by the two selling roles, so every
+     * other role is refused at 403 before any provider is consulted. The two
+     * that get through reach `connectGateway()`, which refuses because this
+     * test environment has no Stripe credentials — exactly as documented for
+     * the 409/422 cases: the guard PASSED and the business layer then said no.
+     *
+     * Deliberately not asserted as 200/201: doing so would require live Stripe
+     * credentials in CI, and an authorization matrix that only runs when a
+     * payment provider is reachable is a matrix that stops running.
+     *
+     * `super_admin` holds `*` and so passes the guard too, landing on the same
+     * 503 — the provider check comes before the seller-profile lookup, so an
+     * unconfigured provider is answered without touching the database.
+     */
+    expect: { seller: 503, business_seller: 503, super_admin: 503 },
+    denied: 401,
+    freshUser: 'with-seller-profile',
+    run: (user) =>
+      callRoute(startConnectOnboarding, '/api/v1/connect/onboarding', {
+        method: 'POST',
+        token: user?.accessToken ?? null,
+      }),
+  },
+  {
+    id: 'GET /api/v1/connect/status',
+    method: 'GET',
+    path: '/api/v1/connect/status',
+    permission: 'seller:manage_payouts',
+    ownership: 'implicit — query scoped to the token subject',
+    /*
+     * Reads the MIRROR, so it needs no provider and answers 200 here.
+     *
+     * Staff roles are refused at 403: a seller's payout standing is not staff
+     * business without a permission that says so, and no such permission
+     * exists yet. `super_admin` is the exception, holding `*` — it passes the
+     * guard and is then refused 409 by the business layer for having no seller
+     * profile of its own, which is the honest answer rather than an
+     * authorization one.
+     */
+    expect: { seller: 200, business_seller: 200, super_admin: 409 },
+    denied: 401,
+    freshUser: 'with-seller-profile',
+    run: (user) =>
+      callRoute(getConnectStatus, '/api/v1/connect/status', {
+        token: user?.accessToken ?? null,
       }),
   },
   {

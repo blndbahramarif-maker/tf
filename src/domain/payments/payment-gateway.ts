@@ -76,9 +76,59 @@ export interface GatewayEvent {
   readonly payload: unknown;
 }
 
+/**
+ * A settled charge, as the domain needs it.
+ *
+ * This type exists because **`latest_charge` alone is not sufficient** to
+ * complete a payment attempt, and it is worth being explicit about why.
+ *
+ * A `payment_intent.succeeded` payload carries `latest_charge`, which gives us
+ * a charge id and nothing else of substance. The figures that matter for
+ * reconciliation — what Stripe actually took in fees, and what actually landed
+ * in the platform balance — live on the charge's BALANCE TRANSACTION, which
+ * appears in that payload as a bare string id at best. Kurdora never estimates
+ * either number: an estimated fee that drifts from the real one produces a
+ * ledger that looks balanced and is wrong, which is the most expensive kind of
+ * accounting bug to find.
+ *
+ * So the charge is read back explicitly, with the balance transaction expanded.
+ * `providerFeeMinor` and `netMinor` are NULLABLE and legitimately so: a charge
+ * that has not settled yet has no balance transaction, and recording null is
+ * honest where recording zero would be a lie that balances.
+ */
+export interface GatewayChargeSettlement {
+  readonly chargeId: string;
+  readonly paymentIntentId: string | null;
+  readonly balanceTransactionId: string | null;
+  readonly status: 'succeeded' | 'pending' | 'failed';
+  readonly amountMinor: bigint;
+  readonly currency: string;
+  readonly amountRefundedMinor: bigint;
+  /** Stripe's `refunded` means FULLY refunded, not "has any refund". */
+  readonly refunded: boolean;
+  readonly disputed: boolean;
+  readonly paymentMethodType: string | null;
+  /** Present only when the charge carried a transfer leg. Null for FEE_ONLY. */
+  readonly transferId: string | null;
+  readonly destinationAccountId: string | null;
+  /** From the balance transaction. Null until the charge settles. */
+  readonly providerFeeMinor: bigint | null;
+  readonly netMinor: bigint | null;
+  readonly failureCode: string | null;
+  readonly failureMessage: string | null;
+  readonly livemode: boolean;
+}
+
 export interface PaymentGateway {
   createPaymentIntent(input: CreateIntentInput): Promise<GatewayIntent>;
   retrievePaymentIntent(id: string): Promise<GatewayIntent | null>;
+  /**
+   * Reads a charge back with its balance transaction expanded.
+   *
+   * The only way to learn the REAL provider fee and net. See
+   * `GatewayChargeSettlement` for why the webhook payload cannot supply them.
+   */
+  retrieveCharge(chargeId: string): Promise<GatewayChargeSettlement | null>;
   /**
    * Verifies a signature over the RAW request body and returns the event.
    *

@@ -626,6 +626,130 @@ describe.skipIf(!hasDatabase)('database constraints', () => {
     });
   });
 
+  describe('connected-account integrity (Phase 7 Part 2)', () => {
+    /**
+     * Every assertion here is written in raw SQL with every TypeScript check
+     * bypassed. That is the point: the application already refuses these, and
+     * these tests prove the database refuses them too — because application
+     * checks bind only the code that goes through them (ADR-0010).
+     */
+
+    /**
+     * A minimal FEE_ONLY order to hang a payment off.
+     *
+     * Local rather than shared with the Part 1 block above: these tests are
+     * about payment_attempts, and borrowing a fixture whose invariants belong
+     * to a different describe is how one block's edit breaks another's.
+     */
+    let part2OrderCounter = 0;
+    async function insertOrderForPayment(): Promise<string> {
+      part2OrderCounter += 1;
+      const listingId = await insertListing();
+      const result = await client.query<{ id: string }>(
+        `INSERT INTO orders (id, order_number, listing_id, buyer_id, seller_profile_id, flow_type,
+                             status, subtotal_minor, shipping_minor, tax_minor, total_minor,
+                             principal_minor, currency, commission_percent_bps,
+                             commission_amount_minor, seller_amount_minor, updated_at)
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, 'FEE_ONLY', 'DRAFT',
+                 25000, 0, 0, 25000, 5000000, 'GBP', 50, 25000, 0, now())
+         RETURNING id`,
+        [`P2-${part2OrderCounter}-${Date.now()}`, listingId, fx.userId, fx.sellerProfileId],
+      );
+      return result.rows[0]!.id;
+    }
+
+    const setProfile = (columns: string, values: unknown[]) =>
+      client.query(`UPDATE seller_profiles SET ${columns} WHERE id = $1`, [
+        fx.sellerProfileId,
+        ...values,
+      ]);
+
+    it('REFUSES charges_enabled without a connected account', async () => {
+      // "Payable with no account" is the state that would send a destination
+      // charge to nowhere. It must be unrepresentable, not merely unlikely.
+      await expect(
+        setProfile(`stripe_account_id = NULL, charges_enabled = true`, []),
+      ).rejects.toThrow(/seller_profiles_enabled_requires_account/);
+
+      await expect(
+        setProfile(`stripe_account_id = NULL, payouts_enabled = true`, []),
+      ).rejects.toThrow(/seller_profiles_enabled_requires_account/);
+    });
+
+    it('REFUSES an ACTIVE onboarding status without a connected account', async () => {
+      await expect(
+        setProfile(`stripe_account_id = NULL, onboarding_status = 'ACTIVE'`, []),
+      ).rejects.toThrow(/seller_profiles_active_requires_account/);
+    });
+
+    it('accepts a genuinely onboarded seller', async () => {
+      await expect(
+        setProfile(
+          `stripe_account_id = $2, charges_enabled = true, payouts_enabled = true,
+           onboarding_status = 'ACTIVE', details_submitted = true`,
+          [`acct_constraint_${Date.now()}`],
+        ),
+      ).resolves.toBeDefined();
+    });
+
+    it('REFUSES a nonsensical payout delay', async () => {
+      await expect(setProfile(`stripe_payout_delay_days = -1`, [])).rejects.toThrow(
+        /seller_profiles_stripe_payout_delay_sane/,
+      );
+    });
+
+    it('REFUSES a refund larger than the charge it refunds', async () => {
+      const payment = await client.query<{ id: string }>(
+        `INSERT INTO payments (id, order_id, provider_payment_intent_id, status, amount_minor,
+                               currency, flow_type, updated_at)
+         VALUES (gen_random_uuid(), $1, 'pi_refund_bounds', 'SUCCEEDED', 25000, 'GBP',
+                 'FEE_ONLY', now())
+         RETURNING id`,
+        [await insertOrderForPayment()],
+      );
+
+      const insertAttempt = (charge: string, refunded: number, flag = false) =>
+        client.query(
+          `INSERT INTO payment_attempts (id, payment_id, provider_charge_id, status,
+                                         amount_minor, currency, amount_refunded_minor,
+                                         refunded, updated_at)
+           VALUES (gen_random_uuid(), $1, $2, 'SUCCEEDED', 25000, 'GBP', $3, $4, now())`,
+          [payment.rows[0]!.id, charge, refunded, flag],
+        );
+
+      // Refunding more than was taken is money appearing from nowhere.
+      await expect(insertAttempt('ch_over_refund', 25_001)).rejects.toThrow(
+        /payment_attempts_refund_within_amount/,
+      );
+      // A full refund of exactly the charge is legitimate.
+      await expect(insertAttempt('ch_full_refund', 25_000, true)).resolves.toBeDefined();
+    });
+
+    it('REFUSES a "fully refunded" flag with nothing refunded', async () => {
+      const payment = await client.query<{ id: string }>(
+        `INSERT INTO payments (id, order_id, provider_payment_intent_id, status, amount_minor,
+                               currency, flow_type, updated_at)
+         VALUES (gen_random_uuid(), $1, 'pi_refund_flag', 'SUCCEEDED', 25000, 'GBP',
+                 'FEE_ONLY', now())
+         RETURNING id`,
+        [await insertOrderForPayment()],
+      );
+
+      // Stripe's `refunded` means FULLY refunded. True with a zero amount is
+      // a contradiction, and a reconciliation report would believe it.
+      await expect(
+        client.query(
+          `INSERT INTO payment_attempts (id, payment_id, provider_charge_id, status,
+                                         amount_minor, currency, amount_refunded_minor,
+                                         refunded, updated_at)
+           VALUES (gen_random_uuid(), $1, 'ch_flag_only', 'SUCCEEDED', 25000, 'GBP', 0,
+                   true, now())`,
+          [payment.rows[0]!.id],
+        ),
+      ).rejects.toThrow(/payment_attempts_refunded_implies_amount/);
+    });
+  });
+
   describe('offer integrity', () => {
     it('refuses a zero or negative event amount', async () => {
       const offerId = await insertOffer();

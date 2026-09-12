@@ -148,6 +148,22 @@ enum ModerationStatus {
   @@map("moderation_status")
 }
 
+/// Connected-account onboarding lifecycle. Every value is MIRRORED FROM STRIPE
+/// by the account.updated webhook or a direct account read — no client request
+/// writes any of it. RESTRICTED is reachable FROM active: Stripe adds
+/// requirements over time and an account can lose eligibility mid-life.
+enum OnboardingStatus {
+  NOT_STARTED
+  ONBOARDING_STARTED
+  PENDING_VERIFICATION
+  ACTIVE
+  RESTRICTED
+  REJECTED
+  DISABLED
+
+  @@map("onboarding_status")
+}
+
 enum ConversationStatus {
   OPEN
   ARCHIVED
@@ -1061,7 +1077,31 @@ model SellerProfile {
   /// Stripe's outstanding requirements summary. No document contents.
   requirementsDue Json    @default("{}") @map("requirements_due")
   /// Buyer-protection hold before a payout is released, per seller risk tier.
+  /// OURS, not Stripe's — `stripePayoutDelayDays` mirrors theirs, and the two
+  /// are kept apart so neither silently overwrites the other.
   payoutDelayDays Int     @default(0) @map("payout_delay_days")
+
+  // ── Onboarding state, mirrored from Stripe (Phase 7 Part 2) ───────────────
+  onboardingStatus      OnboardingStatus @default(NOT_STARTED) @map("onboarding_status")
+  /// Stripe's `details_submitted`: they finished the form. NOT "verified".
+  detailsSubmitted      Boolean          @default(false) @map("details_submitted")
+  /// `requirements.disabled_reason`. Distinguishes "not finished" from
+  /// "Stripe said no" — a `rejected.*` value is a different problem entirely.
+  stripeDisabledReason  String?          @map("stripe_disabled_reason")
+  /// Snapshot of `capabilities`. Display and triage only; the booleans above
+  /// remain the decision inputs.
+  stripeCapabilities    Json             @default("{}") @map("stripe_capabilities")
+  /// Fixed by Stripe at account creation and not changeable afterwards.
+  stripeAccountCountry  String?          @map("stripe_account_country") @db.Char(2)
+  /// The controller configuration this account was created with. Recorded
+  /// because `stripe_dashboard.type` is IMMUTABLE per account.
+  stripeController      Json             @default("{}") @map("stripe_controller")
+  /// Stripe's `settings.payouts.schedule.delay_days`.
+  stripePayoutDelayDays Int?             @map("stripe_payout_delay_days")
+  onboardingStartedAt   DateTime?        @map("onboarding_started_at") @db.Timestamptz(6)
+  onboardingCompletedAt DateTime?        @map("onboarding_completed_at") @db.Timestamptz(6)
+  /// When the last account.updated was applied.
+  stripeAccountSyncedAt DateTime?        @map("stripe_account_synced_at") @db.Timestamptz(6)
 
   ratingAvg           Decimal @default(0) @map("rating_avg") @db.Decimal(3, 2)
   ratingCount         Int     @default(0) @map("rating_count")
@@ -1464,14 +1504,30 @@ model PaymentAttempt {
   currency          String  @db.Char(3)
   paymentMethodType String? @map("payment_method_type")
 
+  /// Mirrored from the charge so a refund does not have to re-fetch it.
+  providerPaymentIntentId String? @map("provider_payment_intent_id")
+  /// Present when the charge carried a transfer leg (BUY_NOW). ALWAYS null for
+  /// FEE_ONLY, which has no transfer at all.
+  providerTransferId      String? @map("provider_transfer_id")
+  destinationAccountId    String? @map("destination_account_id")
+
+  amountRefundedMinor BigInt  @default(0) @map("amount_refunded_minor")
+  /// Stripe's `refunded` means FULLY refunded. A partial refund is `false`
+  /// with a positive amount.
+  refunded            Boolean @default(false)
+  disputed            Boolean @default(false)
+
   failureCode      String? @map("failure_code")
   failureMessage   String? @map("failure_message")
   /// The ACTUAL provider fee from the balance transaction. Never estimated.
   providerFeeMinor BigInt? @map("provider_fee_minor")
+  /// Net after Stripe's fee, from the balance transaction. Never computed.
+  providerNetMinor BigInt? @map("provider_net_minor")
 
   livemode Boolean @default(false)
 
   succeededAt DateTime? @map("succeeded_at") @db.Timestamptz(6)
+  failedAt    DateTime? @map("failed_at") @db.Timestamptz(6)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 

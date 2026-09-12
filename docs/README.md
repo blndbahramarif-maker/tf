@@ -32,6 +32,7 @@ brand configuration module so it can be changed without touching application cod
 | 13 | **[Dependencies & blockers](./13-dependencies-and-blockers.md)** | **External, non-engineering items that can block a phase** |
 | 14 | [Environments](./14-environments.md) | Local, CI and production configuration |
 | 15 | **[Phase 7 gate](./15-phase-7-gate.md)** | **Stripe Connect architecture, verified 2026-09-12. Live mode blocked pending Stripe approval** |
+| 16 | **[Phase 7 Part 2](./16-phase-7-part-2.md)** | **Connected-account onboarding. Implemented and tested against a FAKE provider — the real Stripe API was never called** |
 | — | [Architecture decision records](./adr/) | Why each structural choice was made |
 
 ## Legal notice

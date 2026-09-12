@@ -206,7 +206,8 @@
       "signOut": "Sign out",
       "verifyEmailNotice": "Verify your email address to publish listings.",
       "messages": "Messages",
-      "offers": "Offers"
+      "offers": "Offers",
+      "payouts": "المدفوعات"
     },
     "errors": {
       "unauthenticated": "Please sign in again.",
@@ -370,6 +371,46 @@
       "columnIp": "IP address",
       "columnDevice": "Device",
       "stepUpNotice": "Changing your password and revoking other sessions require re-authentication, which is not available in the browser yet."
+    },
+    "payouts": {
+      "title": "المدفوعات",
+      "noProfile": "ليس لديك ملف بائع بعد.",
+      "statusLabel": "الحالة",
+      "chargesEnabled": "يمكنه استلام المدفوعات",
+      "payoutsEnabled": "يمكنه استلام التحويلات",
+      "payoutDelay": "مهلة التحويل",
+      "payoutDelayDays": "{days} يوم",
+      "yes": "نعم",
+      "no": "لا",
+      "outstanding": "لا تزال Stripe بحاجة إلى",
+      "start": "إعداد المدفوعات",
+      "resume": "إكمال إعداد المدفوعات",
+      "starting": "جارٍ الفتح…",
+      "refresh": "التحقق من التحديثات",
+      "refreshing": "جارٍ التحقق…",
+      "refreshed": "تم تحديث الحالة.",
+      "handoffNote": "سيتم نقلك إلى Stripe، مزود الدفع لدينا، لتأكيد هويتك وبياناتك المصرفية. لا يرى {brandName} مستنداتك أبدًا.",
+      "linkExpired": "انتهت صلاحية رابط الإعداد. تُستخدم الروابط مرة واحدة فقط، فابدأ من جديد أدناه.",
+      "rejectedHelp": "لا يمكن لـ Stripe اعتماد هذا الحساب للتحويلات. تواصل مع الدعم إذا كنت تعتقد أن هذا خطأ.",
+      "lastSynced": "آخر تحقق مع Stripe: {at}",
+      "status": {
+        "NOT_STARTED": "لم يبدأ",
+        "ONBOARDING_STARTED": "قيد التنفيذ",
+        "PENDING_VERIFICATION": "قيد المراجعة",
+        "ACTIVE": "نشط",
+        "RESTRICTED": "يتطلب إجراءً",
+        "REJECTED": "مرفوض",
+        "DISABLED": "معطّل"
+      },
+      "explain": {
+        "NOT_STARTED": "أعدّ المدفوعات لبيع العناصر التي يتم دفع ثمنها عبر {brandName}.",
+        "ONBOARDING_STARTED": "لقد بدأت ولم تُكمل. تابع من حيث توقفت.",
+        "PENDING_VERIFICATION": "تراجع Stripe بياناتك. لا يوجد ما عليك فعله.",
+        "ACTIVE": "يمكنك استلام المدفوعات والتحويلات.",
+        "RESTRICTED": "تحتاج Stripe إلى شيء منك قبل أن تتمكن من استلام أموالك.",
+        "REJECTED": "لا يمكن لـ Stripe اعتماد هذا الحساب للتحويلات.",
+        "DISABLED": "التحويلات موقوفة لهذا الحساب."
+      }
     }
   },
   "messaging": {

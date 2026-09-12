@@ -1,6 +1,8 @@
 import type { PaymentGateway } from '@/domain/payments/payment-gateway';
+import type { ConnectGateway } from '@/domain/payments/connect-gateway';
 import { StripeNotConfiguredError, type StripeConfigIssue } from '@/infra/stripe/config';
 import { stripeGateway } from '@/infra/stripe/gateway';
+import { stripeConnectGateway } from '@/infra/stripe/connect';
 
 /**
  * Where a route gets a payment gateway.
@@ -38,6 +40,24 @@ export class PaymentsUnavailableError extends Error {
 export function paymentGateway(): PaymentGateway {
   try {
     return stripeGateway();
+  } catch (error) {
+    if (error instanceof StripeNotConfiguredError) {
+      throw new PaymentsUnavailableError(error.reason);
+    }
+    throw error;
+  }
+}
+
+/**
+ * The configured connected-account gateway.
+ *
+ * Separate from `paymentGateway()` so a route that takes payments is not
+ * handed the ability to create accounts, and vice versa. Same failure mode:
+ * `PaymentsUnavailableError` on a 503, never a crash.
+ */
+export function connectGateway(): ConnectGateway {
+  try {
+    return stripeConnectGateway();
   } catch (error) {
     if (error instanceof StripeNotConfiguredError) {
       throw new PaymentsUnavailableError(error.reason);

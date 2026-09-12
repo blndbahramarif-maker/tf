@@ -5,10 +5,18 @@ Read `docs/README.md` before making architectural changes. Read
 
 ## Current state
 
-**Phase 7 Part 1 complete: the payment foundation, Stripe TEST MODE only.**
-Orders, a payment gateway port with a Stripe adapter behind it, destination
-charges for BUY_NOW, fee-only charges for Cars and Business, database-durable
-idempotency, and a signature-verified webhook.
+**Phase 7 Parts 1 and 2 complete: the payment foundation and connected-account
+onboarding, Stripe TEST MODE only.** Orders, a payment gateway port with a
+Stripe adapter behind it, destination charges for BUY_NOW, fee-only charges for
+Cars and Business, database-durable idempotency, and a signature-verified
+webhook. On top of that: a `ConnectGateway` port, server-side account creation
+under a deterministic idempotency key, Stripe-hosted onboarding, `account.updated`
+and `charge.*` handling, and a seller payouts page.
+
+**The real Stripe API has never been called.** This environment has no Stripe
+credentials and no Stripe CLI, so `tests/api/stripe-live.test.ts` is written and
+SKIPPED, and no webhook has ever been received from Stripe. Everything above is
+proven against a labelled fake provider. See `docs/16-phase-7-part-2.md`.
 
 **Live mode is refused at startup** (`LIVE_MODE_PERMITTED = false` in
 `src/infra/stripe/config.ts`). Stripe has NOT approved the business model in
@@ -24,10 +32,16 @@ offer list and offer detail pages ship with them.
 **Phase 6 collects no money.** An accepted offer records agreement and nothing
 else — no order, no payment, no ledger entry, no payout. A test asserts it.
 
-There is still NO payment UI, NO seller onboarding, NO payouts, NO refund or
-dispute handling, NO reconciliation, NO realtime transport, NO message
-attachments, NO blocking, NO counter-offers, NO subscriptions, NO advertising,
-NO reviews and NO moderation UI. See `docs/10-roadmap.md`.
+There is still NO payment UI, NO payouts, NO refund or dispute handling, NO
+reconciliation, NO realtime transport, NO message attachments, NO blocking, NO
+counter-offers, NO subscriptions, NO advertising, NO reviews and NO moderation
+UI. See `docs/10-roadmap.md`.
+
+**Refunds and disputes are MIRRORED, not handled.** `charge.*` writes
+`refunded`, `disputed` and `amount_refunded_minor` onto a payment attempt
+because those are facts the provider reported. Nothing reverses a ledger entry,
+changes an order status or holds a payout. A column holding `true` is not the
+platform having handled what it describes.
 
 ## Commands
 
@@ -133,6 +147,24 @@ transaction as the status change.
 is never "strip the dangerous part" — that is a blocklist. Content is refused
 with a reason or SCORED and still delivered; it is never silently rewritten or
 truncated.
+
+**A connected-account surface:** the request names NOTHING. The country, the
+email and the business name come from the caller's own seller profile row,
+found by the session's user id — there is no `stripeAccountId`, `country` or
+`capabilities` parameter anywhere, so a forged one has nowhere to arrive.
+**Only `applyAccountState` may change a seller's payability**, it takes a
+`ProviderAccountState` that only the Stripe adapter can produce, and it refuses
+any transition `ONBOARDING_TRANSITIONS` disallows while still recording the
+mirrored facts. Stripe's return URL "only means the flow was entered and exited
+properly" — treat it as a cue to re-read the account, never as evidence.
+`REJECTED` is terminal.
+
+**A webhook event type:** decide whether a SECOND event about the same object
+is a duplicate before adding it to `HANDLED_EVENT_TYPES`. Add it to
+`SEMANTICALLY_UNIQUE_EVENT_TYPES` only if it describes a once-only transition.
+`account.updated` and `charge.updated` are emitted repeatedly with real new
+state each time; deduping them would silently discard the event that says a
+seller has been restricted.
 
 **Anything that takes money:** the request names a resource id and nothing
 else. The amount, currency, seller, connected account and commission are all

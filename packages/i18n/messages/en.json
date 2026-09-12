@@ -206,7 +206,8 @@
       "signOut": "Sign out",
       "verifyEmailNotice": "Verify your email address to publish listings.",
       "messages": "Messages",
-      "offers": "Offers"
+      "offers": "Offers",
+      "payouts": "Payouts"
     },
     "errors": {
       "unauthenticated": "Please sign in again.",
@@ -370,6 +371,46 @@
       "columnIp": "IP address",
       "columnDevice": "Device",
       "stepUpNotice": "Changing your password and revoking other sessions require re-authentication, which is not available in the browser yet."
+    },
+    "payouts": {
+      "title": "Payouts",
+      "noProfile": "You do not have a seller profile yet.",
+      "statusLabel": "Status",
+      "chargesEnabled": "Can take payments",
+      "payoutsEnabled": "Can receive payouts",
+      "payoutDelay": "Payout delay",
+      "payoutDelayDays": "{days} days",
+      "yes": "Yes",
+      "no": "No",
+      "outstanding": "Stripe still needs",
+      "start": "Set up payouts",
+      "resume": "Finish setting up payouts",
+      "starting": "Opening…",
+      "refresh": "Check for updates",
+      "refreshing": "Checking…",
+      "refreshed": "Status updated.",
+      "handoffNote": "You will be taken to Stripe, our payment provider, to confirm your identity and bank details. {brandName} never sees your documents.",
+      "linkExpired": "That setup link expired. Links can only be used once, so start again below.",
+      "rejectedHelp": "Stripe cannot approve this account for payouts. Contact support if you believe this is a mistake.",
+      "lastSynced": "Last checked with Stripe: {at}",
+      "status": {
+        "NOT_STARTED": "Not started",
+        "ONBOARDING_STARTED": "In progress",
+        "PENDING_VERIFICATION": "Being reviewed",
+        "ACTIVE": "Active",
+        "RESTRICTED": "Action needed",
+        "REJECTED": "Rejected",
+        "DISABLED": "Disabled"
+      },
+      "explain": {
+        "NOT_STARTED": "Set up payouts to sell items that are paid for on {brandName}.",
+        "ONBOARDING_STARTED": "You have started but not finished. Continue where you left off.",
+        "PENDING_VERIFICATION": "Stripe is reviewing your details. There is nothing for you to do.",
+        "ACTIVE": "You can take payments and receive payouts.",
+        "RESTRICTED": "Stripe needs something from you before you can be paid.",
+        "REJECTED": "Stripe cannot approve this account for payouts.",
+        "DISABLED": "Payouts are switched off for this account."
+      }
     }
   },
   "messaging": {

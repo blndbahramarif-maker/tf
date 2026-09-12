@@ -104,7 +104,7 @@ export async function POST(request: Request) {
    * slower acknowledgement. The event is RECORDED first either way, so moving
    * to the worker later changes only where `processEvent` is called from.
    */
-  const outcome = await processEvent(event.id);
+  const outcome = await processEvent(event.id, gateway);
 
   await tryWriteAuditLog(prisma, {
     action: 'webhook.processed',

@@ -657,7 +657,7 @@ describe.skipIf(!hasDatabase)('payments', () => {
       const event = gateway.constructEvent(body, 'valid-signature');
 
       expect(await recordEvent(event)).toEqual({ ok: true, duplicate: false });
-      expect(await processEvent(event.id)).toBe('processed');
+      expect(await processEvent(event.id, gateway)).toBe('processed');
 
       const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
       expect(order.status).toBe('PAID');
@@ -697,7 +697,7 @@ describe.skipIf(!hasDatabase)('payments', () => {
         'valid-signature',
       );
       await recordEvent(event);
-      expect(await processEvent(event.id)).toBe('processed');
+      expect(await processEvent(event.id, gateway)).toBe('processed');
 
       const entries = await prisma.ledgerEntry.findMany({ where: { orderId } });
       // Kurdora never holds the sale price, so it owes the seller nothing.
@@ -728,7 +728,7 @@ describe.skipIf(!hasDatabase)('payments', () => {
 
       const first = gateway.constructEvent(body, 'valid');
       await recordEvent(first);
-      expect(await processEvent(first.id)).toBe('processed');
+      expect(await processEvent(first.id, gateway)).toBe('processed');
 
       // Byte-identical redelivery. The primary key IS the event id.
       const second = gateway.constructEvent(body, 'valid');
@@ -754,7 +754,7 @@ describe.skipIf(!hasDatabase)('payments', () => {
         'valid',
       );
       await recordEvent(first);
-      expect(await processEvent(first.id)).toBe('processed');
+      expect(await processEvent(first.id, gateway)).toBe('processed');
 
       // Stripe: "in some cases, two separate Event objects are generated and
       // sent". Different id, same (type, object) — the PK cannot catch it.
@@ -769,7 +769,7 @@ describe.skipIf(!hasDatabase)('payments', () => {
         'valid',
       );
       expect(await recordEvent(second)).toEqual({ ok: true, duplicate: false });
-      expect(await processEvent(second.id)).toBe('duplicate');
+      expect(await processEvent(second.id, gateway)).toBe('duplicate');
 
       const entries = await prisma.ledgerEntry.findMany({ where: { orderId } });
       expect(new Set(entries.map((entry) => entry.entryGroupId)).size).toBe(1);
@@ -787,7 +787,7 @@ describe.skipIf(!hasDatabase)('payments', () => {
         'valid',
       );
       await recordEvent(event);
-      expect(await processEvent(event.id)).toBe('deferred');
+      expect(await processEvent(event.id, gateway)).toBe('deferred');
 
       const row = await prisma.paymentEvent.findUniqueOrThrow({ where: { id: event.id } });
       expect(row.status).toBe('PENDING');
@@ -804,7 +804,7 @@ describe.skipIf(!hasDatabase)('payments', () => {
         'valid',
       );
       await recordEvent(event);
-      expect(await processEvent(event.id)).toBe('ignored');
+      expect(await processEvent(event.id, gateway)).toBe('ignored');
     });
 
     it('never acts on an event recorded as unverified', async () => {
@@ -826,7 +826,7 @@ describe.skipIf(!hasDatabase)('payments', () => {
         },
       });
 
-      expect(await processEvent(id)).toBe('failed');
+      expect(await processEvent(id, gateway)).toBe('failed');
     });
 
     it('a failed payment leaves the order unpaid', async () => {
@@ -842,7 +842,7 @@ describe.skipIf(!hasDatabase)('payments', () => {
         'valid',
       );
       await recordEvent(event);
-      await processEvent(event.id);
+      await processEvent(event.id, gateway);
 
       const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
       expect(order.status).toBe('PENDING_PAYMENT');
