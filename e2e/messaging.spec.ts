@@ -199,6 +199,31 @@ test.describe('message content safety', () => {
     // was sent is worse than either delivering it or refusing it.
     await expect(messages(page).getByText('pay by bank transfer', { exact: false })).toBeVisible();
     await expect(page.getByText('Awaiting review')).toBeVisible();
+
+    const threadId = new URL(page.url()).pathname.split('/').pop() ?? '';
+    const prisma = await e2ePrisma();
+    try {
+      const message = await prisma.message.findFirstOrThrow({
+        where: { conversationId: threadId },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, moderationStatus: true, riskScore: true, body: true },
+      });
+      // Marked PENDING so a reviewer sees it, not hidden from its recipient.
+      expect(message.moderationStatus).toBe('PENDING');
+      expect(message.riskScore).toBeGreaterThanOrEqual(50);
+      // Stored verbatim: scoring is not censorship.
+      expect(message.body).toContain('pay by bank transfer');
+
+      // The BROWSER path audits a flagged message, exactly as the API does.
+      // Two front doors to one operation must leave the same trail, or a
+      // reviewer gets an incomplete picture of the thing they are reviewing.
+      const audited = await prisma.auditLog.count({
+        where: { action: 'message.flagged', entityId: message.id },
+      });
+      expect(audited).toBe(1);
+    } finally {
+      await prisma.$disconnect();
+    }
   });
 });
 

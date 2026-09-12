@@ -119,6 +119,22 @@ export async function startConversationAction(
     correlationId: null,
   });
 
+  if (sent.flagged) {
+    // Also recorded against the MESSAGE, so a reviewer searching
+    // `message.flagged` finds an opening message as readily as a later one.
+    await tryWriteAuditLog(prisma, {
+      action: 'message.flagged',
+      actorType: 'user',
+      actorId: userId,
+      entityType: 'message',
+      entityId: sent.messageId,
+      after: { conversationId: conversation.id },
+      ip: null,
+      userAgent: null,
+      correlationId: null,
+    });
+  }
+
   redirect(`/${localeOf(form)}/dashboard/messages/${conversation.id}`);
 }
 
@@ -147,6 +163,27 @@ export async function sendMessageAction(
     rawBody: field(form, 'body'),
   });
   if (!sent.ok) return { error: 'validation', reason: sent.issue };
+
+  if (sent.flagged) {
+    /*
+     * Security-sensitive, and audited HERE as well as in the API route. The
+     * browser and the API are two front doors to the same operation; a
+     * flagged message that leaves a trail through one and not the other gives
+     * a reviewer an incomplete picture of exactly the thing they are
+     * reviewing.
+     */
+    await tryWriteAuditLog(prisma, {
+      action: 'message.flagged',
+      actorType: 'user',
+      actorId: userId,
+      entityType: 'message',
+      entityId: sent.messageId,
+      after: { conversationId: conversation.id },
+      ip: null,
+      userAgent: null,
+      correlationId: null,
+    });
+  }
 
   revalidatePath(`/${localeOf(form)}/dashboard/messages/${conversation.id}`);
   return { error: null, ok: true };
