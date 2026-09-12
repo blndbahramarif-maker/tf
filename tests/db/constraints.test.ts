@@ -425,17 +425,17 @@ describe.skipIf(!hasDatabase)('database constraints', () => {
     it('refuses a zero or negative event amount', async () => {
       const offerId = await insertOffer();
       for (const amount of [0, -1]) {
-        await expect(
-          insertOfferEvent(offerId, { amount }),
-        ).rejects.toThrow(/offer_events_amount_positive/);
+        await expect(insertOfferEvent(offerId, { amount })).rejects.toThrow(
+          /offer_events_amount_positive/,
+        );
       }
     });
 
     it('refuses an actor role the state machine does not know', async () => {
       const offerId = await insertOffer();
-      await expect(
-        insertOfferEvent(offerId, { actorRole: 'admin' }),
-      ).rejects.toThrow(/offer_events_actor_role_valid/);
+      await expect(insertOfferEvent(offerId, { actorRole: 'admin' })).rejects.toThrow(
+        /offer_events_actor_role_valid/,
+      );
     });
 
     it('refuses a party transition with no actor', async () => {
@@ -469,15 +469,13 @@ describe.skipIf(!hasDatabase)('database constraints', () => {
 
       // `offers_one_pending_per_buyer_listing`, so a buyer cannot bury a
       // seller under simultaneous bids on the same item.
-      await expect(
-        insertOffer({ listingId: listing, status: 'SUBMITTED' }),
-      ).rejects.toThrow(/offers_one_pending_per_buyer_listing/);
+      await expect(insertOffer({ listingId: listing, status: 'SUBMITTED' })).rejects.toThrow(
+        /offers_one_pending_per_buyer_listing/,
+      );
 
       // The index is partial, so a settled offer does not lock the listing.
       await client.query(`UPDATE offers SET status = 'DECLINED' WHERE listing_id = $1`, [listing]);
-      await expect(
-        insertOffer({ listingId: listing, status: 'SUBMITTED' }),
-      ).resolves.toBeDefined();
+      await expect(insertOffer({ listingId: listing, status: 'SUBMITTED' })).resolves.toBeDefined();
     });
 
     it('refuses a zero or negative offer amount', async () => {

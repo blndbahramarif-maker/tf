@@ -83,3 +83,27 @@ export function validateOfferAmount(input: OfferAmountInput): OfferAmountResult 
 
   return { ok: true, amountMinor, currency };
 }
+
+/**
+ * Major units as a person types them, to integer minor units as a string.
+ *
+ * This is the ONE place a typed price becomes money, and it does the
+ * conversion with string operations only. `"19.99"` becomes `"1999"` by
+ * padding the fraction and concatenating — never by `* 100`, because that is a
+ * float multiply and `19.99 * 100` is `1998.9999999999998`. A penny of drift
+ * is a dispute (ADR-0006).
+ *
+ * Returns null for anything that is not a plain amount with at most two
+ * decimal places, so the caller refuses rather than guesses. Spaces and
+ * thousands separators are dropped first: they are typing, not meaning.
+ */
+export function majorToMinor(input: string): string | null {
+  const trimmed = input.replace(/[\s,]/g, '');
+  const match = /^(\d{1,17})(?:\.(\d{1,2}))?$/.exec(trimmed);
+  if (match === null) return null;
+
+  const whole = match[1]!;
+  const fraction = (match[2] ?? '').padEnd(2, '0');
+  const minor = `${whole}${fraction}`.replace(/^0+(?=\d)/, '');
+  return minor === '0' ? null : minor;
+}

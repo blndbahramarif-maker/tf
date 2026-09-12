@@ -126,13 +126,42 @@ searches, notification centre and preferences, business profile, public seller
 profile pages. Phase 5's scope as approved was the SELLER dashboard and the
 browser authentication transport; those items were not in it.
 
-### Phase 6 — Messaging & offers  ← **next**
+### Phase 6 — Messaging & offers  ✅ **COMPLETE (2026-09-12)**
 Realtime conversations, read receipts, attachments, block, report, offer lifecycle
 (make/counter/accept/decline/expire), risk scoring feeding the moderation queue.
 *Exit:* message delivery survives a server restart; offer state machine fully tested
 including expiry and the single-use constraint.
 
-### Phase 7 — Stripe Connect  ⚠️ the highest-risk phase
+**Delivered:** buyer-to-seller conversations with per-participant read state and
+keyset-paginated history; plain-text message safety with risk SCORING (never
+blocking, never silent rewriting); reporting that marks a thread and deletes
+nothing; an explicit offer state machine driven by a transition table, with an
+append-only `offer_events` audit trail enforced by database triggers; inbox,
+thread, contact, offer list and offer detail pages; account-keyed rate limits on
+every messaging and offer write. 759 unit/integration tests and 40 Playwright
+E2E tests pass.
+
+**NOT delivered, and not claimed:**
+
+- **No realtime.** Messages arrive on a page load, not over a socket. Nothing in
+  this phase pushes; the read model and the pagination are built so that a
+  transport can be added without changing them.
+- **"Delivery survives a server restart" is proven only by durability.** Messages
+  are committed to Postgres inside a transaction, so no restart test was needed
+  to know they persist — but there is no queued-delivery mechanism to survive a
+  restart, because there is no queue.
+- **No attachments and no block.** Images in messages and blocking a
+  counterparty were in the phase description and not in the approved Phase 6
+  scope, so neither was built. `ConversationStatus.BLOCKED` exists in the enum
+  and the composer already refuses on it; nothing sets it yet.
+- **No counter-offers.** `COUNTERED` is in the enum with NO transitions into it,
+  deliberately: an unreachable state is honest about what is not built.
+- **No moderation queue UI.** Risk scores and reports are recorded for a
+  reviewer who has no screen yet. That was an explicit scope boundary.
+- **No money, anywhere.** An accepted offer records agreement. It creates no
+  order, no payment, no ledger entry and no payout, and a test asserts that.
+
+### Phase 7 — Stripe Connect  ⚠️ the highest-risk phase  ← **next**
 **Starts with re-verification of the Stripe docs and a written decision on
 Accounts v2 vs v1 + controller properties.** Seller onboarding via Stripe-hosted
 onboarding, `account.updated` handling, capability gating, PaymentIntent creation,

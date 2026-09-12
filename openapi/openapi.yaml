@@ -1444,8 +1444,7 @@ paths:
               properties:
                 reasonCode:
                   type: string
-                  enum:
-                    [spam, scam, harassment, off_platform_payment, illegal_goods, other]
+                  enum: [spam, scam, harassment, off_platform_payment, illegal_goods, other]
                 details: { type: string, maxLength: 2000 }
       responses:
         '201':
@@ -2300,7 +2299,7 @@ components:
 
     ConversationStatus:
       type: string
-      enum: [ACTIVE, ARCHIVED, BLOCKED, REPORTED]
+      enum: [OPEN, ARCHIVED, BLOCKED, REPORTED]
 
     Conversation:
       type: object
@@ -2330,7 +2329,7 @@ components:
         mine:
           type: boolean
           description: Whether the caller sent it.
-        type: { type: string, enum: [TEXT, SYSTEM, OFFER] }
+        type: { type: string, enum: [TEXT, IMAGE, SYSTEM, OFFER_REF] }
         moderationStatus:
           type: string
           enum: [PENDING, APPROVED, REJECTED]

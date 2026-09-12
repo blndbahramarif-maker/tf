@@ -134,3 +134,49 @@ export function tinyPng(): Buffer {
     'base64',
   );
 }
+
+/**
+ * Creates and PUBLISHES a listing, through the real dashboard.
+ *
+ * Messaging and offers both need a live listing to act on, and "live" is a
+ * state the seller reaches by going through the whole flow — draft, photo,
+ * publish. Fabricating the row would skip the publish guard these tests sit
+ * on top of.
+ *
+ * Returns the listing's public URL, because that is where a buyer starts.
+ */
+export async function publishListing(page: Page, title: string): Promise<string> {
+  await page.goto('/en/dashboard/listings/new?category=mobile-electronics');
+  await page.getByLabel('Title').fill(title);
+  await page
+    .getByLabel('Description')
+    .fill('A description long enough to satisfy the minimum length rule for listings.');
+  await page.getByLabel('Price', { exact: false }).first().fill('100000');
+  await page.getByLabel('Brand *').fill('Apple');
+  await page.getByLabel('Model *').fill('iPhone 15');
+  await page.getByRole('button', { name: 'Create draft' }).click();
+  await expect(page).toHaveURL(/\/en\/dashboard\/listings\/[0-9a-f-]{36}/);
+
+  const listingId = /listings\/([0-9a-f-]{36})/.exec(page.url())?.[1] ?? '';
+  expect(listingId).not.toBe('');
+
+  await page.getByLabel('Add a photo').setInputFiles({
+    name: 'probe.png',
+    mimeType: 'image/png',
+    buffer: tinyPng(),
+  });
+  await page.getByRole('button', { name: 'Upload' }).click();
+  await expect(page.getByText('Main photo', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Publish' }).click();
+  await expect(page.getByText('Live', { exact: false }).first()).toBeVisible();
+
+  return `/en/dashboard/messages/new?listing=${listingId}`;
+}
+
+/** Signs out, clearing every session cookie the browser holds. */
+export async function signOut(page: Page): Promise<void> {
+  await page.goto('/en/dashboard');
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await page.waitForURL((url) => !url.pathname.includes('/dashboard'), { timeout: 15_000 });
+}

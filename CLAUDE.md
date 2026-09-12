@@ -5,15 +5,18 @@ Read `docs/README.md` before making architectural changes. Read
 
 ## Current state
 
-**Phase 5 complete: browser sessions and the seller dashboard.** On top of
-Phases 1-4 there is now a cookie-based browser session (HttpOnly access and
-refresh cookies, signed double-submit CSRF), sign-up / verify / sign-in / sign-out
-pages, and a signed-in seller dashboard covering the listing lifecycle, image
-management, seller profile and session visibility. A Playwright E2E suite runs
-against a production build and is wired into CI.
+**Phase 6 complete: messaging and offers.** On top of Phases 1-5 there are now
+buyer-to-seller conversations (per-participant read state, keyset-paginated
+history, plain-text safety, reporting) and an explicit offer lifecycle driven by
+a transition table with an append-only audit trail. Inbox, thread, contact,
+offer list and offer detail pages ship with them.
 
-There is still NO messaging, NO payments, NO offers, NO subscriptions, NO
-advertising, NO reviews and NO moderation UI. See `docs/10-roadmap.md`.
+**Phase 6 collects no money.** An accepted offer records agreement and nothing
+else — no order, no payment, no ledger entry, no payout. A test asserts it.
+
+There is still NO realtime transport, NO message attachments, NO blocking, NO
+counter-offers, NO payments, NO subscriptions, NO advertising, NO reviews and
+NO moderation UI. See `docs/10-roadmap.md`.
 
 ## Commands
 
@@ -102,6 +105,29 @@ for the envelope. Money-moving endpoints require `Idempotency-Key`. The
 documentation is enforced: `tests/api-contract.test.ts` fails if a route file
 exports a method the OpenAPI document does not describe, and if the document
 describes an endpoint with no route file.
+
+**A conversation or offer surface:** participation is the QUERY, never a check
+applied afterwards. Load through `loadConversationForViewer` /
+`loadOfferForParty`, which put the viewer's id into the `where` clause; a
+non-party gets `null` and the caller answers 404. Never write a loader that
+fetches by id and compares ownership after — that is the check someone forgets.
+
+**An offer transition:** add a row to `OFFER_TRANSITIONS` in
+`src/domain/offers/offer-status.ts`, naming which actors may make it. Never add
+an `if`. Roles are resolved from the database (`resolveActor`), never from the
+request, and every transition writes its `offer_events` row in the SAME
+transaction as the status change.
+
+**A message-content rule:** messages are never parsed as markup, so the answer
+is never "strip the dangerous part" — that is a blocklist. Content is refused
+with a reason or SCORED and still delivered; it is never silently rewritten or
+truncated.
+
+**A rate limit:** decide the key deliberately. Credential paths
+(`enforceRateLimit` default) key on IP AND account together. Abuse paths —
+messaging, offers — pass `{ keyBy: 'subject' }` so the limit follows the
+ACCOUNT: a spammer rotating mobile addresses would otherwise get a fresh
+allowance with every one.
 
 **A dashboard action:** `"use server"`, first line `requireActionAccess(form, ...)`,
 then load the resource scoped by the session's user id, then act. An id from a

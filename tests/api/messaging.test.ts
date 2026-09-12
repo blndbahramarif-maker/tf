@@ -532,7 +532,12 @@ describe.skipIf(!hasDatabase)('messaging and offers', () => {
         const result = await callRoute(createOfferRoute, '/api/v1/offers', {
           method: 'POST',
           token: buyer.accessToken,
-          body: { listingId, amountMinor: '90000', currency: 'GBP', message: 'Would you take this?' },
+          body: {
+            listingId,
+            amountMinor: '90000',
+            currency: 'GBP',
+            message: 'Would you take this?',
+          },
         });
         expect(result.status).toBe(201);
         // SUBMITTED, not PENDING: the status names an event, not a feeling.
@@ -791,9 +796,9 @@ describe.skipIf(!hasDatabase)('messaging and offers', () => {
         const offerId = await submitOffer(buyer);
         const result = await move(buyer, offerId, 'ACCEPTED');
         expect(result.status).toBe(409);
-        expect(
-          (await prisma.offer.findUniqueOrThrow({ where: { id: offerId } })).status,
-        ).toBe('SUBMITTED');
+        expect((await prisma.offer.findUniqueOrThrow({ where: { id: offerId } })).status).toBe(
+          'SUBMITTED',
+        );
       });
 
       it('refuses a buyer reversing the seller’s decision', async () => {
@@ -806,33 +811,29 @@ describe.skipIf(!hasDatabase)('messaging and offers', () => {
         expect((await move(buyer, offerId, 'WITHDRAWN')).status).toBe(409);
         expect((await move(buyer, offerId, 'SUBMITTED')).status).toBe(409);
 
-        expect(
-          (await prisma.offer.findUniqueOrThrow({ where: { id: offerId } })).status,
-        ).toBe('DECLINED');
+        expect((await prisma.offer.findUniqueOrThrow({ where: { id: offerId } })).status).toBe(
+          'DECLINED',
+        );
       });
 
       it('refuses a seller re-deciding an accepted offer', async () => {
         const offerId = await submitOffer(buyer);
         expect((await move(seller, offerId, 'ACCEPTED')).status).toBe(200);
         expect((await move(seller, offerId, 'DECLINED')).status).toBe(409);
-        expect(
-          (await prisma.offer.findUniqueOrThrow({ where: { id: offerId } })).status,
-        ).toBe('ACCEPTED');
+        expect((await prisma.offer.findUniqueOrThrow({ where: { id: offerId } })).status).toBe(
+          'ACCEPTED',
+        );
       });
 
       it('refuses a transition that is not in the table at all', async () => {
         const offerId = await submitOffer(buyer);
-        const result = await callRoute(
-          transitionOfferRoute,
-          `/api/v1/offers/${offerId}/status`,
-          {
-            method: 'POST',
-            token: seller.accessToken,
-            params: { id: offerId },
-            // COUNTERED is a reserved status with no transitions into it.
-            body: { to: 'COUNTERED' },
-          },
-        );
+        const result = await callRoute(transitionOfferRoute, `/api/v1/offers/${offerId}/status`, {
+          method: 'POST',
+          token: seller.accessToken,
+          params: { id: offerId },
+          // COUNTERED is a reserved status with no transitions into it.
+          body: { to: 'COUNTERED' },
+        });
         expect(result.status).toBe(422);
       });
 
@@ -961,9 +962,7 @@ describe.skipIf(!hasDatabase)('messaging and offers', () => {
           }),
         ).rejects.toThrow();
 
-        await expect(
-          prisma.offerEvent.delete({ where: { id: event.id } }),
-        ).rejects.toThrow();
+        await expect(prisma.offerEvent.delete({ where: { id: event.id } })).rejects.toThrow();
 
         expect(await prisma.offerEvent.count({ where: { offerId } })).toBe(2);
       });

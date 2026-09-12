@@ -6,6 +6,7 @@ import { brand } from '@kurdora/brand';
 import { listingPath } from '@/domain/catalogue/slug';
 import { loadPublicListing, type PublicListing } from '@/infra/catalogue/read-model';
 import { isUuid } from '@/lib/api/guards';
+import { readSessionState } from '@/lib/auth/server-session';
 import { formatDate } from '@/lib/format/money';
 import { alternatesFor, canonicalUrl } from '@/lib/seo/urls';
 import { formatMinorAsDecimal } from '@/shared/money';
@@ -87,6 +88,11 @@ export default async function ListingPage({ params, searchParams }: PageProps) {
 
   const t = await getTranslations('listing');
   const tNav = await getTranslations('nav');
+
+  // Read only to decide where the contact link points. Nothing about the
+  // listing's visibility depends on who is asking — this page is public.
+  const session = await readSessionState();
+  const signedIn = session.kind === 'authenticated';
 
   const resolvedSearchParams = await searchParams;
   const requestedImage = Number.parseInt(
@@ -258,15 +264,39 @@ export default async function ListingPage({ params, searchParams }: PageProps) {
             </dl>
 
             {/*
-             * Contacting a seller is Phase 6 (messaging) and paying is Phase 7.
-             * Neither exists, so neither is offered here: a button that does
-             * nothing is worse than an honest statement of what is available.
-             * The notice is keyed by the category's transaction flow, which is
-             * data on the category row, not a name this file knows.
+             * Contacting a seller is real now; PAYING is still Phase 7, so the
+             * notice below says what does and does not happen rather than
+             * implying a checkout that does not exist. It is keyed by the
+             * category's transaction flow, which is data on the category row,
+             * not a name this file knows.
+             *
+             * The link's destination depends on whether anyone is signed in,
+             * which is why this page reads the session. A signed-out visitor
+             * gets a login link that carries them BACK here afterwards rather
+             * than dumping them on the dashboard home.
              */}
-            <p className="border-border text-ink-muted mt-6 border-t pt-4 text-sm">
-              {t(`contactNotice.${listing.category.transactionFlow}`)}
-            </p>
+            <div className="border-border mt-6 border-t pt-4">
+              {signedIn ? (
+                <a
+                  href={`/${locale}/dashboard/messages/new?listing=${listing.id}`}
+                  className="bg-accent text-accent-ink hover:bg-accent-strong inline-block rounded-md px-4 py-2 text-sm font-medium"
+                >
+                  {t('contactSeller')}
+                </a>
+              ) : (
+                <a
+                  href={`/${locale}/login?next=${encodeURIComponent(
+                    `/${locale}/dashboard/messages/new?listing=${listing.id}`,
+                  )}`}
+                  className="bg-accent text-accent-ink hover:bg-accent-strong inline-block rounded-md px-4 py-2 text-sm font-medium"
+                >
+                  {t('signInToContact')}
+                </a>
+              )}
+              <p className="text-ink-muted mt-3 text-sm">
+                {t(`contactNotice.${listing.category.transactionFlow}`)}
+              </p>
+            </div>
           </div>
         </aside>
       </div>

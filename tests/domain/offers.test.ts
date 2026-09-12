@@ -13,7 +13,7 @@ import {
   type OfferActor,
   type OfferStatus,
 } from '@/domain/offers/offer-status';
-import { MAX_OFFER_MINOR, validateOfferAmount } from '@/domain/offers/offer-amount';
+import { MAX_OFFER_MINOR, majorToMinor, validateOfferAmount } from '@/domain/offers/offer-amount';
 
 /**
  * The offer lifecycle, with no database in sight.
@@ -133,10 +133,11 @@ describe('the offer state machine', () => {
     });
 
     it('offers a party exactly the moves the table gives their role', () => {
-      expect(availableTransitions('SUBMITTED', 'seller').map((t) => t.to).sort()).toEqual([
-        'ACCEPTED',
-        'DECLINED',
-      ]);
+      expect(
+        availableTransitions('SUBMITTED', 'seller')
+          .map((t) => t.to)
+          .sort(),
+      ).toEqual(['ACCEPTED', 'DECLINED']);
       expect(availableTransitions('SUBMITTED', 'buyer').map((t) => t.to)).toEqual(['WITHDRAWN']);
       // Expiry is the system's move, never a party's.
       expect(availableTransitions('SUBMITTED', 'system').map((t) => t.to)).toEqual(['EXPIRED']);
@@ -307,9 +308,9 @@ describe('offer amounts', () => {
 
   it('allows bidding above the asking price by default', () => {
     // Refusing this would be the marketplace deciding a seller should earn less.
-    expect(
-      validateOfferAmount({ amountMinor: '150000', currency: 'GBP', ...listing }).ok,
-    ).toBe(true);
+    expect(validateOfferAmount({ amountMinor: '150000', currency: 'GBP', ...listing }).ok).toBe(
+      true,
+    );
   });
 
   it('refuses above asking only where a category forbids it', () => {
@@ -321,5 +322,89 @@ describe('offer amounts', () => {
         ...listing,
       }),
     ).toEqual({ ok: false, issue: 'above_listing_price' });
+  });
+});
+
+/**
+ * Major units to minor units.
+ *
+ * This is the ONE place a price a person typed becomes money, so it is tested
+ * directly rather than only through a form. The cases that matter are the ones
+ * where a float would drift.
+ */
+describe('typed prices', () => {
+  it('converts whole and fractional amounts exactly', () => {
+    expect(majorToMinor('900')).toBe('90000');
+    expect(majorToMinor('949.99')).toBe('94999');
+    expect(majorToMinor('0.01')).toBe('1');
+    expect(majorToMinor('0.5')).toBe('50');
+  });
+
+  it('does not drift where a float multiply would', () => {
+    // `19.99 * 100` is 1998.9999999999998 in IEEE 754. String concatenation
+    // has no such failure mode, which is the whole reason for it (ADR-0006).
+    expect(19.99 * 100).not.toBe(1999);
+    expect(majorToMinor('19.99')).toBe('1999');
+    // A sweep across the classic offenders.
+    for (const [major, minor] of [
+      ['1.1', '110'],
+      ['2.675', null],
+      ['70.07', '7007'],
+      ['1.005', null],
+      ['1234567.89', '123456789'],
+    ] as [string, string | null][]) {
+      expect(majorToMinor(major), major).toBe(minor);
+    }
+  });
+
+  it('ignores spacing and thousands separators, which are typing', () => {
+    expect(majorToMinor(' 1,250.00 ')).toBe('125000');
+    expect(majorToMinor('1 250')).toBe('125000');
+  });
+
+  it('refuses anything that is not a plain amount', () => {
+    for (const input of [
+      '',
+      'free',
+      '-5',
+      '+5',
+      '1e3',
+      '9.999',
+      '£900',
+      '900.',
+      '.99',
+      '900.00.00',
+    ]) {
+      expect(majorToMinor(input), input).toBeNull();
+    }
+  });
+
+  it('refuses zero however it is written', () => {
+    // Zero is not an offer. Returning "0" would reach the amount validator and
+    // be refused there too, but refusing at the parser keeps the message
+    // specific to what the person typed.
+    expect(majorToMinor('0')).toBeNull();
+    expect(majorToMinor('0.00')).toBeNull();
+    expect(majorToMinor('000')).toBeNull();
+  });
+
+  it('strips leading zeros rather than producing an invalid integer string', () => {
+    expect(majorToMinor('007')).toBe('700');
+    expect(majorToMinor('0900.50')).toBe('90050');
+  });
+
+  it('produces something the amount validator accepts', () => {
+    // The two halves have to agree: the parser's output must satisfy the
+    // validator's digits-only rule, or a legitimate price would be refused.
+    const minor = majorToMinor('949.99')!;
+    expect(
+      validateOfferAmount({
+        amountMinor: minor,
+        currency: 'GBP',
+        listingPriceMinor: 100_000n,
+        listingCurrency: 'GBP',
+        categoryMinimumMinor: null,
+      }),
+    ).toEqual({ ok: true, amountMinor: 94_999n, currency: 'GBP' });
   });
 });

@@ -99,11 +99,13 @@
       "NOT_APPLICABLE": "Not applicable"
     },
     "contactNotice": {
-      "BUY_NOW": "Buying and messaging are not open yet. Checkout arrives with the payments release.",
-      "OFFER_THEN_PAY": "Making an offer is not open yet. It arrives with the offers release.",
-      "FEE_ONLY": "Contacting the seller is not open yet. For this category the sale is arranged directly and only the platform fee is ever paid online.",
-      "CONTACT_ONLY": "Contacting the seller is not open yet. It arrives with the messaging release."
-    }
+      "BUY_NOW": "Message the seller to ask about this item or make an offer. Paying through the site arrives with the payments release.",
+      "OFFER_THEN_PAY": "Message the seller or make an offer. Paying through the site arrives with the payments release.",
+      "FEE_ONLY": "Message the seller to arrange the sale directly. For this category only the platform fee is ever paid online, never the price of the item.",
+      "CONTACT_ONLY": "Message the seller to arrange this directly."
+    },
+    "contactSeller": "Contact the seller",
+    "signInToContact": "Sign in to contact the seller"
   },
   "sell": {
     "title": "How selling works",
@@ -202,7 +204,9 @@
       "profile": "Seller profile",
       "security": "Security",
       "signOut": "Sign out",
-      "verifyEmailNotice": "Verify your email address to publish listings."
+      "verifyEmailNotice": "Verify your email address to publish listings.",
+      "messages": "Messages",
+      "offers": "Offers"
     },
     "errors": {
       "unauthenticated": "Please sign in again.",
@@ -366,6 +370,169 @@
       "columnIp": "IP address",
       "columnDevice": "Device",
       "stepUpNotice": "Changing your password and revoking other sessions require re-authentication, which is not available in the browser yet."
+    }
+  },
+  "messaging": {
+    "inbox": {
+      "title": "Messages",
+      "intro": "Conversations about your listings and the things you are buying.",
+      "empty": "No conversations yet. Contact a seller from any listing to start one.",
+      "noListing": "Listing removed",
+      "withSeller": "With {name}, the seller",
+      "withBuyer": "With {name}, a buyer",
+      "asBuyer": "you are buying",
+      "asSeller": "you are selling",
+      "columnListing": "Listing",
+      "columnWith": "With",
+      "columnLatest": "Latest message",
+      "columnUnread": "Unread",
+      "columnUpdated": "Updated"
+    },
+    "thread": {
+      "backToInbox": "Back to messages",
+      "noListing": "Listing removed",
+      "withSeller": "With {name}, the seller",
+      "withBuyer": "With {name}, a buyer",
+      "you": "You",
+      "older": "Show older messages",
+      "markRead": "Mark as read",
+      "marking": "Marking…",
+      "underReview": "Awaiting review",
+      "reportedNotice": "You reported this conversation. The messages are unchanged and a reviewer will look at them.",
+      "offersTitle": "Offers on this listing",
+      "makeOffer": "Make an offer"
+    },
+    "compose": {
+      "label": "Your message",
+      "placeholder": "Write a message…",
+      "submit": "Send",
+      "sending": "Sending…",
+      "closed": "This conversation is closed."
+    },
+    "contact": {
+      "title": "Contact the seller",
+      "about": "About “{title}”, sold by {seller}.",
+      "label": "Your message",
+      "hint": "Keep the conversation here. Sellers who ask you to pay or talk elsewhere are the most common source of fraud.",
+      "placeholder": "Hello, is this still available?",
+      "submit": "Send message",
+      "sending": "Sending…",
+      "existing": "You already have a conversation about this listing. Open it.",
+      "ownListing": "This is your own listing.",
+      "offerTitle": "Make an offer",
+      "offerNotice": {
+        "BUY_NOW": "An offer records what you are willing to pay. No money is taken now.",
+        "OFFER_THEN_PAY": "An offer records what you are willing to pay. No money is taken now.",
+        "FEE_ONLY": "For this category the sale is arranged directly between you and the seller. An offer records what you agreed. No money is taken now.",
+        "CONTACT_ONLY": "An offer records what you are willing to pay. No money is taken now."
+      }
+    },
+    "report": {
+      "title": "Report this conversation",
+      "reason": "What is wrong?",
+      "reasons": {
+        "spam": "Spam",
+        "scam": "Scam or fraud",
+        "harassment": "Harassment or abuse",
+        "off_platform_payment": "Asked me to pay outside the site",
+        "illegal_goods": "Illegal or prohibited goods",
+        "other": "Something else"
+      },
+      "details": "Anything else we should know?",
+      "detailsHint": "Optional. The messages themselves are kept exactly as they are.",
+      "submit": "Report",
+      "sending": "Reporting…",
+      "received": "Thank you. A reviewer will look at this conversation. Nothing has been deleted."
+    },
+    "offers": {
+      "title": "Offers",
+      "noPayment": "Offers record what was agreed. No money is taken and no payment is due yet.",
+      "filterLabel": "Filter offers",
+      "view": {
+        "all": "All",
+        "buyer": "Offers I made",
+        "seller": "Offers I received"
+      },
+      "empty": "No offers yet.",
+      "columnListing": "Listing",
+      "columnRole": "Your side",
+      "columnAmount": "Amount",
+      "columnStatus": "Status",
+      "columnExpires": "Expires",
+      "roleBuyer": "Buying",
+      "roleSeller": "Selling"
+    },
+    "offerForm": {
+      "amount": "Your offer in {currency}",
+      "amountHint": "Type the amount as you would say it, for example 950 or 949.99.",
+      "message": "Message to the seller",
+      "submit": "Send offer",
+      "sending": "Sending…",
+      "noPayment": "No money is taken now. An accepted offer records that you and the seller agreed."
+    },
+    "offerActions": {
+      "none": "There is nothing to do on this offer.",
+      "working": "Working…",
+      "to": {
+        "SUBMITTED": "Send offer",
+        "ACCEPTED": "Accept",
+        "DECLINED": "Decline",
+        "WITHDRAWN": "Withdraw",
+        "CANCELLED": "Cancel"
+      }
+    },
+    "offerDetail": {
+      "backToOffers": "Back to offers",
+      "youOffered": "You made this offer.",
+      "theyOffered": "A buyer made this offer on your listing.",
+      "amount": "Amount",
+      "expires": "Expires",
+      "listing": "Listing",
+      "viewListing": "View listing",
+      "messageTitle": "Message with the offer",
+      "openThread": "Open the conversation",
+      "actionsTitle": "What you can do",
+      "noPayment": "Nothing here takes a payment.",
+      "historyTitle": "History",
+      "historyNote": "Every change is recorded and cannot be edited afterwards.",
+      "actor": {
+        "buyer": "by the buyer",
+        "seller": "by the seller",
+        "system": "automatically"
+      }
+    },
+    "offerStatus": {
+      "DRAFT": "Draft",
+      "SUBMITTED": "Awaiting the seller",
+      "ACCEPTED": "Accepted",
+      "DECLINED": "Declined",
+      "COUNTERED": "Countered",
+      "WITHDRAWN": "Withdrawn",
+      "EXPIRED": "Expired",
+      "CANCELLED": "Cancelled",
+      "CONVERTED": "Completed"
+    },
+    "reasons": {
+      "empty": "Write something before sending.",
+      "only_whitespace": "Write something before sending.",
+      "too_long": "That message is too long. Please shorten it.",
+      "too_large": "That message is too large to send.",
+      "rate_limited": "You are sending too quickly. Please wait a moment.",
+      "own_listing": "You cannot do that on your own listing.",
+      "offer_already_open": "You already have an open offer on this listing.",
+      "not_an_integer": "Enter an amount like 950 or 949.99.",
+      "not_positive": "Enter an amount greater than zero.",
+      "too_large_amount": "That amount is too large.",
+      "currency_mismatch": "That offer must be in the same currency as the listing.",
+      "below_minimum": "That is below the minimum for this category.",
+      "above_listing_price": "That is above the asking price.",
+      "wrong_actor": "That is not your decision to make.",
+      "unknown_transition": "That change is not possible from the offer's current state.",
+      "no_op": "The offer is already in that state.",
+      "expired": "This offer has expired.",
+      "changed": "The offer changed. Reload the page and try again.",
+      "reason_required": "Choose a reason.",
+      "unknown_to": "That is not a status an offer can move to."
     }
   }
 }

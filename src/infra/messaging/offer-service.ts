@@ -204,8 +204,7 @@ function isUniqueViolation(error: unknown, constraint: string): boolean {
   if (Array.isArray(target) && target.includes(constraint)) return true;
 
   const adapter = candidate.meta?.driverAdapterError as
-    | { cause?: { constraint?: { index?: unknown; fields?: unknown } } }
-    | undefined;
+    { cause?: { constraint?: { index?: unknown; fields?: unknown } } } | undefined;
   return adapter?.cause?.constraint?.index === constraint;
 }
 
