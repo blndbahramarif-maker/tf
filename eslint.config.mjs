@@ -121,7 +121,7 @@ export default tseslint.config(
               message: 'Domain must not import Prisma. Define a repository port instead.',
             },
             {
-              group: ['stripe', 'stripe/*'],
+              regex: '^stripe(/|$)',
               message:
                 'Only src/infra/stripe may import the Stripe SDK (docs/02-system-architecture.md).',
             },
@@ -140,6 +140,60 @@ export default tseslint.config(
         {
           patterns: [
             { group: ['@/lib/*'], message: 'Infrastructure must not depend on web-only glue.' },
+            {
+              // Anchored: a bare `group` of 'stripe/*' is gitignore-style and
+              // would also match '@/infra/stripe/gateway', which infra
+              // modules legitimately import.
+              regex: '^stripe(/|$)',
+              message:
+                'Only src/infra/stripe may import the Stripe SDK (CLAUDE.md non-negotiable 2).',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  // ---- src/infra/stripe: the ONE place the Stripe SDK may be imported ----
+  //
+  // Listed after the rule above so it overrides it. Keeping the SDK behind one
+  // directory is what makes "swap the provider" a contained change rather than
+  // an archaeology exercise, and it is also what keeps a Stripe type from
+  // leaking into a route signature.
+  {
+    files: ['src/infra/stripe/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { group: ['@/lib/*'], message: 'Infrastructure must not depend on web-only glue.' },
+          ],
+        },
+      ],
+    },
+  },
+
+  // ---- app and src/lib: the web surface. Never the payment provider. ----
+  {
+    files: ['app/**/*.{ts,tsx}', 'src/lib/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^stripe(/|$)',
+              message:
+                'Routes and glue must go through the payment gateway port, never the Stripe SDK (CLAUDE.md non-negotiable 2).',
+            },
+            {
+              // Routes must not know WHICH provider is configured either. They
+              // ask `@/infra/payments` for a gateway and get a port back.
+              group: ['@/infra/stripe', '@/infra/stripe/*'],
+              message:
+                'Get a gateway from @/infra/payments/gateway-provider, not from the Stripe adapter directly.',
+            },
           ],
         },
       ],

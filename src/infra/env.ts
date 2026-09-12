@@ -42,7 +42,14 @@ const serverSchema = z
     S3_ACCESS_KEY_ID: z.string().optional(),
     S3_SECRET_ACCESS_KEY: z.string().optional(),
 
-    /** Stripe. Phase 7. Absent until then, by design. */
+    /**
+     * Stripe. Phase 7 Part 1 — **TEST MODE ONLY**.
+     *
+     * The prefix check here catches a pasted publishable or restricted key at
+     * boot. Which MODE a key is (`sk_test_` vs `sk_live_`) and whether live
+     * mode is permitted at all is decided in `src/infra/stripe/config.ts`,
+     * because it is a policy question rather than a shape question.
+     */
     STRIPE_SECRET_KEY: z.string().startsWith('sk_').optional(),
     STRIPE_WEBHOOK_SECRET: z.string().startsWith('whsec_').optional(),
 

@@ -421,6 +421,211 @@ describe.skipIf(!hasDatabase)('database constraints', () => {
     });
   });
 
+  describe('payment integrity (Phase 7 Part 1)', () => {
+    /** A FEE_ONLY order: £50,000 sale, £250 fee. */
+    async function insertFeeOnlyOrder(
+      over: {
+        total?: number;
+        commission?: number;
+        seller?: number;
+        principal?: number | null;
+      } = {},
+    ) {
+      orderCounter += 1;
+      const values = {
+        total: 25_000,
+        commission: 25_000,
+        seller: 0,
+        principal: 5_000_000,
+        ...over,
+      };
+      // A fresh listing each time: `orders_one_open_per_buyer_listing` permits
+      // the fixture buyer only one open order per listing.
+      const listingId = await insertListing();
+      return client.query<{ id: string }>(
+        `INSERT INTO orders (id, order_number, listing_id, buyer_id, seller_profile_id, flow_type,
+                             status, subtotal_minor, shipping_minor, tax_minor, total_minor,
+                             principal_minor, currency, commission_percent_bps,
+                             commission_amount_minor, seller_amount_minor, updated_at)
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, 'FEE_ONLY', 'DRAFT',
+                 $5, 0, 0, $5, $6, 'GBP', 50, $7, $8, now())
+         RETURNING id`,
+        [
+          `FEE-${orderCounter}`,
+          listingId,
+          fx.userId,
+          fx.sellerProfileId,
+          values.total,
+          values.principal,
+          values.commission,
+          values.seller,
+        ],
+      );
+    }
+
+    it('accepts a correct fee-only order', async () => {
+      await expect(insertFeeOnlyOrder()).resolves.toBeDefined();
+    });
+
+    it('REFUSES a fee-only order that charges the sale principal', async () => {
+      // The £50,000 mistake, written by hand with every TypeScript check
+      // bypassed. This is the constraint the whole flow rests on.
+      await expect(
+        insertFeeOnlyOrder({ total: 5_000_000, commission: 5_000_000, seller: 0 }),
+      ).rejects.toThrow(/orders_fee_only_principal_recorded/);
+    });
+
+    it('REFUSES a fee-only order whose total is not exactly the commission', async () => {
+      await expect(insertFeeOnlyOrder({ total: 30_000, commission: 25_000 })).rejects.toThrow(
+        /orders_fee_only_charges_fee_alone|orders_seller_amount_is_remainder/,
+      );
+    });
+
+    it('REFUSES a fee-only order that owes the seller anything', async () => {
+      // Kurdora never holds the sale price, so it can never owe the seller.
+      await expect(
+        insertFeeOnlyOrder({ total: 25_000, commission: 20_000, seller: 5_000 }),
+      ).rejects.toThrow(/orders_fee_only_charges_fee_alone/);
+    });
+
+    it('REFUSES a fee-only order with no recorded principal', async () => {
+      await expect(insertFeeOnlyOrder({ principal: null })).rejects.toThrow(
+        /orders_fee_only_principal_recorded/,
+      );
+    });
+
+    it('refuses a non-positive principal', async () => {
+      await expect(insertFeeOnlyOrder({ principal: 0 })).rejects.toThrow(
+        /orders_principal_positive|orders_fee_only_principal_recorded/,
+      );
+    });
+
+    it('refuses half a transfer leg on a payment', async () => {
+      const order = await insertFeeOnlyOrder();
+      const orderId = order.rows[0]!.id;
+
+      // A destination without a fee moves money to nowhere.
+      await expect(
+        client.query(
+          `INSERT INTO payments (id, order_id, provider_payment_intent_id, status, amount_minor,
+                                 currency, flow_type, destination_account_id, updated_at)
+           VALUES (gen_random_uuid(), $1, 'pi_half_a', 'REQUIRES_PAYMENT_METHOD', 25000,
+                   'GBP', 'BUY_NOW', 'acct_x', now())`,
+          [orderId],
+        ),
+      ).rejects.toThrow(/payments_transfer_leg_is_whole/);
+
+      // And a fee without a destination.
+      await expect(
+        client.query(
+          `INSERT INTO payments (id, order_id, provider_payment_intent_id, status, amount_minor,
+                                 currency, flow_type, application_fee_amount_minor, updated_at)
+           VALUES (gen_random_uuid(), $1, 'pi_half_b', 'REQUIRES_PAYMENT_METHOD', 25000,
+                   'GBP', 'BUY_NOW', 100, now())`,
+          [orderId],
+        ),
+      ).rejects.toThrow(/payments_transfer_leg_is_whole/);
+    });
+
+    it('REFUSES a transfer leg on a fee-only payment', async () => {
+      const order = await insertFeeOnlyOrder();
+      await expect(
+        client.query(
+          `INSERT INTO payments (id, order_id, provider_payment_intent_id, status, amount_minor,
+                                 currency, flow_type, destination_account_id,
+                                 application_fee_amount_minor, updated_at)
+           VALUES (gen_random_uuid(), $1, 'pi_feeonly_transfer', 'REQUIRES_PAYMENT_METHOD', 25000,
+                   'GBP', 'FEE_ONLY', 'acct_x', 100, now())`,
+          [order.rows[0]!.id],
+        ),
+      ).rejects.toThrow(/payments_fee_only_has_no_transfer/);
+    });
+
+    it('allows only one live payment per order', async () => {
+      const order = await insertFeeOnlyOrder();
+      const orderId = order.rows[0]!.id;
+
+      const insert = (intent: string, status: string) =>
+        client.query(
+          `INSERT INTO payments (id, order_id, provider_payment_intent_id, status, amount_minor,
+                                 currency, flow_type, updated_at)
+           VALUES (gen_random_uuid(), $1, $2, $3::payment_status, 25000, 'GBP', 'FEE_ONLY', now())`,
+          [orderId, intent, status],
+        );
+
+      await expect(insert('pi_live_1', 'REQUIRES_PAYMENT_METHOD')).resolves.toBeDefined();
+      await expect(insert('pi_live_2', 'PROCESSING')).rejects.toThrow(
+        /payments_one_live_per_order/,
+      );
+
+      // A settled attempt does not lock the order: a declined card can retry.
+      await client.query(`UPDATE payments SET status = 'FAILED' WHERE order_id = $1`, [orderId]);
+      await expect(insert('pi_live_3', 'REQUIRES_PAYMENT_METHOD')).resolves.toBeDefined();
+    });
+
+    it('allows one payment attempt per provider charge, and no more', async () => {
+      const order = await insertFeeOnlyOrder();
+      const payment = await client.query<{ id: string }>(
+        `INSERT INTO payments (id, order_id, provider_payment_intent_id, status, amount_minor,
+                               currency, flow_type, updated_at)
+         VALUES (gen_random_uuid(), $1, 'pi_attempts', 'PROCESSING', 25000, 'GBP', 'FEE_ONLY', now())
+         RETURNING id`,
+        [order.rows[0]!.id],
+      );
+
+      const insertAttempt = (charge: string, status = 'PENDING') =>
+        client.query(
+          `INSERT INTO payment_attempts (id, payment_id, provider_charge_id, status,
+                                         amount_minor, currency, updated_at)
+           VALUES (gen_random_uuid(), $1, $2, $3, 25000, 'GBP', now())`,
+          [payment.rows[0]!.id, charge, status],
+        );
+
+      await expect(insertAttempt('ch_one')).resolves.toBeDefined();
+      // A replayed webhook must not create a second attempt for one charge.
+      await expect(insertAttempt('ch_one')).rejects.toThrow(/provider_charge_id/);
+      // A genuine retry is a DIFFERENT charge, and is allowed.
+      await expect(insertAttempt('ch_two', 'FAILED')).resolves.toBeDefined();
+      await expect(insertAttempt('ch_three', 'NONSENSE')).rejects.toThrow(
+        /payment_attempts_status_valid/,
+      );
+    });
+
+    it('makes the money snapshot immutable once an order leaves DRAFT', async () => {
+      const order = await insertFeeOnlyOrder();
+      const orderId = order.rows[0]!.id;
+
+      // Still DRAFT: correctable.
+      await expect(
+        client.query(`UPDATE orders SET commission_amount_minor = 25000 WHERE id = $1`, [orderId]),
+      ).resolves.toBeDefined();
+
+      await client.query(`UPDATE orders SET status = 'PENDING_PAYMENT' WHERE id = $1`, [orderId]);
+
+      // "Changing a commission rule tomorrow must NEVER rewrite yesterday's
+      // orders" — enforced, not merely documented.
+      for (const column of [
+        'commission_amount_minor = 1',
+        'commission_percent_bps = 0',
+        'total_minor = 1',
+        'principal_minor = 1',
+        'seller_amount_minor = 1',
+        `currency = 'USD'`,
+        `flow_type = 'BUY_NOW'`,
+      ]) {
+        await expect(
+          client.query(`UPDATE orders SET ${column} WHERE id = $1`, [orderId]),
+          column,
+        ).rejects.toThrow(/immutable/);
+      }
+
+      // The status itself still moves — the trigger guards money, not state.
+      await expect(
+        client.query(`UPDATE orders SET status = 'CANCELLED' WHERE id = $1`, [orderId]),
+      ).resolves.toBeDefined();
+    });
+  });
+
   describe('offer integrity', () => {
     it('refuses a zero or negative event amount', async () => {
       const offerId = await insertOffer();

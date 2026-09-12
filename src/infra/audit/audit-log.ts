@@ -39,6 +39,14 @@ export type AuditAction =
   | 'message.flagged'
   | 'offer.created'
   | 'offer.transitioned'
+  // Phase 7 Part 1. Money-adjacent actions are audited even when they move
+  // nothing, because "who started this payment" is the first question asked
+  // when something goes wrong.
+  | 'order.created'
+  | 'payment.created'
+  | 'payment.succeeded'
+  | 'webhook.rejected'
+  | 'webhook.processed'
   | 'seller_profile.created'
   | 'seller_profile.updated'
   | 'session.revoked'

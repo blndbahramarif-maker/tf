@@ -90,6 +90,52 @@ describe('layer boundaries (ADR-0002)', () => {
     );
     expect(ruleIds(messages)).not.toContain('no-restricted-imports');
   });
+
+  it('allows the Stripe SDK inside src/infra/stripe, and nowhere else in infra', async () => {
+    const inside = await lint(
+      'src/infra/stripe/client.ts',
+      `import Stripe from 'stripe';\nexport const x = Stripe;\n`,
+    );
+    expect(ruleIds(inside)).not.toContain('no-restricted-imports');
+
+    // The whole point of the boundary: another adapter cannot quietly reach
+    // for the SDK because it is convenient.
+    const elsewhere = await lint(
+      'src/infra/payments/payment-service.ts',
+      `import Stripe from 'stripe';\nexport const x = Stripe;\n`,
+    );
+    expect(ruleIds(elsewhere)).toContain('no-restricted-imports');
+  });
+
+  it('rejects the Stripe ADAPTER in a route, not just the SDK', async () => {
+    // A route that reaches for @/infra/stripe knows which provider is
+    // configured, which is exactly what the gateway port exists to prevent.
+    const messages = await lint(
+      'app/api/v1/orders/route.ts',
+      `import { stripeGateway } from '@/infra/stripe/gateway';\nexport const x = stripeGateway;\n`,
+    );
+    expect(ruleIds(messages)).toContain('no-restricted-imports');
+  });
+
+  it('lets infrastructure reach the Stripe adapter through its module path', async () => {
+    // The anchored pattern must NOT catch '@/infra/stripe/...'. A bare
+    // gitignore-style group of 'stripe/*' did, which broke the adapter's own
+    // consumers inside src/infra.
+    const messages = await lint(
+      'src/infra/payments/gateway-provider.ts',
+      `import { stripeGateway } from '@/infra/stripe/gateway';\nexport const x = stripeGateway;\n`,
+    );
+    expect(ruleIds(messages)).not.toContain('no-restricted-imports');
+  });
+
+  it('rejects the Stripe SDK in a route or in web glue', async () => {
+    // A route that imports Stripe has skipped the gateway port, which is where
+    // the amount, the seller and the commission are proven server-side.
+    for (const file of ['app/api/v1/orders/route.ts', 'src/lib/api/respond.ts']) {
+      const messages = await lint(file, `import Stripe from 'stripe';\nexport const x = Stripe;\n`);
+      expect(ruleIds(messages), file).toContain('no-restricted-imports');
+    }
+  });
 });
 
 describe('RTL guard (docs/09-i18n-rtl.md)', () => {

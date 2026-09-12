@@ -1283,11 +1283,16 @@ model Order {
   flowType TransactionFlow @map("flow_type")
   status   OrderStatus     @default(DRAFT)
 
-  subtotalMinor BigInt @map("subtotal_minor")
-  shippingMinor BigInt @default(0) @map("shipping_minor")
-  taxMinor      BigInt @default(0) @map("tax_minor")
-  totalMinor    BigInt @map("total_minor")
-  currency      String @db.Char(3)
+  subtotalMinor  BigInt  @map("subtotal_minor")
+  /// The agreed sale price for FEE_ONLY — the £50,000 car behind a £250 fee.
+  /// RECORDED, never charged: it is the commission basis and a reporting
+  /// figure. A CHECK enforces total_minor < principal_minor for FEE_ONLY, so
+  /// the principal cannot leak into the charge amount.
+  principalMinor BigInt? @map("principal_minor")
+  shippingMinor  BigInt  @default(0) @map("shipping_minor")
+  taxMinor       BigInt  @default(0) @map("tax_minor")
+  totalMinor     BigInt  @map("total_minor")
+  currency       String  @db.Char(3)
 
   // ── Commission snapshot ───────────────────────────────────────────────────
   // Written once at order creation. Changing a commission rule tomorrow must
@@ -1403,8 +1408,14 @@ model Payment {
   currency          String        @db.Char(3)
   paymentMethodType String?       @map("payment_method_type")
 
+  /// Copied from the order at creation, so a CHECK can enforce the fee-only
+  /// shape on this row. A CHECK cannot reach into another table.
+  flowType TransactionFlow? @map("flow_type")
+
   /// Present for destination charges; null for FEE_ONLY, which has no
-  /// transfer leg at all (ADR-0007).
+  /// transfer leg at all (ADR-0007). A CHECK keeps the destination and the
+  /// fee present together or not at all — half a transfer moves money to
+  /// nowhere.
   applicationFeeAmountMinor BigInt? @map("application_fee_amount_minor")
   transferId                String? @map("transfer_id")
   transferGroup             String? @map("transfer_group")
@@ -1422,14 +1433,52 @@ model Payment {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  order    Order     @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  order    Order            @relation(fields: [orderId], references: [id], onDelete: Restrict)
   refunds  Refund[]
   disputes Dispute[]
+  attempts PaymentAttempt[]
 
   @@index([orderId])
   @@index([status, createdAt(sort: Desc)])
   @@index([livemode, status])
   @@map("payments")
+}
+
+/// One charge under a PaymentIntent.
+///
+/// A declined card retried on the same intent produces a SECOND charge, and
+/// Stripe's guidance is that refunds go against "the most recent charge that is
+/// created". Keeping the history here rather than overwriting
+/// `payments.provider_charge_id` is what makes that possible.
+model PaymentAttempt {
+  id        String @id @default(uuid(7)) @db.Uuid
+  paymentId String @map("payment_id") @db.Uuid
+
+  /// UNIQUE, so a replayed webhook cannot create a second row for one charge.
+  providerChargeId             String  @unique @map("provider_charge_id")
+  providerBalanceTransactionId String? @map("provider_balance_transaction_id")
+
+  /// PENDING | SUCCEEDED | FAILED, enforced by a CHECK.
+  status            String
+  amountMinor       BigInt  @map("amount_minor")
+  currency          String  @db.Char(3)
+  paymentMethodType String? @map("payment_method_type")
+
+  failureCode      String? @map("failure_code")
+  failureMessage   String? @map("failure_message")
+  /// The ACTUAL provider fee from the balance transaction. Never estimated.
+  providerFeeMinor BigInt? @map("provider_fee_minor")
+
+  livemode Boolean @default(false)
+
+  succeededAt DateTime? @map("succeeded_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId, createdAt(sort: Desc)])
+  @@map("payment_attempts")
 }
 
 /// Raw provider events.

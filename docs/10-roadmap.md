@@ -161,7 +161,20 @@ E2E tests pass.
 - **No money, anywhere.** An accepted offer records agreement. It creates no
   order, no payment, no ledger entry and no payout, and a test asserts that.
 
-### Phase 7 — Stripe Connect  ⚠️ the highest-risk phase  ← **architecture gate passed, implementation NOT started**
+### Phase 7 — Stripe Connect  ⚠️ the highest-risk phase  ← **Part 1 complete (TEST MODE), Part 2 not started**
+
+**Part 1 delivered (2026-09-12):** the `stripe` package behind a
+`PaymentGateway` port; orders priced entirely server-side; BUY_NOW destination
+charges with `application_fee_amount`; FEE_ONLY plain charges with no transfer
+leg; database-durable idempotency; a raw-body, signature-verified webhook with
+three independent layers of duplicate protection; the Order / Payment /
+PaymentAttempt state machines. 856 tests pass.
+
+**Part 1 did NOT deliver, and does not claim to:** any payment UI, seller
+onboarding, payouts, refunds, disputes, reconciliation, or a single real
+payment. **The real Stripe API was never called** — this environment has no
+credentials, so `tests/api/stripe-live.test.ts` is written and SKIPPED.
+
 
 **Gate report:** [15 — Phase 7 gate](./15-phase-7-gate.md) · **ADR:** [0013](./adr/0013-phase-7-payment-architecture.md)
 Architecture decided against Stripe documentation re-verified on 2026-09-12.

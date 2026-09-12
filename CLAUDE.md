@@ -5,6 +5,16 @@ Read `docs/README.md` before making architectural changes. Read
 
 ## Current state
 
+**Phase 7 Part 1 complete: the payment foundation, Stripe TEST MODE only.**
+Orders, a payment gateway port with a Stripe adapter behind it, destination
+charges for BUY_NOW, fee-only charges for Cars and Business, database-durable
+idempotency, and a signature-verified webhook.
+
+**Live mode is refused at startup** (`LIVE_MODE_PERMITTED = false` in
+`src/infra/stripe/config.ts`). Stripe has NOT approved the business model in
+writing; that remains a hard go-live blocker (R-3, `docs/15-phase-7-gate.md`).
+No real seller has been onboarded and no real payment has been taken.
+
 **Phase 6 complete: messaging and offers.** On top of Phases 1-5 there are now
 buyer-to-seller conversations (per-participant read state, keyset-paginated
 history, plain-text safety, reporting) and an explicit offer lifecycle driven by
@@ -14,9 +24,10 @@ offer list and offer detail pages ship with them.
 **Phase 6 collects no money.** An accepted offer records agreement and nothing
 else — no order, no payment, no ledger entry, no payout. A test asserts it.
 
-There is still NO realtime transport, NO message attachments, NO blocking, NO
-counter-offers, NO payments, NO subscriptions, NO advertising, NO reviews and
-NO moderation UI. See `docs/10-roadmap.md`.
+There is still NO payment UI, NO seller onboarding, NO payouts, NO refund or
+dispute handling, NO reconciliation, NO realtime transport, NO message
+attachments, NO blocking, NO counter-offers, NO subscriptions, NO advertising,
+NO reviews and NO moderation UI. See `docs/10-roadmap.md`.
 
 ## Commands
 
@@ -122,6 +133,21 @@ transaction as the status change.
 is never "strip the dangerous part" — that is a blocklist. Content is refused
 with a reason or SCORED and still delivered; it is never silently rewritten or
 truncated.
+
+**Anything that takes money:** the request names a resource id and nothing
+else. The amount, currency, seller, connected account and commission are all
+re-read from the database — they are not merely validated, they are absent from
+the request schema, so `z.object`'s stripping means a forged field has nowhere
+to arrive. **Only a signature-verified webhook may move an order to PAID**;
+`canTransitionOrder` reserves it to the `system` actor and no route, action or
+redirect can produce one.
+
+**A FEE_ONLY charge:** the buyer pays the commission and nothing else. The sale
+principal is recorded in `orders.principal_minor` and **never sent to a payment
+provider**. Guarded four times over: `computeOrderAmounts`, `assertChargeIsSafe`
+one call before the network, and the CHECK constraints
+`orders_fee_only_charges_fee_alone` and `orders_fee_only_principal_recorded`.
+Never weaken any of them.
 
 **A rate limit:** decide the key deliberately. Credential paths
 (`enforceRateLimit` default) key on IP AND account together. Abuse paths —

@@ -121,6 +121,27 @@ tags:
       also never silently rewritten: an unacceptable message is refused with a
       reason, and a risky one is scored and routed to moderation while still
       being delivered.
+  - name: Orders
+    description: |
+      Orders and payments. **Stripe TEST MODE only** — live mode is refused at
+      startup, gated on Stripe's written approval of the business model, which
+      does not exist (docs/15-phase-7-gate.md, B-1).
+
+      Two flows, and the difference is the whole design:
+
+      **BUY_NOW** is a destination charge: Kurdora collects the price, keeps
+      the commission as an `application_fee_amount`, and transfers the rest to
+      the seller's connected account.
+
+      **FEE_ONLY** (Cars, Business) charges Kurdora's own service fee and
+      nothing else. No connected account, no transfer, no application fee. The
+      purchase principal is settled directly between buyer and seller and never
+      touches Stripe or any Kurdora account. A £50,000 car produces a £250
+      charge, and a database CHECK makes anything else impossible.
+
+      Nothing a browser sends decides an amount, a currency, a seller, a
+      connected account or a commission. Nothing but a verified webhook marks
+      an order paid.
   - name: Offers
     description: |
       Offers on listings, as an explicit state machine. Legal moves and who may
@@ -1697,6 +1718,264 @@ paths:
         '422': { $ref: '#/components/responses/UnprocessableEntity' }
         '429': { $ref: '#/components/responses/RateLimited' }
 
+  /orders:
+    post:
+      tags: [Orders]
+      summary: Create an order to buy a listing
+      operationId: createOrder
+      description: |
+        **No money moves here.** Creating an order records what is about to be
+        paid; the charge is a separate, explicit step at
+        `POST /orders/{id}/payment`.
+
+        The request names a LISTING and, optionally, an accepted OFFER. It does
+        not name an amount, a currency, a seller, a connected account or a
+        commission — those fields are not in the schema at all, so a request
+        carrying them has them stripped before the handler runs. Every one is
+        derived server-side from the listing, its category and the commission
+        rules.
+
+        An `offerId` is a lookup key, not proof: the offer is re-read scoped to
+        this buyer and this listing, so an offer belonging to somebody else
+        resolves to nothing and answers 404.
+
+        **Seller eligibility** is re-read from the database. A BUY_NOW order
+        requires the seller to have a connected account with charges and
+        payouts enabled. A FEE_ONLY order requires NONE of that, because there
+        is no transfer leg — which is why a high-value seller can transact
+        before onboarding.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [listingId]
+              properties:
+                listingId: { type: string, format: uuid }
+                offerId:
+                  type: string
+                  format: uuid
+                  description: An accepted offer to price the order from.
+      responses:
+        '201':
+          description: The order, priced server-side.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status, totalMinor, currency]
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { $ref: '#/components/schemas/OrderStatus' }
+                  totalMinor:
+                    type: string
+                    pattern: '^\d+$'
+                    description: What the buyer will be charged, in minor units.
+                  commissionAmountMinor: { type: string, pattern: '^\d+$' }
+                  principalMinor:
+                    type: [string, 'null']
+                    pattern: '^\d+$'
+                    description: |
+                      FEE_ONLY only: the agreed sale price. RECORDED, and never
+                      charged — it is the commission basis and a reporting
+                      figure. A database CHECK enforces
+                      `total_minor < principal_minor`.
+                  currency: { type: string, minLength: 3, maxLength: 3 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: |
+            Buying your own listing, an order already open for this listing, or
+            a seller who cannot yet accept payments.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /orders/{id}:
+    get:
+      tags: [Orders]
+      summary: One order, to its buyer or its seller
+      operationId: getOrder
+      description: |
+        Visible to the two parties and nobody else; a third party receives 404,
+        identical to a made-up id.
+
+        **This is the endpoint a return-from-checkout page reads, and it is why
+        that page cannot lie.** The status comes from the order row, and only a
+        signature-verified webhook can move that row to `PAID`. A buyer who
+        replays the `return_url`, or appends `redirect_status=succeeded` to it,
+        sees whatever the database says — which is `PENDING_PAYMENT` until
+        Stripe tells us otherwise.
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: The order and its latest payment.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [order]
+                properties:
+                  order: { $ref: '#/components/schemas/Order' }
+                  payment:
+                    oneOf:
+                      - $ref: '#/components/schemas/PaymentSummary'
+                      - type: 'null'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /orders/{id}/payment:
+    post:
+      tags: [Orders]
+      summary: Begin paying for an order
+      operationId: beginPayment
+      description: |
+        Takes **no request body**. Everything the charge needs is already on
+        the order row, written server-side at creation and immutable from that
+        point by database trigger. There is nothing for a browser to influence.
+
+        **Only the buyer may begin payment.** A seller is a party to the order
+        and can read it, but starting a charge against somebody else's card is
+        not theirs to do — they receive 404, not 403.
+
+        **Idempotent by construction.** A repeated request returns the SAME
+        PaymentIntent and answers `200` rather than `201`. The durable
+        guarantee is Kurdora's own: a unique `idempotency_key` and a partial
+        unique index permitting one live payment per order. Stripe's own
+        idempotency keys are documented as removable after 24 hours, so they
+        are a second line rather than the line.
+
+        **BUY_NOW** creates a destination charge: `application_fee_amount` is
+        the commission snapshot and `transfer_data[destination]` is the
+        LISTING OWNER's connected account. `on_behalf_of` is deliberately
+        omitted (ADR-0013).
+
+        **FEE_ONLY** creates a plain charge on the platform account for
+        Kurdora's own service fee: no connected account, no transfer, no
+        application fee. The sale principal is never sent.
+
+        Answers `503` when payments are switched off, half-configured, or when
+        a LIVE key is refused — live mode is gated on Stripe's written approval
+        of the business model, which does not exist.
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '201':
+          description: A new PaymentIntent was created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentIntentHandle' }
+        '200':
+          description: An existing PaymentIntent was returned unchanged.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentIntentHandle' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Already paid, expired, or not payable in its current state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503':
+          description: Payments are unavailable or live mode is not permitted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /webhooks/stripe:
+    post:
+      tags: [Orders]
+      summary: Receive verified Stripe events
+      operationId: stripeWebhook
+      description: |
+        **The only way payment state moves forward.** No route, Server Action
+        or browser redirect can mark an order paid; the order state machine
+        reserves that transition to the `system` actor, which means a
+        signature-verified event and nothing else.
+
+        This endpoint is deliberately unlike every other, and each difference
+        is load-bearing:
+
+        - It reads the **RAW** request body. Stripe requires it for signature
+          verification, and any manipulation breaks the check.
+        - It has **no session and no CSRF token**. It is authenticated by the
+          HMAC signature over that body. This is the one deliberate exception
+          to the CSRF rule, recorded in ADR-0013 — a CSRF token would be
+          meaningless because Stripe is not a browser and holds no session.
+        - It answers **200 for every outcome** once the signature verifies. A
+          processing failure is recorded and retried by us, not pushed back as
+          a non-2xx, because a bug in our own code should not make Stripe retry
+          for three days.
+
+        Duplicates are harmless three times over: `payment_events` has the
+        provider's event id as its PRIMARY KEY; a second dedup key of
+        `(type, object id)` catches the case Stripe documents where "two
+        separate Event objects are generated and sent"; and every effect is a
+        guarded state transition that matches zero rows on a replay.
+
+        Out-of-order delivery is expected rather than exceptional. An event
+        whose precondition is not yet met is left `PENDING` and retried, never
+        dropped and never forced through.
+      security: []
+      parameters:
+        - name: Stripe-Signature
+          in: header
+          required: true
+          schema: { type: string }
+          description: |
+            `t=<timestamp>,v1=<hmac>`. Verified with a 5-minute tolerance; the
+            `v0` scheme is ignored to prevent downgrade attacks.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: A Stripe Event. Read raw, never parsed before verification.
+      responses:
+        '200':
+          description: |
+            Received. `outcome` says what happened: processed, ignored,
+            duplicate, deferred or failed. The last two are ours to retry.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received: { type: boolean }
+                  duplicate: { type: boolean }
+                  outcome:
+                    type: string
+                    enum: [processed, ignored, duplicate, deferred, failed]
+        '400':
+          description: |
+            The signature is missing, does not verify, or its timestamp is
+            outside the tolerance. The reason is NOT echoed to the caller.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+        '503':
+          description: Stripe is not configured, so nothing can be verified.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1798,6 +2077,16 @@ components:
       description: |
         Validated as a UUID before it reaches the database. A non-participant
         and a made-up id return the same 404.
+
+    OrderId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: |
+        Validated as a UUID before it reaches the database. Anyone who is
+        neither the buyer nor the listing's seller receives the same 404 a
+        made-up id returns.
 
     OfferId:
       name: id
@@ -2409,6 +2698,98 @@ components:
         currency: { type: string, minLength: 3, maxLength: 3 }
         note: { type: [string, 'null'] }
         createdAt: { type: string, format: date-time }
+
+    OrderStatus:
+      type: string
+      enum:
+        - DRAFT
+        - PENDING_PAYMENT
+        - PAID
+        - FULFILLING
+        - COMPLETED
+        - CANCELLED
+        - EXPIRED
+        - REFUNDING
+        - REFUNDED
+        - DISPUTED
+        - CHARGEBACK
+      description: |
+        `PAID`, `REFUNDED`, `DISPUTED` and `CHARGEBACK` are reachable ONLY by a
+        signature-verified provider event. No API caller, Server Action or
+        browser redirect can produce them.
+
+        `COMPLETED` is deliberately not terminal: a delivered order can still
+        be refunded or disputed weeks later.
+
+    Order:
+      type: object
+      required: [id, status, totalMinor, currency, viewerRole]
+      properties:
+        id: { type: string, format: uuid }
+        orderNumber: { type: string }
+        listingId: { type: string, format: uuid }
+        listingTitle: { type: string }
+        flowType:
+          type: string
+          enum: [BUY_NOW, OFFER_THEN_PAY, FEE_ONLY, CONTACT_ONLY]
+        status: { $ref: '#/components/schemas/OrderStatus' }
+        totalMinor:
+          type: string
+          pattern: '^\d+$'
+          description: What the buyer is charged, in integer minor units.
+        commissionAmountMinor: { type: string, pattern: '^\d+$' }
+        sellerAmountMinor:
+          type: string
+          pattern: '^\d+$'
+          description: |
+            Always `totalMinor - commissionAmountMinor`, derived by subtraction
+            so the two cannot disagree by a penny. Always `0` for FEE_ONLY,
+            where Kurdora never holds the sale price and so owes nothing.
+        principalMinor:
+          type: [string, 'null']
+          pattern: '^\d+$'
+          description: |
+            FEE_ONLY only: the agreed sale price, recorded and never charged.
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        viewerRole: { type: string, enum: [buyer, seller] }
+        expiresAt: { type: [string, 'null'], format: date-time }
+
+    PaymentSummary:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - REQUIRES_PAYMENT_METHOD
+            - REQUIRES_ACTION
+            - PROCESSING
+            - SUCCEEDED
+            - FAILED
+            - CANCELED
+          description: |
+            Moved ONLY by verified provider events after creation. The one
+            thing the platform may do is cancel an unpaid intent.
+        providerPaymentIntentId: { type: string }
+        succeededAt: { type: [string, 'null'], format: date-time }
+
+    PaymentIntentHandle:
+      type: object
+      required: [paymentId, amountMinor, currency, testMode]
+      properties:
+        paymentId: { type: string, format: uuid }
+        clientSecret:
+          type: [string, 'null']
+          description: |
+            Needed by the browser to confirm the payment. It can complete a
+            charge, so it is never stored and never logged - it exists in this
+            response and in the browser's memory, nowhere else.
+        amountMinor: { type: string, pattern: '^\d+$' }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        testMode:
+          type: boolean
+          description: |
+            True whenever the configured key is `sk_test_`. Always true in this
+            phase: live mode is refused at startup.
 
   responses:
     BadRequest:
