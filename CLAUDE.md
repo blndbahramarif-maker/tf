@@ -20,8 +20,22 @@ proven against a labelled fake provider. See `docs/16-phase-7-part-2.md`.
 
 **Live mode is refused at startup** (`LIVE_MODE_PERMITTED = false` in
 `src/infra/stripe/config.ts`). Stripe has NOT approved the business model in
-writing; that remains a hard go-live blocker (R-3, `docs/15-phase-7-gate.md`).
-No real seller has been onboarded and no real payment has been taken.
+writing; re-confirmed on 2026-09-12 as a hard go-live blocker (R-3, D-A,
+`docs/15-phase-7-gate.md`). Legal review of FEE_ONLY is also outstanding. While
+both stand: no live keys, no live payments, no production seller onboarding, no
+real-money operation — and **Kurdora must never be described as
+Stripe-production-ready**. No real seller has been onboarded and no real payment
+has been taken.
+
+**The Connect controller configuration is SETTLED — do not "fix" it.**
+`CONNECT_CONTROLLER` uses `losses.payments = application` on GA API version
+`2026-08-26.dahlia`. That is a deliberate, owner-approved departure from
+ADR-0013 Decision 4, which chose `losses.payments = stripe`: that combination
+requires the Express Dashboard public preview and API version
+`2026-08-26.preview`. Kurdora absorbs the negative-balance exposure knowingly.
+`stripe_dashboard.type` is IMMUTABLE per account, so changing this means
+recreating every connected account. See DL-5 and ADR-0013 Amendment 1. A test
+pins it.
 
 **Phase 6 complete: messaging and offers.** On top of Phases 1-5 there are now
 buyer-to-seller conversations (per-participant read state, keyset-paginated

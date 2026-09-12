@@ -228,11 +228,13 @@ describe('checkSellerEligibility', () => {
 describe('the controller configuration', () => {
   it('is the GA-supported combination, not the preview one', () => {
     /*
-     * Pinned as a test because this is the ADR-0013 DEVIATION and it must not
-     * drift silently. `losses.payments = stripe` combined with the Express
-     * Dashboard is public preview and needs the `2026-08-26.preview` API
-     * version; this integration is pinned to GA. If someone changes this
-     * constant, they must come here and say why.
+     * Pinned as a test because this is ADR-0013 Amendment 1 — the APPROVED
+     * controller configuration — and it must not drift silently.
+     * `losses.payments = stripe` combined with the Express Dashboard is public
+     * preview and needs the `2026-08-26.preview` API version; this integration
+     * is pinned to GA. `stripe_dashboard.type` is immutable per account, so a
+     * change here means recreating every connected account. If someone edits
+     * this constant, they must come here and say why.
      */
     expect(CONNECT_CONTROLLER).toEqual({
       dashboardType: 'express',

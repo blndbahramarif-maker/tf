@@ -114,6 +114,43 @@ A minimum commission (e.g. 50p) prevents the fixed 20p from eating small orders.
 
 ---
 
+## DL-5 · Connect controller configuration: **keep the GA combination**
+
+Decided 2026-09-12, after Phase 7 Part 2 surfaced the conflict.
+
+**Decision.** Connected accounts are created with `stripe_dashboard.type =
+express`, `fees.payer = application`, **`losses.payments = application`** and
+`requirement_collection = stripe`, on GA API version `2026-08-26.dahlia`.
+
+Explicitly **not** adopted: `losses.payments = stripe`, the Express Dashboard
+public preview it requires, or API version `2026-08-26.preview`.
+
+This **supersedes ADR-0013 Decision 4 in implementation**. That decision — let
+Stripe carry negative balances — remains the preferred end state and Stripe's
+own advice; it is simply not available on a GA API version today, and adopting
+a preview API version for the code path that takes money is the wrong trade.
+
+**Consequences**
+
+- **Kurdora absorbs a negative balance on a connected account**, not Stripe.
+  Accepted knowingly. Bounded by DL-2: FEE_ONLY never routes the sale principal
+  through Stripe, so the exposure is on BUY_NOW orders — the low-value
+  categories — and destination charges cap the disputable amount at the fee.
+- `stripe_dashboard.type` is **immutable per account**. Reversing this means
+  recreating every connected account, which is why it is a logged decision and
+  not a configuration detail.
+- **No production account migration or recreation is to be performed.** There
+  are no production connected accounts and none may be created while
+  `LIVE_MODE_PERMITTED = false`.
+- Pinned in code by `CONNECT_CONTROLLER` and by a test, so it cannot drift
+  without a reviewer seeing it.
+
+**Revisit only when** the combination is GA on a GA API version, **and** the
+commercial case has been reviewed against real dispute volume, **and** legal
+review has covered it. Full working: [ADR-0013 Amendment 1](./adr/0013-phase-7-payment-architecture.md#amendment-1--the-controller-configuration-2026-09-12).
+
+---
+
 ## Consolidated effect on the plan
 
 | Document | Change |
@@ -123,3 +160,4 @@ A minimum commission (e.g. 50p) prevents the fixed 20p from eating small orders.
 | [07](./07-commission-engine.md) | Seeded default rates added (DL-2) |
 | [10](./10-roadmap.md) | Phases re-cut for a single developer |
 | [11](./11-risks-and-decisions.md) | D-6 and D-7 resolved; R-1 and R-2 substantially mitigated by DL-2 |
+| [ADR-0013](./adr/0013-phase-7-payment-architecture.md) | Amendment 1 records DL-5 and supersedes Decision 4 in implementation |

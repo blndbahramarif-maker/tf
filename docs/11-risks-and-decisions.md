@@ -31,6 +31,11 @@ confirmation before Phase 7. [DL-2](./12-decisions-log.md) already adopts the fe
 design, which is the lower-risk model — Kurdora is charging a service fee for an
 introduction rather than processing £50,000 vehicle and business sales, which is a
 materially easier model for Stripe to approve.
+**Status 2026-09-12:** still NOT obtained, and re-confirmed by the owner as a
+**hard go-live blocker** at the Phase 7 Part 2 review. Phase 7 shipped in TEST
+MODE only on that basis; `LIVE_MODE_PERMITTED = false` stays enforced and
+Kurdora must not be described as Stripe-production-ready. See
+[13 · D-A](./13-dependencies-and-blockers.md).
 
 ### R-4 · Holding funds may make Kurdora a regulated payment institution `HIGH` `[LEGAL]`
 Stripe does not provide escrow; manual payouts cap at 90 days; Connect is designed to

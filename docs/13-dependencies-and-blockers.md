@@ -7,9 +7,22 @@ Review this at the start of every phase.
 
 ---
 
-## 🔴 D-A · Stripe written approval of the business model — **BLOCKS PHASE 7**
+## 🔴 D-A · Stripe written approval of the business model — **BLOCKS GO-LIVE**
 
-**Status: NOT OBTAINED. No approval exists.**
+**Status: NOT OBTAINED. No approval exists.** Re-confirmed as a hard blocker by
+the owner on 2026-09-12, at the Phase 7 Part 2 review.
+
+Phase 7 Parts 1 and 2 were built and shipped in **TEST MODE ONLY** on that
+basis. This dependency no longer blocks Phase 7 work from proceeding; it blocks
+**go-live**, absolutely. While it is outstanding:
+
+- `LIVE_MODE_PERMITTED = false` **must remain enforced**
+  (`src/infra/stripe/config.ts`)
+- no live Stripe keys
+- no live payments
+- no production seller onboarding
+- no real-money operation of any kind
+- **Kurdora must not be described as Stripe-production-ready**
 
 Nothing in this repository may state or imply that Stripe has approved Kurdora's
 model. If asked, the honest answer is that the platform profile has not been
@@ -70,14 +83,23 @@ future EU expansion (OSS/IOSS). Getting this wrong is expensive and retrospectiv
 **Status: assumed in progress.** `packages/brand` has empty `companyNumber` and
 `vatNumber` — fill them in when available. Needed before a Stripe live account.
 
-## 🟠 D-E · Native Kurdish review of all copy — blocks launch
+## 🟠 D-E · Native Kurdish and Arabic review of all copy — blocks launch
 
-**Status: not started.** Owner: native Sorani and Kurmanji speakers.
+**Status: not started, and the backlog grew in Phase 7 Part 2.** Owner: native
+Sorani, Kurmanji and Arabic speakers.
 
 The catalogues in `packages/i18n/messages` are **machine-assisted drafts**. They
 prove the architecture; they are not launch quality. Financial vocabulary
 (offer, commission, payout, dispute, refund, verification) is where a wrong word
 destroys trust. Sorani is needed for launch; Kurmanji before enabling `kmr`.
+
+**Outstanding launch-quality item, logged 2026-09-12.** The `dashboard.payouts`
+namespace added in Phase 7 Part 2 — onboarding status names, the explanation
+for each state, the Stripe hand-off notice, the rejection message — was written
+in `ckb`, `kmr` and `ar` **without native-speaker review**, like every other
+non-English string in the repository. This is exactly the financial vocabulary
+named above, and it is the copy shown to a seller at the moment they are asked
+for identity documents and bank details. It must be reviewed before launch.
 
 Also needs a native reader: confirming the Arabic-script font renders Sorani
 letterforms (ڕ ێ ۆ ڵ گ چ پ ژ) correctly. Many "Arabic" fonts do not.

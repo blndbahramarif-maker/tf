@@ -1,7 +1,11 @@
 # Phase 7 Part 2 — Stripe Test-Mode Connect Onboarding
 
-**Date:** 2026-09-12 · **Status:** implementation complete, **provider
-integration UNVERIFIED** · **Recommendation: NEEDS FIXES — see §16**
+**Date:** 2026-09-12 · **Reviewed and decided by the owner: 2026-09-12**
+
+# Status: NEEDS FIXES / BLOCKED FOR PRODUCTION
+
+The implemented test-mode scope is complete and green. **The project must NOT
+be described as production Stripe verified.**
 
 > **Read this first.** Everything in Part 2 is proven against a labelled fake
 > provider. **The real Stripe API was never called in this run, and no webhook
@@ -248,14 +252,23 @@ was not modified. Whether it passes with the Part 2 changes is **unknown**.
 
 ## 15. Unresolved bugs
 
-1. **An intermittent failure in `tests/api/listings.test.ts` ("filters by price
-   range") was observed once** during a full 33-worker run and did not
-   reproduce on two subsequent full runs. Cause: the suites share one database
-   across parallel workers while several listing-search tests assert exact
-   result counts, so any suite creating an ACTIVE listing can perturb them.
-   This is a pre-existing fragility, not introduced here — but a fixture added
-   in Part 2 did carry a mileage inside a band another file asserts on, and
-   that was changed. The underlying fragility is **not fixed**.
+1. **Pre-existing test-suite fragility** — logged as such by owner decision on
+   2026-09-12, and **not attributed to Phase 7 Part 2**.
+
+   An intermittent failure in `tests/api/listings.test.ts` ("filters by price
+   range") was observed once during a full 33-worker run and did not reproduce
+   on two subsequent full runs. Cause: the suites share one database across
+   parallel workers while several listing-search tests assert exact result
+   counts, so any suite creating an ACTIVE listing can perturb them. The
+   mechanism predates Part 2 — `tests/api/payments.test.ts` has created ACTIVE
+   Cars listings since Part 1.
+
+   One Part 2 fixture did carry a mileage inside a band another file asserts
+   on; that value was changed so this work adds no new pressure. **The
+   underlying fragility is not fixed, and fixing it is explicitly out of scope
+   for this phase** — the Phase 7 changes are proven correct by their own
+   suites, which pass deterministically, and redesigning shared-database test
+   isolation is not required to demonstrate that.
 2. **Two pre-existing OpenAPI lint warnings** on `GET /auth/session` (a 303-only
    operation with no 2xx or 4xx). Pre-existing; not touched.
 
@@ -274,22 +287,41 @@ was not modified. Whether it passes with the Part 2 changes is **unknown**.
 
 **Blocked on decisions and people:**
 
-- B-5 **Stripe has NOT approved Kurdora's business model in writing.** Hard
-  go-live blocker (R-3). `LIVE_MODE_PERMITTED = false` remains enforced.
-- B-6 **Legal review of the FEE_ONLY Cars/Business model is still required.**
-- B-7 **An ADR-0013 DEVIATION needs a decision.** ADR-0013 chose
-  `losses.payments = stripe`; combined with the Express Dashboard that is
-  documented as PUBLIC PREVIEW and requires API version `2026-08-26.preview`,
-  while this integration is pinned to GA `2026-08-26.dahlia`. The GA-supported
-  combination (`losses.payments = application`) is used instead. **This decides
-  who absorbs a negative balance on a connected account** — a commercial
-  question, not a technical one. It is recorded in `CONNECT_CONTROLLER` and
-  pinned by a test so it cannot drift silently. **`stripe_dashboard.type` is
-  immutable per account**, so changing course later means creating every
-  connected account again.
+- B-5 **Stripe has NOT approved Kurdora's business model in writing.**
+  **Re-confirmed by the owner on 2026-09-12 as a HARD GO-LIVE BLOCKER**
+  (R-3, dependency D-A). While it stands: `LIVE_MODE_PERMITTED = false` must
+  remain enforced, no live Stripe keys, no live payments, no production seller
+  onboarding, no real-money operation — and **Kurdora must not be described as
+  Stripe-production-ready**.
+- B-6 **Legal review of the FEE_ONLY Cars/Business model is still required**,
+  and is also outstanding.
 - B-8 **Native-speaker review** of the new Sorani, Kurmanji and Arabic payout
-  strings has not happened. They were written without native review, like every
-  non-English string in the repository.
+  strings has not happened. Recorded as an **outstanding launch-quality item**
+  under dependency [D-E](./13-dependencies-and-blockers.md). This is precisely
+  the financial vocabulary that dependency warns about, shown to a seller at
+  the moment they are asked for identity documents and bank details.
+
+**Resolved at this review:**
+
+- B-7 **CLOSED — the controller configuration is decided.** The owner approved
+  keeping the **GA-supported combination** already implemented
+  (`losses.payments = application`, Express Dashboard, GA API version
+  `2026-08-26.dahlia`), and explicitly **not** adopting `losses.payments =
+  stripe`, the Express Dashboard public preview, or API version
+  `2026-08-26.preview`.
+
+  The consequence is accepted knowingly: **Kurdora absorbs a negative balance
+  on a connected account**, bounded by FEE_ONLY never routing the sale
+  principal through Stripe and by destination charges capping the disputable
+  amount at the fee. **No production account migration or recreation is to be
+  performed.** Revisit only when the capability is GA and has had commercial
+  and legal review.
+
+  Recorded as [DL-5](./12-decisions-log.md) and
+  [ADR-0013 Amendment 1](./adr/0013-phase-7-payment-architecture.md#amendment-1--the-controller-configuration-2026-09-12),
+  which supersedes ADR-0013 Decision 4 in implementation. Pinned in code by
+  `CONNECT_CONTROLLER` and by a test, because `stripe_dashboard.type` is
+  immutable per account.
 
 ## 17. Exactly what the next run needs
 
@@ -304,25 +336,38 @@ Full instructions are now in `.env.example`. In short:
 4. `pnpm verify` then `pnpm exec vitest run tests/api/stripe-live.test.ts`.
 5. A human completes the hosted onboarding form for the round trip.
 
-## 18. Recommendation
+## 18. Final status
 
-**NEEDS FIXES — but not of the code.**
+# NEEDS FIXES / BLOCKED FOR PRODUCTION
 
-The implementation is complete, tested against a fake provider, and passes the
-full gate: 917 unit/API tests, 49 E2E tests, formatting, lint, typecheck,
-reversible migrations and OpenAPI validation. The security properties the brief
-named are in place and asserted.
+**The code is complete and green for the implemented test-mode scope.** It
+passes the full gate: 917 unit/API tests, 49 E2E tests, formatting, lint,
+typecheck, reversible migrations and OpenAPI validation. The security
+properties the brief named are in place and asserted. Nothing further is
+outstanding in the implementation.
 
-It should not be approved as "Stripe integration verified", because it is not.
+**It is not production Stripe verified, and must not be described as such.**
 Four of the ten Part 2 objectives — the real API call, the real webhook, the
-real test-mode payment, the CLI round trip — **could not be executed here at
-all**, and no amount of further coding changes that. They need credentials.
+real test-mode payment, the CLI round trip — could not be executed here at all.
+No amount of further coding changes that; they need credentials this
+environment does not have (§16, B-1 to B-4).
 
-Two things also need a human, not a next run: **B-7**, the controller deviation,
-which is a commercial decision about who carries losses and is expensive to
-reverse because the dashboard type is immutable per account; and **B-5**,
-Stripe's written approval, which remains the hard go-live blocker it has been
-since the gate.
+**The architecture question is closed.** B-7 was decided at this review: the
+GA-supported controller configuration is the approved architecture, the
+negative-balance exposure is accepted, and no account migration is to be
+performed (DL-5, ADR-0013 Amendment 1).
+
+**Production remains blocked, and not on engineering.** Stripe's written
+approval of the business model does not exist (B-5) and legal review of the
+FEE_ONLY model is outstanding (B-6). Both are hard go-live blockers confirmed
+by the owner at this review. `LIVE_MODE_PERMITTED = false` stays enforced: no
+live keys, no live payments, no production seller onboarding, no real-money
+operation.
+
+Native-speaker review of the Sorani, Kurmanji and Arabic payout copy is an
+outstanding launch-quality item (B-8, dependency D-E).
 
 **Kurdora cannot take real money and is not ready to.** No real seller has been
 onboarded and no real payment has been taken.
+
+**Phase 7 Part 3 has not been started.**
