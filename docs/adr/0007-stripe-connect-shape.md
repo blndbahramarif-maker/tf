@@ -1,6 +1,15 @@
 # ADR-0007 — Stripe Connect: destination charges, plus fee-only for high value
 
-**Status:** Accepted · 2026-09-11 · **Implementation deferred to Phase 7**
+**Status:** Superseded in part by [ADR-0013](./0013-phase-7-payment-architecture.md)
+· 2026-09-11 · **Implementation deferred to Phase 7**
+
+> **Re-verified 2026-09-12 at the Phase 7 gate, as this ADR required.** The
+> charge-type and fee-only decisions below survived re-verification unchanged.
+> The account-type guidance and the restricted-business assessment did NOT:
+> legacy account types are now deprecated, Stripe advises platforms not to take
+> loss liability, and cars and business sales are not on the UK restricted list.
+> Read [ADR-0013](./0013-phase-7-payment-architecture.md) and
+> [docs/15-phase-7-gate.md](../15-phase-7-gate.md) for the current position.
 **Context docs:** `docs/04-payments-architecture.md`, `docs/12-decisions-log.md` (DL-1, DL-2)
 
 > **No payment code exists yet.** This ADR records the design so Phase 7 starts

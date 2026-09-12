@@ -30,6 +30,8 @@ brand configuration module so it can be changed without touching application cod
 | 11 | [Risks & decisions](./11-risks-and-decisions.md) | What can sink this project |
 | 12 | **[Decisions log](./12-decisions-log.md)** | **Your answers, and exactly what they changed — read this second** |
 | 13 | **[Dependencies & blockers](./13-dependencies-and-blockers.md)** | **External, non-engineering items that can block a phase** |
+| 14 | [Environments](./14-environments.md) | Local, CI and production configuration |
+| 15 | **[Phase 7 gate](./15-phase-7-gate.md)** | **Stripe Connect architecture, verified 2026-09-12. Live mode blocked pending Stripe approval** |
 | — | [Architecture decision records](./adr/) | Why each structural choice was made |
 
 ## Legal notice
