@@ -60,6 +60,53 @@ async function seedFixtures(): Promise<{
 
 let fx: Awaited<ReturnType<typeof seedFixtures>>;
 let orderCounter = 0;
+let listingCounter = 0;
+
+/** A second listing owned by the fixture seller, for per-listing rules. */
+async function insertListing(): Promise<string> {
+  listingCounter += 1;
+  const result = await client.query<{ id: string }>(
+    `INSERT INTO listings (id, seller_profile_id, category_id, title, slug, description,
+                           currency, country_id, updated_at, price_minor, price_type)
+     VALUES (gen_random_uuid(), $1, $2, 'Offer fixture', $3, 'desc', 'GBP', $4, now(), 100000, 'FIXED')
+     RETURNING id`,
+    [fx.sellerProfileId, fx.categoryId, `offer-listing-${listingCounter}`, fx.countryId],
+  );
+  return result.rows[0]!.id;
+}
+
+async function insertOffer(
+  over: { listingId?: string; amount?: number; status?: string } = {},
+): Promise<string> {
+  const result = await client.query<{ id: string }>(
+    `INSERT INTO offers (id, listing_id, buyer_id, amount_minor, currency, status,
+                         expires_at, updated_at)
+     VALUES (gen_random_uuid(), $1, $2, $3, 'GBP', $4::offer_status,
+             now() + interval '7 days', now())
+     RETURNING id`,
+    [
+      over.listingId ?? (await insertListing()),
+      fx.userId,
+      over.amount ?? 90000,
+      over.status ?? 'SUBMITTED',
+    ],
+  );
+  return result.rows[0]!.id;
+}
+
+function insertOfferEvent(
+  offerId: string,
+  over: { amount?: number; actorRole?: string; actorId?: string | null } = {},
+) {
+  const actorRole = over.actorRole ?? 'buyer';
+  const actorId = 'actorId' in over ? over.actorId : fx.userId;
+  return client.query(
+    `INSERT INTO offer_events (id, offer_id, from_status, to_status, actor_role, actor_id,
+                               amount_minor, currency)
+     VALUES (gen_random_uuid(), $1, NULL, 'SUBMITTED', $2, $3, $4, 'GBP')`,
+    [offerId, actorRole, actorId, over.amount ?? 9000],
+  );
+}
 
 interface OrderOverrides {
   subtotal?: number;
@@ -349,6 +396,93 @@ describe.skipIf(!hasDatabase)('database constraints', () => {
         /append-only/,
       );
       await expect(client.query(`DELETE FROM audit_logs`)).rejects.toThrow(/append-only/);
+    });
+
+    it('refuses updates and deletes on offer_events', async () => {
+      const offerId = await insertOffer();
+      await client.query(
+        `INSERT INTO offer_events (id, offer_id, from_status, to_status, actor_role, actor_id,
+                                   amount_minor, currency)
+         VALUES (gen_random_uuid(), $1, NULL, 'SUBMITTED', 'buyer', $2, 9000, 'GBP')`,
+        [offerId, fx.userId],
+      );
+
+      // The offer history is the record of who agreed to what. If it can be
+      // edited after the fact it will still be believed, which is worse than
+      // having none at all.
+      await expect(
+        client.query(`UPDATE offer_events SET to_status = 'ACCEPTED' WHERE offer_id = $1`, [
+          offerId,
+        ]),
+      ).rejects.toThrow(/append-only/);
+      await expect(
+        client.query(`DELETE FROM offer_events WHERE offer_id = $1`, [offerId]),
+      ).rejects.toThrow(/append-only/);
+    });
+  });
+
+  describe('offer integrity', () => {
+    it('refuses a zero or negative event amount', async () => {
+      const offerId = await insertOffer();
+      for (const amount of [0, -1]) {
+        await expect(
+          insertOfferEvent(offerId, { amount }),
+        ).rejects.toThrow(/offer_events_amount_positive/);
+      }
+    });
+
+    it('refuses an actor role the state machine does not know', async () => {
+      const offerId = await insertOffer();
+      await expect(
+        insertOfferEvent(offerId, { actorRole: 'admin' }),
+      ).rejects.toThrow(/offer_events_actor_role_valid/);
+    });
+
+    it('refuses a party transition with no actor', async () => {
+      // "The buyer did this, and we do not know who the buyer was" is not a
+      // history entry, it is a hole in one.
+      const offerId = await insertOffer();
+      await expect(
+        insertOfferEvent(offerId, { actorRole: 'buyer', actorId: null }),
+      ).rejects.toThrow(/offer_events_actor_present/);
+    });
+
+    it('refuses a system transition that names an actor', async () => {
+      // Expiry is nobody's decision. Attributing it to a person would make the
+      // trail say something untrue.
+      const offerId = await insertOffer();
+      await expect(
+        insertOfferEvent(offerId, { actorRole: 'system', actorId: fx.userId }),
+      ).rejects.toThrow(/offer_events_actor_present/);
+    });
+
+    it('accepts a system transition with no actor', async () => {
+      const offerId = await insertOffer();
+      await expect(
+        insertOfferEvent(offerId, { actorRole: 'system', actorId: null }),
+      ).resolves.toBeDefined();
+    });
+
+    it('allows a buyer only one open offer per listing', async () => {
+      const listing = await insertListing();
+      await insertOffer({ listingId: listing, status: 'SUBMITTED' });
+
+      // `offers_one_pending_per_buyer_listing`, so a buyer cannot bury a
+      // seller under simultaneous bids on the same item.
+      await expect(
+        insertOffer({ listingId: listing, status: 'SUBMITTED' }),
+      ).rejects.toThrow(/offers_one_pending_per_buyer_listing/);
+
+      // The index is partial, so a settled offer does not lock the listing.
+      await client.query(`UPDATE offers SET status = 'DECLINED' WHERE listing_id = $1`, [listing]);
+      await expect(
+        insertOffer({ listingId: listing, status: 'SUBMITTED' }),
+      ).resolves.toBeDefined();
+    });
+
+    it('refuses a zero or negative offer amount', async () => {
+      await expect(insertOffer({ amount: 0 })).rejects.toThrow(/offers_amount_positive/);
+      await expect(insertOffer({ amount: -500 })).rejects.toThrow(/offers_amount_positive/);
     });
   });
 });

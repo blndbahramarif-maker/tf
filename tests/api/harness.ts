@@ -264,9 +264,24 @@ export async function latestAuditLog(action: string) {
   });
 }
 
-export async function clearRateLimits(): Promise<void> {
+/**
+ * Clears rate-limit counters.
+ *
+ * With no argument it clears every counter, which is what a test ABOUT rate
+ * limiting wants. Pass user ids to clear only those accounts' counters: test
+ * files run in parallel workers against one Redis, so a test that merely needs
+ * headroom must not wipe the counters another file is currently measuring.
+ *
+ * This clears counters; it does NOT relax or bypass any limit. The limits the
+ * application enforces are exactly the ones a real caller meets.
+ */
+export async function clearRateLimits(...userIds: string[]): Promise<void> {
   const redis = getRedis();
-  const keys = await redis.keys('ratelimit:*');
+  // Always inside the `ratelimit:` namespace — a bare `*<id>*` would also match
+  // that user's session and lockout keys, which is not what any caller means.
+  const patterns =
+    userIds.length === 0 ? ['ratelimit:*'] : userIds.map((id) => `ratelimit:*:*${id}*:*`);
+  const keys = (await Promise.all(patterns.map((pattern) => redis.keys(pattern)))).flat();
   if (keys.length > 0) await redis.del(...keys);
 }
 

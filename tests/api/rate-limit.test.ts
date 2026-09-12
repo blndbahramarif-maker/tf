@@ -1,9 +1,19 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { POST as login } from '../../app/api/v1/auth/login/route';
 import { POST as register } from '../../app/api/v1/auth/register/route';
+import { POST as startConversation } from '../../app/api/v1/conversations/route';
+import { POST as sendMessage } from '../../app/api/v1/conversations/[id]/messages/route';
+import { POST as createOffer } from '../../app/api/v1/offers/route';
 import { consumeRateLimit, RATE_LIMITS } from '@/infra/redis/rate-limit';
 import { getRedis } from '@/infra/redis/client';
-import { callRoute, clearRateLimits, createTestUser, disconnect, hasDatabase } from './harness';
+import {
+  callRoute,
+  clearRateLimits,
+  createTestListing,
+  createTestUser,
+  disconnect,
+  hasDatabase,
+} from './harness';
 
 /**
  * Rate limiting.
@@ -190,5 +200,181 @@ describe.skipIf(!hasDatabase)('rate limiting', () => {
 
       expect(statuses).toContain(429);
     }, 90_000);
+  });
+
+  /**
+   * Messaging and offers.
+   *
+   * These limits are keyed per USER, not per IP. A spammer behind a mobile
+   * carrier's NAT shares an address with thousands of innocent people, so an
+   * IP key would either be useless or punish the wrong person. The account is
+   * the thing being limited because the account is the thing doing the spamming.
+   */
+  describe('messaging and offer endpoints', () => {
+    it('limits how fast one account can send messages', async () => {
+      const seller = await createTestUser({
+        roles: ['seller'],
+        withSellerProfile: true,
+        stepUp: true,
+      });
+      const buyer = await createTestUser({ roles: ['buyer'], stepUp: true });
+      const listing = await createTestListing({
+        ownerSellerProfileId: seller.sellerProfileId!,
+        status: 'ACTIVE',
+      });
+
+      const opened = await callRoute(startConversation, '/api/v1/conversations', {
+        method: 'POST',
+        token: buyer.accessToken,
+        body: { listingId: listing.id, body: 'Opening the thread' },
+      });
+      expect(opened.status).toBe(201);
+      const conversationId = opened.body.conversationId as string;
+
+      const statuses: number[] = [];
+      for (let attempt = 0; attempt < RATE_LIMITS.sendMessage.limit + 2; attempt += 1) {
+        const result = await callRoute(
+          sendMessage,
+          `/api/v1/conversations/${conversationId}/messages`,
+          {
+            method: 'POST',
+            token: buyer.accessToken,
+            params: { id: conversationId },
+            body: { body: `Message number ${attempt}` },
+            // A DIFFERENT IP each time, so what gets refused can only be the
+            // account. An IP-keyed limit would pass this test by accident.
+            ip: `198.51.100.${attempt + 1}`,
+          },
+        );
+        statuses.push(result.status);
+        if (result.status === 429) break;
+      }
+
+      expect(statuses).toContain(429);
+      expect(statuses.filter((status) => status === 201).length).toBe(
+        RATE_LIMITS.sendMessage.limit,
+      );
+    }, 120_000);
+
+    it('limits how many sellers one account can cold-contact', async () => {
+      const buyer = await createTestUser({ roles: ['buyer'], stepUp: true });
+      const seller = await createTestUser({
+        roles: ['seller'],
+        withSellerProfile: true,
+        stepUp: true,
+      });
+
+      const statuses: number[] = [];
+      for (let attempt = 0; attempt < RATE_LIMITS.startConversation.limit + 2; attempt += 1) {
+        // A fresh listing each time: reusing one would return the SAME thread
+        // and never exercise the limit.
+        const listing = await createTestListing({
+          ownerSellerProfileId: seller.sellerProfileId!,
+          status: 'ACTIVE',
+        });
+        const result = await callRoute(startConversation, '/api/v1/conversations', {
+          method: 'POST',
+          token: buyer.accessToken,
+          body: { listingId: listing.id, body: 'Is this available?' },
+          ip: `198.51.100.${attempt + 100}`,
+        });
+        statuses.push(result.status);
+        if (result.status === 429) break;
+      }
+
+      expect(statuses).toContain(429);
+    }, 120_000);
+
+    it('limits how many offers one account can fire off', async () => {
+      const buyer = await createTestUser({ roles: ['buyer'], stepUp: true });
+      const seller = await createTestUser({
+        roles: ['seller'],
+        withSellerProfile: true,
+        stepUp: true,
+      });
+
+      const statuses: number[] = [];
+      for (let attempt = 0; attempt < RATE_LIMITS.createOffer.limit + 2; attempt += 1) {
+        const listing = await createTestListing({
+          ownerSellerProfileId: seller.sellerProfileId!,
+          status: 'ACTIVE',
+          priceMinor: 100_000n,
+        });
+        const result = await callRoute(createOffer, '/api/v1/offers', {
+          method: 'POST',
+          token: buyer.accessToken,
+          body: { listingId: listing.id, amountMinor: '90000', currency: 'GBP' },
+          ip: `198.51.100.${attempt + 150}`,
+        });
+        statuses.push(result.status);
+        if (result.status === 429) break;
+      }
+
+      expect(statuses).toContain(429);
+    }, 120_000);
+
+    it('does not let one account’s flooding refuse another’s messages', async () => {
+      // The point of a per-user key: a limited account must not take anyone
+      // else down with it.
+      const seller = await createTestUser({
+        roles: ['seller'],
+        withSellerProfile: true,
+        stepUp: true,
+      });
+      const flooder = await createTestUser({ roles: ['buyer'], stepUp: true });
+      const bystander = await createTestUser({ roles: ['buyer'], stepUp: true });
+      const listing = await createTestListing({
+        ownerSellerProfileId: seller.sellerProfileId!,
+        status: 'ACTIVE',
+      });
+
+      const open = async (user: typeof flooder) => {
+        const result = await callRoute(startConversation, '/api/v1/conversations', {
+          method: 'POST',
+          token: user.accessToken,
+          body: { listingId: listing.id, body: 'Opening' },
+          ip: '198.51.100.250',
+        });
+        expect(result.status).toBe(201);
+        return result.body.conversationId as string;
+      };
+
+      const flooderThread = await open(flooder);
+      const bystanderThread = await open(bystander);
+
+      let refused = false;
+      for (let attempt = 0; attempt < RATE_LIMITS.sendMessage.limit + 2; attempt += 1) {
+        const result = await callRoute(
+          sendMessage,
+          `/api/v1/conversations/${flooderThread}/messages`,
+          {
+            method: 'POST',
+            token: flooder.accessToken,
+            params: { id: flooderThread },
+            body: { body: `Flood ${attempt}` },
+            // Same IP as the bystander throughout.
+            ip: '198.51.100.250',
+          },
+        );
+        if (result.status === 429) {
+          refused = true;
+          break;
+        }
+      }
+      expect(refused).toBe(true);
+
+      const innocent = await callRoute(
+        sendMessage,
+        `/api/v1/conversations/${bystanderThread}/messages`,
+        {
+          method: 'POST',
+          token: bystander.accessToken,
+          params: { id: bystanderThread },
+          body: { body: 'Just a normal question' },
+          ip: '198.51.100.250',
+        },
+      );
+      expect(innocent.status).toBe(201);
+    }, 120_000);
   });
 });

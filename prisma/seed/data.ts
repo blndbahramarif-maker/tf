@@ -708,6 +708,12 @@ export const PERMISSIONS: PermissionSeed[] = [
     description: 'Approve or reject seller verification',
   },
   { key: 'seller:suspend', category: 'selling', description: 'Suspend a seller' },
+  // Messaging and offers
+  { key: 'message:read_own', category: 'messaging', description: 'Read own conversations' },
+  { key: 'message:send', category: 'messaging', description: 'Send messages in own conversations' },
+  { key: 'offer:create', category: 'messaging', description: 'Make an offer on a listing' },
+  { key: 'offer:respond', category: 'messaging', description: 'Accept or decline offers received' },
+  { key: 'report:create', category: 'trust', description: 'Report a message or conversation' },
   // Trust and safety
   { key: 'message:read_reported', category: 'trust', description: 'Read reported conversations' },
   { key: 'review:moderate', category: 'trust', description: 'Hide or remove reviews' },
@@ -759,6 +765,10 @@ export const ROLES: RoleSeed[] = [
       'account:manage_security',
       'seller:create_profile',
       'order:read_own',
+      'message:read_own',
+      'message:send',
+      'offer:create',
+      'report:create',
     ],
   },
   {
@@ -777,6 +787,13 @@ export const ROLES: RoleSeed[] = [
       'listing:publish',
       'order:read_own',
       'payout:read_own',
+      'message:read_own',
+      'message:send',
+      // A seller is also a buyer elsewhere on the platform, so they get both
+      // halves of the offer permissions.
+      'offer:create',
+      'offer:respond',
+      'report:create',
     ],
   },
   {
@@ -796,6 +813,11 @@ export const ROLES: RoleSeed[] = [
       'order:read_own',
       'payout:read_own',
       'analytics:read_basic',
+      'message:read_own',
+      'message:send',
+      'offer:create',
+      'offer:respond',
+      'report:create',
     ],
   },
   {

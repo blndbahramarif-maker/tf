@@ -167,12 +167,24 @@ enum MessageType {
 }
 
 enum OfferStatus {
-  PENDING
+  /// Prepared but not sent. Optional: the UI submits directly, so a draft row
+  /// only exists when a buyer deliberately saves one.
+  DRAFT
+  /// Sent and awaiting the seller. Named for the event, not the feeling —
+  /// this was PENDING in Phase 2 and was renamed by migration.
+  SUBMITTED
   ACCEPTED
   DECLINED
+  /// Reserved. Counter-offers are not implemented in Phase 6; the chain
+  /// column exists, but no transition reaches this state yet.
   COUNTERED
+  /// The buyer pulled an offer the seller had not answered.
   WITHDRAWN
   EXPIRED
+  /// An ACCEPTED offer called off before it completed. Distinct from
+  /// WITHDRAWN, and it will matter once acceptance carries a fee.
+  CANCELLED
+  /// Reserved for the phase that turns an accepted offer into an order.
   CONVERTED
 
   @@map("offer_status")
@@ -415,25 +427,26 @@ model User {
   sellerProfile      SellerProfile?
   roles              UserRole[]
   refreshTokens      RefreshToken[]
-  orders             Order[]              @relation("BuyerOrders")
-  offersMade         Offer[]              @relation("OfferBuyer")
-  conversationsBuyer Conversation[]       @relation("ConversationBuyer")
-  conversationsSell  Conversation[]       @relation("ConversationSeller")
+  orders             Order[]                 @relation("BuyerOrders")
+  offersMade         Offer[]                 @relation("OfferBuyer")
+  conversationsBuyer Conversation[]          @relation("ConversationBuyer")
+  conversationsSell  Conversation[]          @relation("ConversationSeller")
   messages           Message[]
   favourites         Favourite[]
-  reviewsAuthored    Review[]             @relation("ReviewAuthor")
-  reviewsReceived    Review[]             @relation("ReviewSubjectUser")
-  reportsFiled       Report[]             @relation("Reporter")
-  sanctions          UserSanction[]       @relation("SanctionedUser")
+  reviewsAuthored    Review[]                @relation("ReviewAuthor")
+  reviewsReceived    Review[]                @relation("ReviewSubjectUser")
+  reportsFiled       Report[]                @relation("Reporter")
+  sanctions          UserSanction[]          @relation("SanctionedUser")
   notifications      Notification[]
-  blocksMade         UserBlock[]          @relation("Blocker")
-  blocksReceived     UserBlock[]          @relation("Blocked")
+  blocksMade         UserBlock[]             @relation("Blocker")
+  blocksReceived     UserBlock[]             @relation("Blocked")
   messageReads       MessageRead[]
   idempotencyKeys    IdempotencyKey[]
   consents           ConsentRecord[]
   dataRequests       DataSubjectRequest[]
   verificationTokens VerificationToken[]
   recoveryCodes      TwoFactorRecoveryCode[]
+  offerEvents        OfferEvent[]            @relation("OfferEventActor")
 
   @@index([status, createdAt])
   @@index([deletedAt])
@@ -460,12 +473,12 @@ model Profile {
 }
 
 model Role {
-  id          String  @id @default(uuid(7)) @db.Uuid
+  id                String  @id @default(uuid(7)) @db.Uuid
   /// Stable machine key: buyer, seller, moderator, finance, admin…
-  key         String  @unique
-  description String?
+  key               String  @unique
+  description       String?
   /// System roles cannot be deleted from the admin panel.
-  isSystem    Boolean @default(true) @map("is_system")
+  isSystem          Boolean @default(true) @map("is_system")
   /// Holders must have TOTP enrolled before the role grants anything.
   /// A column rather than a hard-coded list of role names, so the owner can
   /// require two-factor for a new role without a deploy.
@@ -507,12 +520,12 @@ model RolePermission {
 }
 
 model UserRole {
-  userId     String    @map("user_id") @db.Uuid
-  roleId     String    @map("role_id") @db.Uuid
-  grantedAt  DateTime  @default(now()) @map("granted_at") @db.Timestamptz(6)
-  grantedBy  String?   @map("granted_by") @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  roleId    String    @map("role_id") @db.Uuid
+  grantedAt DateTime  @default(now()) @map("granted_at") @db.Timestamptz(6)
+  grantedBy String?   @map("granted_by") @db.Uuid
   /// Time-boxed elevation, e.g. temporary moderator access.
-  expiresAt  DateTime? @map("expires_at") @db.Timestamptz(6)
+  expiresAt DateTime? @map("expires_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
@@ -523,22 +536,22 @@ model UserRole {
 }
 
 model RefreshToken {
-  id     String @id @default(uuid(7)) @db.Uuid
-  userId String @map("user_id") @db.Uuid
+  id            String    @id @default(uuid(7)) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
   /// SHA-256 of the token. The token itself is never stored.
-  tokenHash String @unique @map("token_hash")
+  tokenHash     String    @unique @map("token_hash")
   /// All tokens descended from one login share a family. Detecting reuse of a
   /// rotated token revokes the whole family (docs/08-security-architecture.md).
-  familyId    String    @map("family_id") @db.Uuid
-  rotatedFrom String?   @map("rotated_from") @db.Uuid
-  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
-  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(6)
-  revokedReason String? @map("revoked_reason")
+  familyId      String    @map("family_id") @db.Uuid
+  rotatedFrom   String?   @map("rotated_from") @db.Uuid
+  expiresAt     DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedReason String?   @map("revoked_reason")
   /// When this session last re-authenticated. Carried forward on rotation.
-  stepUpAt    DateTime? @map("step_up_at") @db.Timestamptz(6)
-  lastUsedAt  DateTime? @map("last_used_at") @db.Timestamptz(6)
-  ip          String?
-  userAgent   String?   @map("user_agent")
+  stepUpAt      DateTime? @map("step_up_at") @db.Timestamptz(6)
+  lastUsedAt    DateTime? @map("last_used_at") @db.Timestamptz(6)
+  ip            String?
+  userAgent     String?   @map("user_agent")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -569,12 +582,12 @@ model UserBlock {
 /// Only a SHA-256 hash is stored: a database leak must not hand the attacker
 /// working verification links.
 model VerificationToken {
-  id        String                @id @default(uuid(7)) @db.Uuid
-  userId    String                @map("user_id") @db.Uuid
-  purpose   VerificationPurpose
-  tokenHash String                @unique @map("token_hash")
-  expiresAt DateTime              @map("expires_at") @db.Timestamptz(6)
-  consumedAt DateTime?            @map("consumed_at") @db.Timestamptz(6)
+  id          String              @id @default(uuid(7)) @db.Uuid
+  userId      String              @map("user_id") @db.Uuid
+  purpose     VerificationPurpose
+  tokenHash   String              @unique @map("token_hash")
+  expiresAt   DateTime            @map("expires_at") @db.Timestamptz(6)
+  consumedAt  DateTime?           @map("consumed_at") @db.Timestamptz(6)
   /// For password reset: the email the request was made for, so changing the
   /// address invalidates in-flight links.
   targetEmail String?             @map("target_email")
@@ -612,22 +625,22 @@ model TwoFactorRecoveryCode {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Country {
-  id   String @id @default(uuid(7)) @db.Uuid
+  id                           String  @id @default(uuid(7)) @db.Uuid
   /// ISO-3166-1 alpha-2.
-  code String @unique @db.Char(2)
+  code                         String  @unique @db.Char(2)
   /// ISO-4217 code this country prices in by default.
-  defaultCurrency String @map("default_currency") @db.Char(3)
+  defaultCurrency              String  @map("default_currency") @db.Char(3)
   /// Only active countries appear in the UI. Europe-wide expansion is an
   /// admin toggle, not a deploy (docs/12-decisions-log.md, DL-4).
-  isActive Boolean @default(false) @map("is_active")
+  isActive                     Boolean @default(false) @map("is_active")
   requiresBusinessVerification Boolean @default(false) @map("requires_business_verification")
   /// Whether sellers here can be onboarded to the payment provider today.
-  payoutsSupported Boolean @default(false) @map("payouts_supported")
-  phonePrefix      String? @map("phone_prefix")
-  timezone         String  @default("Europe/London")
-  position         Int     @default(0)
+  payoutsSupported             Boolean @default(false) @map("payouts_supported")
+  phonePrefix                  String? @map("phone_prefix")
+  timezone                     String  @default("Europe/London")
+  position                     Int     @default(0)
   /// Country-specific rules that do not warrant their own column.
-  settings Json @default("{}")
+  settings                     Json    @default("{}")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -656,14 +669,14 @@ model CountryTranslation {
 }
 
 model City {
-  id        String  @id @default(uuid(7)) @db.Uuid
-  countryId String  @map("country_id") @db.Uuid
-  name      String
-  slug      String
-  latitude  Decimal? @db.Decimal(9, 6)
-  longitude Decimal? @db.Decimal(9, 6)
+  id         String   @id @default(uuid(7)) @db.Uuid
+  countryId  String   @map("country_id") @db.Uuid
+  name       String
+  slug       String
+  latitude   Decimal? @db.Decimal(9, 6)
+  longitude  Decimal? @db.Decimal(9, 6)
   population Int?
-  isActive  Boolean @default(true) @map("is_active")
+  isActive   Boolean  @default(true) @map("is_active")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -692,7 +705,7 @@ model CityTranslation {
 
 model Currency {
   /// ISO-4217 code, e.g. GBP. Natural primary key.
-  code String @id @db.Char(3)
+  code            String  @id @db.Char(3)
   /// Digits in the minor unit: 2 for GBP/EUR, 0 for JPY, 3 for KWD.
   /// Without this, "minor units" is ambiguous outside the two-digit currencies.
   minorUnitDigits Int     @map("minor_unit_digits")
@@ -707,9 +720,9 @@ model Currency {
 }
 
 model ExchangeRate {
-  id    String @id @default(uuid(7)) @db.Uuid
-  base  String @db.Char(3)
-  quote String @db.Char(3)
+  id     String   @id @default(uuid(7)) @db.Uuid
+  base   String   @db.Char(3)
+  quote  String   @db.Char(3)
   /// Reporting only. A payment is never converted using this — Stripe settles
   /// in real currencies and we record what actually happened.
   rate   Decimal  @db.Decimal(18, 8)
@@ -746,16 +759,16 @@ model Category {
   /// Who pays the platform fee in FEE_ONLY categories.
   feePayer            FeePayer        @default(BUYER) @map("fee_payer")
 
-  minPriceMinor BigInt? @map("min_price_minor")
+  minPriceMinor        BigInt? @map("min_price_minor")
   /// Ceiling for a single online payment in this category. Guards against a
   /// £50,000 card charge landing in a BUY_NOW flow by accident.
   maxOnlineAmountMinor BigInt? @map("max_online_amount_minor")
 
-  requiresApproval    Boolean @default(false) @map("requires_approval")
+  requiresApproval       Boolean @default(false) @map("requires_approval")
   requiresVerifiedSeller Boolean @default(false) @map("requires_verified_seller")
-  maxImages           Int     @default(10) @map("max_images")
-  listingDurationDays Int     @default(30) @map("listing_duration_days")
-  seo                 Json    @default("{}")
+  maxImages              Int     @default(10) @map("max_images")
+  listingDurationDays    Int     @default(30) @map("listing_duration_days")
+  seo                    Json    @default("{}")
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -776,11 +789,11 @@ model Category {
 }
 
 model CategoryTranslation {
-  categoryId String  @map("category_id") @db.Uuid
-  locale     String
-  name       String
-  description String?
-  seoTitle   String? @map("seo_title")
+  categoryId     String  @map("category_id") @db.Uuid
+  locale         String
+  name           String
+  description    String?
+  seoTitle       String? @map("seo_title")
   seoDescription String? @map("seo_description")
 
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -790,21 +803,21 @@ model CategoryTranslation {
 }
 
 model AttributeDefinition {
-  id         String            @id @default(uuid(7)) @db.Uuid
-  categoryId String            @map("category_id") @db.Uuid
+  id                String            @id @default(uuid(7)) @db.Uuid
+  categoryId        String            @map("category_id") @db.Uuid
   /// Machine key, unique per category, e.g. "mileage", "fuel_type".
-  key        String
-  dataType   AttributeDataType @map("data_type")
+  key               String
+  dataType          AttributeDataType @map("data_type")
   /// Display unit, e.g. "km", "GB". Never part of the stored value.
-  unit       String?
-  isRequired   Boolean @default(false) @map("is_required")
-  isFilterable Boolean @default(true) @map("is_filterable")
-  isSearchable Boolean @default(false) @map("is_searchable")
+  unit              String?
+  isRequired        Boolean           @default(false) @map("is_required")
+  isFilterable      Boolean           @default(true) @map("is_filterable")
+  isSearchable      Boolean           @default(false) @map("is_searchable")
   /// Child categories inherit this attribute unless they override it.
-  inheritToChildren Boolean @default(true) @map("inherit_to_children")
-  position   Int     @default(0)
+  inheritToChildren Boolean           @default(true) @map("inherit_to_children")
+  position          Int               @default(0)
   /// min/max/regex/step. Validated by the application against dataType.
-  validation Json    @default("{}")
+  validation        Json              @default("{}")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -820,7 +833,7 @@ model AttributeDefinition {
 }
 
 model AttributeDefinitionTranslation {
-  attributeDefinitionId String @map("attribute_definition_id") @db.Uuid
+  attributeDefinitionId String  @map("attribute_definition_id") @db.Uuid
   locale                String
   label                 String
   helpText              String? @map("help_text")
@@ -832,10 +845,10 @@ model AttributeDefinitionTranslation {
 }
 
 model AttributeOption {
-  id                    String @id @default(uuid(7)) @db.Uuid
-  attributeDefinitionId String @map("attribute_definition_id") @db.Uuid
+  id                    String  @id @default(uuid(7)) @db.Uuid
+  attributeDefinitionId String  @map("attribute_definition_id") @db.Uuid
   value                 String
-  position              Int    @default(0)
+  position              Int     @default(0)
   isActive              Boolean @default(true) @map("is_active")
 
   attributeDefinition AttributeDefinition          @relation(fields: [attributeDefinitionId], references: [id], onDelete: Cascade)
@@ -863,9 +876,9 @@ model Listing {
   sellerProfileId String @map("seller_profile_id") @db.Uuid
   categoryId      String @map("category_id") @db.Uuid
 
-  title       String
-  slug        String
-  description String
+  title         String
+  slug          String
+  description   String
   /// The language the SELLER wrote in. We never silently machine-translate
   /// a seller's words; translations are separate rows and clearly badged.
   contentLocale String @default("en") @map("content_locale")
@@ -901,7 +914,7 @@ model Listing {
   /// drift from the row. Typed as Unsupported because Prisma has no tsvector:
   /// it is written by the trigger and read through raw SQL, never by the
   /// client. See the search_documents migration.
-  searchDocument Unsupported("tsvector")?  @map("search_document")
+  searchDocument Unsupported("tsvector")? @map("search_document")
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -934,12 +947,12 @@ model ListingAttributeValue {
 
   /// Exactly one of these is set, matching the definition's dataType.
   /// Enforced by a CHECK constraint in the migration.
-  valueText    String?  @map("value_text")
-  valueNumber  Decimal? @map("value_number") @db.Decimal(20, 6)
-  valueInteger BigInt?  @map("value_integer")
-  valueBoolean Boolean? @map("value_boolean")
+  valueText    String?   @map("value_text")
+  valueNumber  Decimal?  @map("value_number") @db.Decimal(20, 6)
+  valueInteger BigInt?   @map("value_integer")
+  valueBoolean Boolean?  @map("value_boolean")
   valueDate    DateTime? @map("value_date") @db.Timestamptz(6)
-  optionId     String?  @map("option_id") @db.Uuid
+  optionId     String?   @map("option_id") @db.Uuid
 
   listing             Listing             @relation(fields: [listingId], references: [id], onDelete: Cascade)
   attributeDefinition AttributeDefinition @relation(fields: [attributeDefinitionId], references: [id], onDelete: Cascade)
@@ -968,16 +981,16 @@ model ListingImage {
   altText    String? @map("alt_text")
 
   /// Upload pipeline state. An image is servable only at READY.
-  uploadStatus ImageUploadStatus @default(PENDING_UPLOAD) @map("upload_status")
+  uploadStatus   ImageUploadStatus @default(PENDING_UPLOAD) @map("upload_status")
   /// Format DETECTED from magic bytes, never the client's Content-Type.
-  contentType  String?           @map("content_type")
-  byteSize     Int?              @map("byte_size")
+  contentType    String?           @map("content_type")
+  byteSize       Int?              @map("byte_size")
   /// SHA-256 of the stored original, for deduplication and audit.
-  checksumSha256 String?         @map("checksum_sha256")
+  checksumSha256 String?           @map("checksum_sha256")
   /// Derivative keys by size, e.g. { "thumb": "...", "card": "...", "full": "..." }.
-  variants     Json              @default("{}")
-  failureReason String?          @map("failure_reason")
-  processedAt   DateTime?        @map("processed_at") @db.Timestamptz(6)
+  variants       Json              @default("{}")
+  failureReason  String?           @map("failure_reason")
+  processedAt    DateTime?         @map("processed_at") @db.Timestamptz(6)
 
   /// Images are only visible after processing AND moderation.
   moderationStatus ModerationStatus @default(PENDING) @map("moderation_status")
@@ -993,10 +1006,10 @@ model ListingImage {
 }
 
 model ListingTranslation {
-  listingId String @map("listing_id") @db.Uuid
-  locale    String
-  title     String
-  description String
+  listingId           String  @map("listing_id") @db.Uuid
+  locale              String
+  title               String
+  description         String
   /// True when produced by machine translation, so the UI can badge it and
   /// always offer the original.
   isMachineTranslated Boolean @default(true) @map("is_machine_translated")
@@ -1050,10 +1063,10 @@ model SellerProfile {
   /// Buyer-protection hold before a payout is released, per seller risk tier.
   payoutDelayDays Int     @default(0) @map("payout_delay_days")
 
-  ratingAvg   Decimal @default(0) @map("rating_avg") @db.Decimal(3, 2)
-  ratingCount Int     @default(0) @map("rating_count")
-  responseRate Int?   @map("response_rate")
-  responseTimeMinutes Int? @map("response_time_minutes")
+  ratingAvg           Decimal @default(0) @map("rating_avg") @db.Decimal(3, 2)
+  ratingCount         Int     @default(0) @map("rating_count")
+  responseRate        Int?    @map("response_rate")
+  responseTimeMinutes Int?    @map("response_time_minutes")
 
   memberSince DateTime  @default(now()) @map("member_since") @db.Timestamptz(6)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1077,16 +1090,16 @@ model SellerProfile {
 }
 
 model Business {
-  id              String  @id @default(uuid(7)) @db.Uuid
-  sellerProfileId String  @unique @map("seller_profile_id") @db.Uuid
-  legalName       String  @map("legal_name")
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  sellerProfileId    String    @unique @map("seller_profile_id") @db.Uuid
+  legalName          String    @map("legal_name")
   /// Companies House number for UK entities.
-  registrationNumber String? @map("registration_number")
-  vatNumber       String? @map("vat_number")
-  companyType     String? @map("company_type")
-  registeredAddress Json  @default("{}") @map("registered_address")
-  website         String?
-  verifiedAt      DateTime? @map("verified_at") @db.Timestamptz(6)
+  registrationNumber String?   @map("registration_number")
+  vatNumber          String?   @map("vat_number")
+  companyType        String?   @map("company_type")
+  registeredAddress  Json      @default("{}") @map("registered_address")
+  website            String?
+  verifiedAt         DateTime? @map("verified_at") @db.Timestamptz(6)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1097,12 +1110,12 @@ model Business {
 }
 
 model SellerVerificationEvent {
-  id              String             @id @default(uuid(7)) @db.Uuid
-  sellerProfileId String             @map("seller_profile_id") @db.Uuid
+  id              String              @id @default(uuid(7)) @db.Uuid
+  sellerProfileId String              @map("seller_profile_id") @db.Uuid
   fromStatus      VerificationStatus? @map("from_status")
-  toStatus        VerificationStatus @map("to_status")
+  toStatus        VerificationStatus  @map("to_status")
   reason          String?
-  actorId         String?            @map("actor_id") @db.Uuid
+  actorId         String?             @map("actor_id") @db.Uuid
   /// "stripe_webhook", "admin", "system".
   source          String
 
@@ -1119,12 +1132,12 @@ model SellerVerificationEvent {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Conversation {
-  id        String             @id @default(uuid(7)) @db.Uuid
-  listingId String?            @map("listing_id") @db.Uuid
-  buyerId   String             @map("buyer_id") @db.Uuid
-  sellerId  String             @map("seller_id") @db.Uuid
-  status    ConversationStatus @default(OPEN)
-  lastMessageAt DateTime?      @map("last_message_at") @db.Timestamptz(6)
+  id            String             @id @default(uuid(7)) @db.Uuid
+  listingId     String?            @map("listing_id") @db.Uuid
+  buyerId       String             @map("buyer_id") @db.Uuid
+  sellerId      String             @map("seller_id") @db.Uuid
+  status        ConversationStatus @default(OPEN)
+  lastMessageAt DateTime?          @map("last_message_at") @db.Timestamptz(6)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1142,11 +1155,11 @@ model Conversation {
 }
 
 model Message {
-  id             String      @id @default(uuid(7)) @db.Uuid
-  conversationId String      @map("conversation_id") @db.Uuid
-  senderId       String      @map("sender_id") @db.Uuid
-  body           String
-  type           MessageType @default(TEXT)
+  id               String           @id @default(uuid(7)) @db.Uuid
+  conversationId   String           @map("conversation_id") @db.Uuid
+  senderId         String           @map("sender_id") @db.Uuid
+  body             String
+  type             MessageType      @default(TEXT)
   /// 0–100. Messages are SCORED, not blocked. A high score routes the
   /// conversation to moderation; it never silently edits or deletes
   /// (docs/08-security-architecture.md).
@@ -1187,30 +1200,68 @@ model Offer {
   amountMinor    BigInt      @map("amount_minor")
   currency       String      @db.Char(3)
   message        String?
-  status         OfferStatus @default(PENDING)
+  status         OfferStatus @default(SUBMITTED)
   /// Counter-offers form a chain.
   parentOfferId  String?     @map("parent_offer_id") @db.Uuid
 
-  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
-  acceptedAt DateTime? @map("accepted_at") @db.Timestamptz(6)
-  declinedAt DateTime? @map("declined_at") @db.Timestamptz(6)
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
+  submittedAt DateTime? @map("submitted_at") @db.Timestamptz(6)
+  acceptedAt  DateTime? @map("accepted_at") @db.Timestamptz(6)
+  declinedAt  DateTime? @map("declined_at") @db.Timestamptz(6)
+  withdrawnAt DateTime? @map("withdrawn_at") @db.Timestamptz(6)
+  cancelledAt DateTime? @map("cancelled_at") @db.Timestamptz(6)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  listing      Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
-  buyer        User          @relation("OfferBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
-  parentOffer  Offer?        @relation("OfferChain", fields: [parentOfferId], references: [id], onDelete: SetNull)
-  counterOffers Offer[]      @relation("OfferChain")
+  listing       Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  conversation  Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  buyer         User          @relation("OfferBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  parentOffer   Offer?        @relation("OfferChain", fields: [parentOfferId], references: [id], onDelete: SetNull)
+  counterOffers Offer[]       @relation("OfferChain")
+  events        OfferEvent[]
   /// An accepted offer may produce EXACTLY ONE order. Enforced by the
   /// one-to-one relation plus a unique index on orders.offer_id.
-  order        Order?
+  order         Order?
 
   @@index([listingId, status, createdAt(sort: Desc)])
   @@index([buyerId, status])
   @@index([status, expiresAt])
   @@map("offers")
+}
+
+/// Append-only audit trail for an offer.
+///
+/// Every transition is recorded with who made it and what it was before. The
+/// offer row carries current state; this carries history, and history is what
+/// a dispute is argued from. Nothing updates or deletes these rows — enforced
+/// by triggers in the migration, not only by convention.
+model OfferEvent {
+  id      String @id @default(uuid(7)) @db.Uuid
+  offerId String @map("offer_id") @db.Uuid
+
+  fromStatus OfferStatus? @map("from_status")
+  toStatus   OfferStatus  @map("to_status")
+
+  /// buyer | seller | system. Resolved server-side from the database, never
+  /// from the request.
+  actorRole String  @map("actor_role")
+  /// Null for system transitions such as expiry.
+  actorId   String? @map("actor_id") @db.Uuid
+
+  /// Amount as it stood at this event, so history survives later edits.
+  amountMinor BigInt @map("amount_minor")
+  currency    String @db.Char(3)
+
+  note String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  actor User? @relation("OfferEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([offerId, createdAt])
+  @@map("offer_events")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1242,25 +1293,25 @@ model Order {
   // Written once at order creation. Changing a commission rule tomorrow must
   // NEVER rewrite yesterday's orders, invoices, payouts or reports.
   // This is the single most important immutability rule in the schema.
-  commissionRuleId       String? @map("commission_rule_id") @db.Uuid
-  commissionPercentBps   Int     @default(0) @map("commission_percent_bps")
-  commissionFixedMinor   BigInt  @default(0) @map("commission_fixed_minor")
-  commissionAmountMinor  BigInt  @map("commission_amount_minor")
+  commissionRuleId      String? @map("commission_rule_id") @db.Uuid
+  commissionPercentBps  Int     @default(0) @map("commission_percent_bps")
+  commissionFixedMinor  BigInt  @default(0) @map("commission_fixed_minor")
+  commissionAmountMinor BigInt  @map("commission_amount_minor")
   /// Always totalMinor − commissionAmountMinor. Derived by subtraction so the
   /// two can never disagree by a penny.
-  sellerAmountMinor      BigInt  @map("seller_amount_minor")
+  sellerAmountMinor     BigInt  @map("seller_amount_minor")
 
   /// The ACTUAL provider fee, read from the Stripe balance transaction via
   /// webhook. Never estimated. Null until the payment settles.
-  paymentFeeMinor   BigInt? @map("payment_fee_minor")
+  paymentFeeMinor  BigInt? @map("payment_fee_minor")
   /// commission − fees − refunds − disputes. Commission is not revenue.
-  platformNetMinor  BigInt? @map("platform_net_minor")
+  platformNetMinor BigInt? @map("platform_net_minor")
 
   /// Snapshot for multi-currency reporting. Historical figures are converted
   /// with the rate captured here, never with a live rate.
-  fxRateToBase        Decimal? @map("fx_rate_to_base") @db.Decimal(18, 8)
-  baseCurrency        String?  @map("base_currency") @db.Char(3)
-  baseCurrencyTotalMinor BigInt? @map("base_currency_total_minor")
+  fxRateToBase           Decimal? @map("fx_rate_to_base") @db.Decimal(18, 8)
+  baseCurrency           String?  @map("base_currency") @db.Char(3)
+  baseCurrencyTotalMinor BigInt?  @map("base_currency_total_minor")
 
   /// Immutable copies of buyer and listing as they were at purchase time.
   buyerSnapshot   Json @default("{}") @map("buyer_snapshot")
@@ -1297,12 +1348,12 @@ model Order {
 }
 
 model OrderItem {
-  id        String @id @default(uuid(7)) @db.Uuid
-  orderId   String @map("order_id") @db.Uuid
+  id             String @id @default(uuid(7)) @db.Uuid
+  orderId        String @map("order_id") @db.Uuid
   /// Single-item orders at launch (D-8). This table exists so a multi-item
   /// cart is additive rather than a schema migration on live money data.
-  listingId String @map("listing_id") @db.Uuid
-  quantity  Int    @default(1)
+  listingId      String @map("listing_id") @db.Uuid
+  quantity       Int    @default(1)
   unitPriceMinor BigInt @map("unit_price_minor")
   totalMinor     BigInt @map("total_minor")
   currency       String @db.Char(3)
@@ -1318,16 +1369,16 @@ model OrderItem {
 
 /// Append-only transition log. Enforced by trigger.
 model OrderEvent {
-  id         String       @id @default(uuid(7)) @db.Uuid
-  orderId    String       @map("order_id") @db.Uuid
-  fromStatus OrderStatus? @map("from_status")
-  toStatus   OrderStatus  @map("to_status")
-  reason     String?
-  actorId    String?      @map("actor_id") @db.Uuid
+  id            String       @id @default(uuid(7)) @db.Uuid
+  orderId       String       @map("order_id") @db.Uuid
+  fromStatus    OrderStatus? @map("from_status")
+  toStatus      OrderStatus  @map("to_status")
+  reason        String?
+  actorId       String?      @map("actor_id") @db.Uuid
   /// "buyer", "seller", "admin", "system", "stripe_webhook".
-  actorType  String
-  correlationId String?   @map("correlation_id")
-  metadata   Json         @default("{}")
+  actorType     String
+  correlationId String?      @map("correlation_id")
+  metadata      Json         @default("{}")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -1341,16 +1392,16 @@ model Payment {
   id      String @id @default(uuid(7)) @db.Uuid
   orderId String @map("order_id") @db.Uuid
 
-  provider String @default("stripe")
+  provider                     String  @default("stripe")
   /// Unique: the same PaymentIntent can never produce two payment rows.
-  providerPaymentIntentId String  @unique @map("provider_payment_intent_id")
-  providerChargeId        String? @unique @map("provider_charge_id")
+  providerPaymentIntentId      String  @unique @map("provider_payment_intent_id")
+  providerChargeId             String? @unique @map("provider_charge_id")
   providerBalanceTransactionId String? @map("provider_balance_transaction_id")
 
-  status      PaymentStatus @default(REQUIRES_PAYMENT_METHOD)
-  amountMinor BigInt        @map("amount_minor")
-  currency    String        @db.Char(3)
-  paymentMethodType String?  @map("payment_method_type")
+  status            PaymentStatus @default(REQUIRES_PAYMENT_METHOD)
+  amountMinor       BigInt        @map("amount_minor")
+  currency          String        @db.Char(3)
+  paymentMethodType String?       @map("payment_method_type")
 
   /// Present for destination charges; null for FEE_ONLY, which has no
   /// transfer leg at all (ADR-0007).
@@ -1389,16 +1440,16 @@ model Payment {
 /// act on a payment event that is not recorded here first.
 model PaymentEvent {
   /// Stripe event id, e.g. "evt_3Q1...". NOT a generated UUID.
-  id       String @id
-  provider String @default("stripe")
-  type     String
+  id                String  @id
+  provider          String  @default("stripe")
+  type              String
   /// Verified before this row is written. A row with false must never be acted on.
   signatureVerified Boolean @default(false) @map("signature_verified")
-  payload  Json
-  livemode Boolean @default(false)
+  payload           Json
+  livemode          Boolean @default(false)
   /// Stripe's own API version for this event, so a replayed old event can be
   /// interpreted with the right shape.
-  apiVersion String? @map("api_version")
+  apiVersion        String? @map("api_version")
 
   status      PaymentEventStatus @default(PENDING)
   attempts    Int                @default(0)
@@ -1425,24 +1476,24 @@ model PaymentEvent {
 /// This is how we answer "what do we owe sellers" and reconcile against Stripe
 /// without trusting our own mutable tables.
 model LedgerEntry {
-  id String @id @default(uuid(7)) @db.Uuid
+  id           String @id @default(uuid(7)) @db.Uuid
   /// All entries of one balanced transaction share this id.
   entryGroupId String @map("entry_group_id") @db.Uuid
 
-  account   LedgerAccount
-  direction LedgerDirection
+  account     LedgerAccount
+  direction   LedgerDirection
   /// Always POSITIVE. The direction carries the sign.
-  amountMinor BigInt @map("amount_minor")
-  currency    String @db.Char(3)
+  amountMinor BigInt          @map("amount_minor")
+  currency    String          @db.Char(3)
 
-  orderId  String? @map("order_id") @db.Uuid
-  payoutId String? @map("payout_id") @db.Uuid
-  refundId String? @map("refund_id") @db.Uuid
+  orderId         String? @map("order_id") @db.Uuid
+  payoutId        String? @map("payout_id") @db.Uuid
+  refundId        String? @map("refund_id") @db.Uuid
   /// Seller this entry is attributable to, for SELLER_PAYABLE balances.
   sellerProfileId String? @map("seller_profile_id") @db.Uuid
 
   description String
-  livemode    Boolean @default(false)
+  livemode    Boolean  @default(false)
   occurredAt  DateTime @map("occurred_at") @db.Timestamptz(6)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1494,16 +1545,16 @@ model Refund {
   orderId   String @map("order_id") @db.Uuid
   paymentId String @map("payment_id") @db.Uuid
 
-  providerRefundId String? @unique @map("provider_refund_id")
-  amountMinor      BigInt  @map("amount_minor")
-  currency         String  @db.Char(3)
+  providerRefundId String?      @unique @map("provider_refund_id")
+  amountMinor      BigInt       @map("amount_minor")
+  currency         String       @db.Char(3)
   reason           String?
   status           RefundStatus @default(PENDING)
 
   /// Whether we pulled the money back from the seller's balance. The Stripe
   /// DEFAULT is false — seller keeps it, platform absorbs the refund — so this
   /// is always set explicitly, never left implicit (ADR-0007).
-  reverseTransfer     Boolean @default(true) @map("reverse_transfer")
+  reverseTransfer      Boolean @default(true) @map("reverse_transfer")
   refundApplicationFee Boolean @default(false) @map("refund_application_fee")
 
   initiatedByType String  @map("initiated_by_type")
@@ -1533,12 +1584,12 @@ model Dispute {
   reason            String
   status            DisputeStatus @default(NEEDS_RESPONSE)
 
-  evidenceDueBy DateTime? @map("evidence_due_by") @db.Timestamptz(6)
-  evidence      Json      @default("{}")
-  outcome       String?
+  evidenceDueBy      DateTime? @map("evidence_due_by") @db.Timestamptz(6)
+  evidence           Json      @default("{}")
+  outcome            String?
   /// Set when we recover the disputed amount from the seller's balance.
-  transferReversalId String? @map("transfer_reversal_id")
-  livemode      Boolean   @default(false)
+  transferReversalId String?   @map("transfer_reversal_id")
+  livemode           Boolean   @default(false)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1552,25 +1603,25 @@ model Dispute {
 /// Commission rules, resolved most-specific-first:
 /// PROMO → SELLER → CATEGORY (walking up the tree) → COUNTRY → PLATFORM.
 model CommissionRule {
-  id        String          @id @default(uuid(7)) @db.Uuid
-  scopeType CommissionScope @map("scope_type")
+  id              String          @id @default(uuid(7)) @db.Uuid
+  scopeType       CommissionScope @map("scope_type")
   /// The category / seller / country this applies to. Null for PLATFORM.
-  categoryId      String? @map("category_id") @db.Uuid
-  sellerProfileId String? @map("seller_profile_id") @db.Uuid
-  countryId       String? @map("country_id") @db.Uuid
+  categoryId      String?         @map("category_id") @db.Uuid
+  sellerProfileId String?         @map("seller_profile_id") @db.Uuid
+  countryId       String?         @map("country_id") @db.Uuid
   /// Campaign code for PROMO rules.
-  promoCode       String? @map("promo_code")
+  promoCode       String?         @map("promo_code")
 
   appliesTo CommissionAppliesTo @default(ORDER) @map("applies_to")
   model     CommissionModel     @default(PERCENTAGE)
 
   /// BASIS POINTS. 0.5% = 50. Never a decimal percentage.
-  percentBps  Int     @default(0) @map("percent_bps")
-  fixedMinor  BigInt  @default(0) @map("fixed_minor")
+  percentBps Int     @default(0) @map("percent_bps")
+  fixedMinor BigInt  @default(0) @map("fixed_minor")
   /// Required when fixedMinor > 0 (CHECK constraint).
-  currency    String? @db.Char(3)
-  minMinor    BigInt? @map("min_minor")
-  maxMinor    BigInt? @map("max_minor")
+  currency   String? @db.Char(3)
+  minMinor   BigInt? @map("min_minor")
+  maxMinor   BigInt? @map("max_minor")
 
   priority      Int       @default(0)
   effectiveFrom DateTime  @default(now()) @map("effective_from") @db.Timestamptz(6)
@@ -1596,19 +1647,19 @@ model CommissionRule {
 /// Inbound request idempotency (ADR-0004). A replayed key returns the stored
 /// response instead of performing the action twice.
 model IdempotencyKey {
-  id       String  @id @default(uuid(7)) @db.Uuid
-  key      String
-  userId   String? @map("user_id") @db.Uuid
-  endpoint String
+  id             String    @id @default(uuid(7)) @db.Uuid
+  key            String
+  userId         String?   @map("user_id") @db.Uuid
+  endpoint       String
   /// Hash of the request body. A same key with a DIFFERENT body is a client
   /// bug and must be rejected, not silently replayed.
-  requestHash    String  @map("request_hash")
-  responseStatus Int?    @map("response_status")
-  responseBody   Json?   @map("response_body")
+  requestHash    String    @map("request_hash")
+  responseStatus Int?      @map("response_status")
+  responseBody   Json?     @map("response_body")
   /// Set while in flight so concurrent duplicates can be rejected.
-  lockedAt  DateTime? @map("locked_at") @db.Timestamptz(6)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  lockedAt       DateTime? @map("locked_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(6)
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
@@ -1622,15 +1673,15 @@ model IdempotencyKey {
 /// eventually get an order marked paid with no notification sent, or a
 /// notification for an order that rolled back.
 model OutboxEvent {
-  id        String       @id @default(uuid(7)) @db.Uuid
-  eventType String       @map("event_type")
-  aggregateType String   @map("aggregate_type")
-  aggregateId   String   @map("aggregate_id") @db.Uuid
-  payload   Json
-  status    OutboxStatus @default(PENDING)
-  attempts  Int          @default(0)
-  lastError String?      @map("last_error")
-  correlationId String?  @map("correlation_id")
+  id            String       @id @default(uuid(7)) @db.Uuid
+  eventType     String       @map("event_type")
+  aggregateType String       @map("aggregate_type")
+  aggregateId   String       @map("aggregate_id") @db.Uuid
+  payload       Json
+  status        OutboxStatus @default(PENDING)
+  attempts      Int          @default(0)
+  lastError     String?      @map("last_error")
+  correlationId String?      @map("correlation_id")
 
   availableAt DateTime  @default(now()) @map("available_at") @db.Timestamptz(6)
   processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
@@ -1646,13 +1697,13 @@ model OutboxEvent {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Review {
-  id      String @id @default(uuid(7)) @db.Uuid
+  id        String          @id @default(uuid(7)) @db.Uuid
   /// Reviews REQUIRE a completed order. No order, no review — this single
   /// constraint eliminates most fake-review vectors.
-  orderId String @map("order_id") @db.Uuid
+  orderId   String          @map("order_id") @db.Uuid
   direction ReviewDirection
 
-  authorId String @map("author_id") @db.Uuid
+  authorId        String  @map("author_id") @db.Uuid
   /// Set for BUYER_TO_SELLER.
   subjectSellerId String? @map("subject_seller_id") @db.Uuid
   /// Set for SELLER_TO_BUYER.
@@ -1693,11 +1744,11 @@ model Report {
   details    String?
   status     ReportStatus     @default(OPEN)
 
-  assignedTo     String?   @map("assigned_to") @db.Uuid
-  resolutionNote String?   @map("resolution_note")
-  resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz(6)
+  assignedTo         String?   @map("assigned_to") @db.Uuid
+  resolutionNote     String?   @map("resolution_note")
+  resolvedAt         DateTime? @map("resolved_at") @db.Timestamptz(6)
   /// DSA-shaped: a moderation decision owes the user a reason.
-  statementOfReasons String? @map("statement_of_reasons")
+  statementOfReasons String?   @map("statement_of_reasons")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1711,16 +1762,16 @@ model Report {
 }
 
 model ModerationAction {
-  id          String  @id @default(uuid(7)) @db.Uuid
-  moderatorId String? @map("moderator_id") @db.Uuid
+  id          String           @id @default(uuid(7)) @db.Uuid
+  moderatorId String?          @map("moderator_id") @db.Uuid
   targetType  ReportTargetType @map("target_type")
-  targetId    String  @map("target_id") @db.Uuid
+  targetId    String           @map("target_id") @db.Uuid
   /// warn | hide | remove | suspend | ban | reinstate
   action      String
   reason      String
   notes       String?
-  reportId    String? @map("report_id") @db.Uuid
-  expiresAt   DateTime? @map("expires_at") @db.Timestamptz(6)
+  reportId    String?          @map("report_id") @db.Uuid
+  expiresAt   DateTime?        @map("expires_at") @db.Timestamptz(6)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -1730,15 +1781,15 @@ model ModerationAction {
 }
 
 model UserSanction {
-  id       String       @id @default(uuid(7)) @db.Uuid
-  userId   String       @map("user_id") @db.Uuid
-  type     SanctionType
-  reason   String
-  issuedBy String?      @map("issued_by") @db.Uuid
-  expiresAt DateTime?   @map("expires_at") @db.Timestamptz(6)
-  liftedAt  DateTime?   @map("lifted_at") @db.Timestamptz(6)
-  appealNote String?    @map("appeal_note")
-  appealedAt DateTime?  @map("appealed_at") @db.Timestamptz(6)
+  id         String       @id @default(uuid(7)) @db.Uuid
+  userId     String       @map("user_id") @db.Uuid
+  type       SanctionType
+  reason     String
+  issuedBy   String?      @map("issued_by") @db.Uuid
+  expiresAt  DateTime?    @map("expires_at") @db.Timestamptz(6)
+  liftedAt   DateTime?    @map("lifted_at") @db.Timestamptz(6)
+  appealNote String?      @map("appeal_note")
+  appealedAt DateTime?    @map("appealed_at") @db.Timestamptz(6)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -1780,14 +1831,14 @@ model ProhibitedItemRule {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Setting {
-  id       String       @id @default(uuid(7)) @db.Uuid
-  key      String
-  scope    SettingScope @default(GLOBAL)
+  id          String       @id @default(uuid(7)) @db.Uuid
+  key         String
+  scope       SettingScope @default(GLOBAL)
   /// Country id for COUNTRY-scoped settings.
-  scopeId  String?      @map("scope_id") @db.Uuid
-  value    Json
+  scopeId     String?      @map("scope_id") @db.Uuid
+  value       Json
   /// Whether this value may be exposed to unauthenticated clients.
-  isPublic Boolean      @default(false) @map("is_public")
+  isPublic    Boolean      @default(false) @map("is_public")
   description String?
 
   updatedBy String?  @map("updated_by") @db.Uuid
@@ -1802,11 +1853,11 @@ model Setting {
 /// Admin-editable overlay on top of the file-based message catalogues, so
 /// wording can be fixed without a deploy (docs/09-i18n-rtl.md).
 model Translation {
-  id        String  @id @default(uuid(7)) @db.Uuid
-  namespace String
-  key       String
-  locale    String
-  value     String
+  id           String  @id @default(uuid(7)) @db.Uuid
+  namespace    String
+  key          String
+  locale       String
+  value        String
   /// True when an admin has overridden the file catalogue value.
   isOverridden Boolean @default(true) @map("is_overridden")
 
@@ -1820,13 +1871,13 @@ model Translation {
 }
 
 model Notification {
-  id     String @id @default(uuid(7)) @db.Uuid
-  userId String @map("user_id") @db.Uuid
-  type   String
-  payload Json  @default("{}")
+  id           String    @id @default(uuid(7)) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  type         String
+  payload      Json      @default("{}")
   /// Channels actually delivered on, e.g. ["in_app","email"].
-  channelsSent Json @default("[]") @map("channels_sent")
-  readAt DateTime? @map("read_at") @db.Timestamptz(6)
+  channelsSent Json      @default("[]") @map("channels_sent")
+  readAt       DateTime? @map("read_at") @db.Timestamptz(6)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -1838,18 +1889,18 @@ model Notification {
 
 /// Append-only. No UPDATE or DELETE, enforced by trigger.
 model AuditLog {
-  id        String  @id @default(uuid(7)) @db.Uuid
-  actorId   String? @map("actor_id") @db.Uuid
-  actorRole String? @map("actor_role")
+  id            String  @id @default(uuid(7)) @db.Uuid
+  actorId       String? @map("actor_id") @db.Uuid
+  actorRole     String? @map("actor_role")
   /// "user", "admin", "system", "stripe_webhook".
-  actorType String  @map("actor_type")
-  action    String
-  entityType String @map("entity_type")
-  entityId   String? @map("entity_id") @db.Uuid
-  before     Json?
-  after      Json?
-  ip         String?
-  userAgent  String? @map("user_agent")
+  actorType     String  @map("actor_type")
+  action        String
+  entityType    String  @map("entity_type")
+  entityId      String? @map("entity_id") @db.Uuid
+  before        Json?
+  after         Json?
+  ip            String?
+  userAgent     String? @map("user_agent")
   correlationId String? @map("correlation_id")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1862,17 +1913,17 @@ model AuditLog {
 
 /// GDPR consent, versioned. "They ticked a box once" is not a record.
 model ConsentRecord {
-  id       String  @id @default(uuid(7)) @db.Uuid
-  userId   String? @map("user_id") @db.Uuid
+  id              String  @id @default(uuid(7)) @db.Uuid
+  userId          String? @map("user_id") @db.Uuid
   /// Anonymous visitors are keyed by a cookie id instead.
-  anonymousId String? @map("anonymous_id")
+  anonymousId     String? @map("anonymous_id")
   /// "necessary" | "analytics" | "marketing" | "terms" | "privacy"
-  consentType String  @map("consent_type")
-  granted     Boolean
+  consentType     String  @map("consent_type")
+  granted         Boolean
   /// Version of the policy consented to.
   documentVersion String  @map("document_version")
-  ip          String?
-  userAgent   String? @map("user_agent")
+  ip              String?
+  userAgent       String? @map("user_agent")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -1886,12 +1937,12 @@ model ConsentRecord {
 /// GDPR export and erasure requests, processed as auditable background jobs
 /// rather than ad-hoc SQL.
 model DataSubjectRequest {
-  id     String @id @default(uuid(7)) @db.Uuid
-  userId String @map("user_id") @db.Uuid
+  id          String    @id @default(uuid(7)) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
   /// "export" | "deletion"
-  requestType String @map("request_type")
+  requestType String    @map("request_type")
   /// "pending" | "verifying" | "processing" | "completed" | "rejected"
-  status      String @default("pending")
+  status      String    @default("pending")
   /// Where an export was written. Expires.
   resultUrl   String?   @map("result_url")
   expiresAt   DateTime? @map("expires_at") @db.Timestamptz(6)

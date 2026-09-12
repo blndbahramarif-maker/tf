@@ -38,19 +38,39 @@ export async function parseBody<T>(
 }
 
 /**
- * Applies a rate limit, keyed by IP and optionally by an account identifier.
+ * Applies a rate limit.
  *
- * Keying on BOTH matters: IP-only lets an attacker rotate addresses to keep
- * guessing one account, and account-only lets one address spray many accounts.
+ * Two keying strategies, and the choice is not cosmetic:
+ *
+ *   `ip` (the default) keys on the address and, when given, the account
+ *   together. That is right for CREDENTIAL paths — login, step-up, TOTP —
+ *   where IP-only lets an attacker rotate addresses to keep guessing one
+ *   account, and account-only lets one address spray many accounts.
+ *
+ *   `subject` keys on the account ALONE. That is right for ABUSE paths —
+ *   messaging, offers — where the spammer is an authenticated account and
+ *   rotating IPs is trivial. Under `ip` keying, a sender who moves between
+ *   mobile addresses gets a fresh allowance with every one, which makes the
+ *   limit decorative. Keying on the account alone also avoids punishing the
+ *   thousands of unrelated people sharing a carrier NAT address.
+ *
+ * Anonymous callers cannot be given `subject` keying: there is no subject, so
+ * it falls back to the address rather than putting every logged-out visitor in
+ * one shared bucket.
  */
 export async function enforceRateLimit(
   request: Request,
   rule: RateLimitRule,
   extraIdentifier?: string,
+  options: { keyBy?: 'ip' | 'subject' } = {},
 ): Promise<{ ok: true } | { ok: false; response: NextResponse }> {
-  const identifier = extraIdentifier
-    ? `${clientIp(request) ?? 'unknown'}|${extraIdentifier}`
-    : (clientIp(request) ?? 'unknown');
+  const ip = clientIp(request) ?? 'unknown';
+  const identifier =
+    options.keyBy === 'subject' && extraIdentifier
+      ? `subject:${extraIdentifier}`
+      : extraIdentifier
+        ? `${ip}|${extraIdentifier}`
+        : ip;
 
   const result = await consumeRateLimit(getRedis(), rule, identifier);
 

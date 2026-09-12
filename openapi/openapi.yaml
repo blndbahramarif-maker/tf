@@ -106,6 +106,33 @@ tags:
       API to validate and re-encode. Uploads are re-encoded from decoded pixels
       and stripped of EXIF, so neither a polyglot payload nor the GPS
       coordinates of a seller's home survives.
+  - name: Messaging
+    description: |
+      Buyer-to-seller conversations. A thread has exactly TWO participants,
+      both resolved server-side: the buyer is the token subject and the seller
+      is the listing's owner. No request field names a participant, so none can
+      be injected.
+
+      Participation is enforced as part of the query rather than checked
+      afterwards, and a non-participant receives 404 — identical to a
+      non-existent id — so conversation ids cannot be enumerated.
+
+      Message bodies are plain text and are never parsed as markup. They are
+      also never silently rewritten: an unacceptable message is refused with a
+      reason, and a risky one is scored and routed to moderation while still
+      being delivered.
+  - name: Offers
+    description: |
+      Offers on listings, as an explicit state machine. Legal moves and who may
+      make them are TABLE DATA, not branches, and roles are resolved from the
+      database rather than from the request.
+
+      Amounts are integer minor units as strings (ADR-0004/0006) and every
+      bound is re-derived server-side from the listing and its category.
+
+      **Nothing here moves money.** An accepted offer records agreement; the
+      marketplace fee that follows is Phase 7. Stripe has NOT approved the
+      business model and no payment code exists yet.
 
 paths:
   /health:
@@ -1158,6 +1185,519 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
 
+  /conversations:
+    get:
+      tags: [Messaging]
+      summary: The caller's inbox
+      operationId: listConversations
+      description: |
+        Threads the caller is a participant in, most recently active first,
+        with an unread count per thread.
+
+        Participation is the QUERY, not a check applied afterwards: the read
+        model has no function that loads a conversation by id alone. There is
+        no parameter that widens this beyond the caller's own threads.
+
+        The page is capped. Unread counts come from one grouped query rather
+        than one per row, so an inbox with a thousand threads costs the same
+        shape of work as one with five.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - name: before
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+          description: Return threads last active before this instant.
+      responses:
+        '200':
+          description: A page of threads.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/InboxEntry' }
+                  unreadTotal:
+                    type: integer
+                    description: Unread messages across every thread.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+    post:
+      tags: [Messaging]
+      summary: Contact a seller about a listing
+      operationId: startConversation
+      description: |
+        Opens a thread about a listing, or returns the existing one. A buyer
+        gets ONE thread per (listing, seller): a fragmented history is unusable
+        for both parties and for support.
+
+        The seller is resolved from the listing, never from the request — there
+        is no field naming the other participant, so a caller cannot inject a
+        third party into a thread.
+
+        A conversation is never created empty; the opening message is required.
+        Only a live listing can be contacted, and a draft or paused one answers
+        404 exactly as a missing one does.
+
+        Rate limited per ACCOUNT rather than per address: a spammer rotating
+        mobile IPs would otherwise get a fresh allowance with every one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [listingId, body]
+              properties:
+                listingId: { type: string, format: uuid }
+                body:
+                  type: string
+                  minLength: 1
+                  description: |
+                    Plain text. Stored and rendered as text and never parsed as
+                    markup, so markup is preserved verbatim rather than
+                    stripped. See `POST /conversations/{id}/messages`.
+      responses:
+        '201':
+          description: The thread, new or existing.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [conversationId, messageId]
+                properties:
+                  conversationId: { type: string, format: uuid }
+                  messageId: { type: string, format: uuid }
+                  flagged:
+                    type: boolean
+                    description: |
+                      The message scored above the review threshold. It was
+                      still DELIVERED — flagging routes it to a reviewer, it
+                      does not hide it from the recipient.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /conversations/{id}:
+    get:
+      tags: [Messaging]
+      summary: One thread, with a page of its history
+      operationId: getConversation
+      description: |
+        Visible to the two participants and to nobody else. A third party
+        receives 404, byte-for-byte what a made-up id returns, so the endpoint
+        cannot be used to discover which conversation ids exist.
+
+        History is KEYSET-paginated on `(created_at, id)`, newest first, never
+        offset-paginated: messages arrive while a reader is scrolling, and an
+        offset would show them the same message twice or skip one. Nothing is
+        ever read unbounded — a thread with 50,000 messages costs the same to
+        open as one with five.
+      parameters:
+        - $ref: '#/components/parameters/ConversationId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: The thread and one page of messages.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [conversation, messages]
+                properties:
+                  conversation: { $ref: '#/components/schemas/Conversation' }
+                  messages:
+                    type: array
+                    items: { $ref: '#/components/schemas/Message' }
+                  page:
+                    type: object
+                    properties:
+                      nextCursor: { type: [string, 'null'] }
+                  offers:
+                    type: array
+                    description: Offers attached to this thread, newest first.
+                    items: { $ref: '#/components/schemas/OfferSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /conversations/{id}/messages:
+    post:
+      tags: [Messaging]
+      summary: Send a message
+      operationId: sendMessage
+      description: |
+        Participants only; a non-participant receives 404 and nothing is
+        written.
+
+        **Content is never treated as markup.** Messages are stored and
+        rendered as plain text, so there is no HTML parsing step to defeat. The
+        defence is "never parse it", not "strip the dangerous parts" — the
+        second is a blocklist, and blocklists lose. Markup therefore comes back
+        exactly as it was written.
+
+        **Nothing is silently rewritten.** No auto-linkifying, no profanity
+        masking, no quiet truncation. A message that cannot be accepted is
+        REFUSED with a reason; a message that looks risky is SCORED and routed
+        to moderation while still being delivered. The only characters removed
+        are ones that are not content: C0/C1 controls, which corrupt rendering
+        and logs, and Unicode bidi overrides, which can make a message display
+        as something other than what is stored.
+
+        Over-length messages are refused rather than truncated — a message cut
+        in half changes its meaning and the sender is never told.
+      parameters:
+        - $ref: '#/components/parameters/ConversationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, minLength: 1, maxLength: 4000 }
+      responses:
+        '201':
+          description: The stored message.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id: { type: string, format: uuid }
+                  flagged: { type: boolean }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: |
+            Empty, whitespace-only, over the 4,000-character limit, or over the
+            64 KiB raw byte ceiling.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /conversations/{id}/read:
+    post:
+      tags: [Messaging]
+      summary: Mark a thread read
+      operationId: markConversationRead
+      description: |
+        Marks everything the caller can currently see as read. Read state is
+        per participant — marking your side read changes nothing for the other
+        party.
+
+        Idempotent by construction: two tabs open on the same thread race on
+        the same composite key, and duplicate receipts are skipped rather than
+        read-then-written.
+      parameters:
+        - $ref: '#/components/parameters/ConversationId'
+      responses:
+        '200':
+          description: How many messages were newly marked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  marked: { type: integer }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /conversations/{id}/report:
+    post:
+      tags: [Messaging]
+      summary: Report a thread
+      operationId: reportConversation
+      description: |
+        Flags a thread for review and records who reported it and why.
+
+        Participants only — otherwise reporting becomes a probe for which
+        conversation ids exist.
+
+        **Reporting deletes nothing.** The messages remain exactly as they
+        were: evidence that vanishes when reported is useless to the reviewer
+        it was raised for. This is the foundation the moderation queue is built
+        on; the reviewing UI itself is not in this phase.
+      parameters:
+        - $ref: '#/components/parameters/ConversationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reasonCode]
+              properties:
+                reasonCode:
+                  type: string
+                  enum:
+                    [spam, scam, harassment, off_platform_payment, illegal_goods, other]
+                details: { type: string, maxLength: 2000 }
+      responses:
+        '201':
+          description: The report was recorded.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string, enum: [reported] }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /offers:
+    get:
+      tags: [Offers]
+      summary: Offers the caller is a party to
+      operationId: listOffers
+      description: |
+        `role=buyer` narrows to offers made, `role=seller` to offers received;
+        without it, both. There is no parameter that widens the result beyond
+        the caller's own offers.
+      parameters:
+        - name: role
+          in: query
+          required: false
+          schema: { type: string, enum: [buyer, seller] }
+      responses:
+        '200':
+          description: A page of offers.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/OfferSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+    post:
+      tags: [Offers]
+      summary: Make an offer
+      operationId: createOffer
+      description: |
+        The buyer is the token subject. The amount is validated against the
+        LISTING's price, currency and category floor, all re-read from the
+        database — the request supplies a candidate number and nothing else.
+
+        **No money moves here, and none will in this phase.** An accepted offer
+        is a record of agreement. Charging the marketplace fee against it is
+        Phase 7; nothing in this endpoint creates an order, a payment, a ledger
+        entry or a payout.
+
+        `amountMinor` is an integer minor-unit STRING (ADR-0004). A JSON number
+        would lose precision above 2^53 and invite a float somewhere; a decimal
+        string like `"10.50"` or an exponent like `"1e3"` means the client is
+        sending major units, and the right answer is to refuse rather than
+        guess.
+
+        Bidding ABOVE the asking price is allowed. Refusing it would be the
+        marketplace deciding a seller should earn less.
+
+        When `conversationId` is given, the caller's participation in that
+        thread is proven before the offer is attached, so an offer cannot be
+        posted into someone else's conversation.
+
+        A buyer may hold only ONE open offer per listing, enforced by a partial
+        unique index in the database, so a seller cannot be buried under
+        simultaneous bids. A second one answers 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [listingId, amountMinor]
+              properties:
+                listingId: { type: string, format: uuid }
+                amountMinor:
+                  type: string
+                  pattern: '^\d{1,19}$'
+                  description: Integer minor units. £900.00 is "90000".
+                  examples: ['90000']
+                currency: { type: string, minLength: 3, maxLength: 3, default: GBP }
+                message: { type: string, maxLength: 4000 }
+                expiresInDays:
+                  type: integer
+                  minimum: 1
+                  maximum: 30
+                  default: 7
+                asDraft:
+                  type: boolean
+                  default: false
+                  description: |
+                    Save without sending. DRAFT exists for the high-value
+                    categories, where an offer is prepared over time and must
+                    survive a closed tab. Ordinary offers are created directly
+                    in `SUBMITTED`; making every composition a draft row would
+                    fill the table with abandoned junk.
+                conversationId: { type: string, format: uuid }
+      responses:
+        '201':
+          description: The offer was recorded.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status]
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { $ref: '#/components/schemas/OfferStatus' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: |
+            An offer on the caller's own listing, or a second open offer on a
+            listing they already have one on.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: |
+            The amount is not an integer minor-unit string, is not positive, is
+            past the hard ceiling, is below the category floor, or is in a
+            currency the listing is not priced in.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /offers/{id}:
+    get:
+      tags: [Offers]
+      summary: One offer, with its audit trail
+      operationId: getOffer
+      description: |
+        Visible to the buyer and to the listing's seller, and to nobody else. A
+        third party receives 404, identical to a made-up id.
+
+        `availableTransitions` comes straight from the transition table for
+        THIS caller's role, which is resolved from the database — the buyer is
+        the offer's `buyerId`, the seller is the listing's owner. A client
+        renders the controls it is given rather than deciding for itself, and
+        the same table refuses anything it was not given.
+
+        Expiry is evaluated ON READ rather than by a sweeper that may not have
+        run: a stale open offer past its window reports `EXPIRED` instead of
+        pretending it is still answerable.
+      parameters:
+        - $ref: '#/components/parameters/OfferId'
+      responses:
+        '200':
+          description: The offer, the caller's available moves, and its history.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [offer, availableTransitions, history]
+                properties:
+                  offer: { $ref: '#/components/schemas/Offer' }
+                  availableTransitions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        to: { $ref: '#/components/schemas/OfferStatus' }
+                        description: { type: string }
+                  history:
+                    type: array
+                    description: |
+                      Oldest first. The `offer_events` table is APPEND-ONLY at
+                      the database level, enforced by triggers: a history that
+                      can be quietly rewritten would still be believed, which
+                      is worse than having none.
+                    items: { $ref: '#/components/schemas/OfferEvent' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /offers/{id}/status:
+    post:
+      tags: [Offers]
+      summary: Move an offer through its lifecycle
+      operationId: transitionOffer
+      description: |
+        ONE endpoint driven by the state machine in
+        `src/domain/offers/offer-status.ts`, rather than accept/decline/withdraw
+        routes. Adding a transition then needs no new route and no new
+        permission surface.
+
+        Who may make which move is TABLE DATA resolved against the database.
+        The buyer may withdraw a submitted offer; the seller may accept or
+        decline it; either may call off an accepted one; expiry is the
+        system's. A seller attempting to withdraw a buyer's offer, or a buyer
+        attempting to reverse a seller's decision, is refused by the table
+        rather than by a hand-written check that could be forgotten on the next
+        route. Terminal statuses are never left.
+
+        The status change and its audit row are written in ONE transaction, and
+        the update is guarded on the status the decision was made against: if
+        another request moved the offer in between — a seller accepting while
+        the buyer withdraws — this answers 409 rather than letting both appear
+        to succeed.
+
+        **No money moves here.** Accepting records agreement and nothing else.
+      parameters:
+        - $ref: '#/components/parameters/OfferId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to]
+              properties:
+                to:
+                  type: string
+                  enum: [SUBMITTED, ACCEPTED, DECLINED, WITHDRAWN, CANCELLED]
+                note: { type: string, maxLength: 500 }
+      responses:
+        '200':
+          description: The offer's new status.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status]
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { $ref: '#/components/schemas/OfferStatus' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: |
+            The transition is not in the table, this actor may not make it, the
+            offer has expired, or it changed between the read and the write.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1250,6 +1790,25 @@ components:
         Validated as a UUID before it reaches the database. A malformed id is a
         404, not a 500 — an unparseable id makes PostgreSQL raise, and that
         error must never reach a client.
+
+    ConversationId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: |
+        Validated as a UUID before it reaches the database. A non-participant
+        and a made-up id return the same 404.
+
+    OfferId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: |
+        Validated as a UUID before it reaches the database. Anyone who is
+        neither the buyer nor the listing's seller receives the same 404 a
+        made-up id returns.
 
   schemas:
     Money:
@@ -1717,6 +2276,141 @@ components:
             type: array
             items: { $ref: '#/components/schemas/FacetValue' }
 
+    InboxEntry:
+      type: object
+      required: [id, viewerRole, unreadCount]
+      properties:
+        id: { type: string, format: uuid }
+        listingId: { type: [string, 'null'], format: uuid }
+        listingTitle: { type: [string, 'null'] }
+        listingSlug: { type: [string, 'null'] }
+        counterpartName: { type: string }
+        viewerRole:
+          type: string
+          enum: [buyer, seller]
+          description: Which side of the thread the CALLER is on.
+        status: { $ref: '#/components/schemas/ConversationStatus' }
+        lastMessageAt: { type: [string, 'null'], format: date-time }
+        lastMessagePreview:
+          type: [string, 'null']
+          description: |
+            First 140 characters. Truncation here is PRESENTATION, not
+            censorship — the full text is one request away.
+        unreadCount: { type: integer }
+
+    ConversationStatus:
+      type: string
+      enum: [ACTIVE, ARCHIVED, BLOCKED, REPORTED]
+
+    Conversation:
+      type: object
+      required: [id, viewerRole, status]
+      properties:
+        id: { type: string, format: uuid }
+        listingId: { type: [string, 'null'], format: uuid }
+        listingTitle: { type: [string, 'null'] }
+        listingSlug: { type: [string, 'null'] }
+        counterpartName: { type: string }
+        viewerRole: { type: string, enum: [buyer, seller] }
+        status: { $ref: '#/components/schemas/ConversationStatus' }
+        lastMessageAt: { type: [string, 'null'], format: date-time }
+
+    Message:
+      type: object
+      required: [id, body, senderId, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        body:
+          type: string
+          description: |
+            PLAIN TEXT, exactly as the sender wrote it apart from control
+            characters and bidi overrides. Render it as text with `dir="auto"`;
+            never as HTML.
+        senderId: { type: string, format: uuid }
+        mine:
+          type: boolean
+          description: Whether the caller sent it.
+        type: { type: string, enum: [TEXT, SYSTEM, OFFER] }
+        moderationStatus:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+          description: |
+            `PENDING` means a reviewer will see it. It was still delivered:
+            silently dropping a message the sender believes was sent is worse
+            than either delivering it or refusing it outright.
+        createdAt: { type: string, format: date-time }
+
+    OfferStatus:
+      type: string
+      enum:
+        [DRAFT, SUBMITTED, ACCEPTED, DECLINED, COUNTERED, WITHDRAWN, EXPIRED, CANCELLED, CONVERTED]
+      description: |
+        `SUBMITTED` replaces the earlier name `PENDING`: "pending" describes a
+        feeling, "submitted" describes an event, which is what a state machine
+        should record.
+
+        `WITHDRAWN` is the buyer pulling an offer the seller has not answered.
+        `CANCELLED` is an ACCEPTED offer being called off — a different thing,
+        with different consequences once Phase 7 attaches money to acceptance.
+
+        `COUNTERED` and `CONVERTED` exist in the enum and are UNREACHABLE in
+        this phase: counter-offers are not implemented, and conversion belongs
+        to the phase that turns an accepted offer into an order. An unreachable
+        state is honest about what is not built; inventing transitions for it
+        would not be.
+
+    OfferSummary:
+      type: object
+      required: [id, amountMinor, currency, status]
+      properties:
+        id: { type: string, format: uuid }
+        listingId: { type: string, format: uuid }
+        listingTitle: { type: string }
+        listingSlug: { type: string }
+        amountMinor:
+          type: string
+          pattern: '^\d+$'
+          description: Integer minor units as a string (ADR-0004).
+          examples: ['90000']
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        status: { $ref: '#/components/schemas/OfferStatus' }
+        expiresAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        counterpartName: { type: string }
+        viewerRole: { type: string, enum: [buyer, seller] }
+
+    Offer:
+      allOf:
+        - $ref: '#/components/schemas/OfferSummary'
+        - type: object
+          properties:
+            conversationId: { type: [string, 'null'], format: uuid }
+            message: { type: [string, 'null'] }
+
+    OfferEvent:
+      type: object
+      required: [id, toStatus, actorRole, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        fromStatus:
+          oneOf:
+            - $ref: '#/components/schemas/OfferStatus'
+            - type: 'null'
+          description: |
+            Null on the creation event, because there was no previous state.
+            That is history, not a gap.
+        toStatus: { $ref: '#/components/schemas/OfferStatus' }
+        actorRole:
+          type: string
+          enum: [buyer, seller, system]
+          description: |
+            Resolved from the database, never from the request. A `system` row
+            carries no actor id, and a database CHECK enforces that both ways.
+        amountMinor: { type: string, pattern: '^\d+$' }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        note: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+
   responses:
     BadRequest:
       description: Validation failed.
@@ -1738,6 +2432,12 @@ components:
             $ref: '#/components/schemas/Error'
     NotFound:
       description: Resource not found, or not visible to this caller.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    UnprocessableEntity:
+      description: The request parsed but failed validation.
       content:
         application/json:
           schema:

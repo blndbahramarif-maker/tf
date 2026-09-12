@@ -41,6 +41,15 @@ export const RATE_LIMITS = {
   totp: { name: 'totp', limit: 10, windowMs: 15 * 60_000 },
   readApi: { name: 'read_api', limit: 300, windowMs: 60_000 },
   writeApi: { name: 'write_api', limit: 60, windowMs: 60_000 },
+  /*
+   * Messaging limits are per USER, not per IP: spam comes from an account,
+   * and an IP limit would punish everyone behind one office NAT. Generous
+   * enough for a real negotiation, tight enough that a bot cannot flood an
+   * inbox.
+   */
+  sendMessage: { name: 'send_message', limit: 30, windowMs: 60_000 },
+  startConversation: { name: 'start_conversation', limit: 10, windowMs: 60 * 60_000 },
+  createOffer: { name: 'create_offer', limit: 20, windowMs: 60 * 60_000 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export async function consumeRateLimit(
