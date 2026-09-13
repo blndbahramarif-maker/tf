@@ -33,7 +33,7 @@ brand configuration module so it can be changed without touching application cod
 | 14 | [Environments](./14-environments.md) | Local, CI and production configuration |
 | 15 | **[Phase 7 gate](./15-phase-7-gate.md)** | **Stripe Connect architecture, verified 2026-09-12. Live mode blocked pending Stripe approval** |
 | 16 | **[Phase 7 Part 2](./16-phase-7-part-2.md)** | **Connected-account onboarding. NEEDS FIXES / BLOCKED FOR PRODUCTION — green in test mode, but the real Stripe API was never called** |
-| 17 | [Stripe Test Mode setup](./17-stripe-test-mode-setup.md) | Local runbook. **Superseded for seller sales by 18** — retained for a possible future Kurdora-service charge |
+| 17 | **[Stripe Test Mode setup](./17-stripe-test-mode-setup.md)** | **Local runbook for verifying Kurdora's OWN subscription billing: variables, the test-Price script, CLI commands, webhook path and the walkthrough** |
 | 18 | **[Contact-only correction](./18-contact-only-correction.md)** | **The business-model correction: what the payment architecture was, what was removed, and the safety layer that replaced it** |
 | — | [Architecture decision records](./adr/) | Why each structural choice was made |
 

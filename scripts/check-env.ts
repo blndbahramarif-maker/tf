@@ -29,5 +29,7 @@ console.log(`  APP_ENV      ${env.APP_ENV}`);
 console.log(`  APP_URL      ${env.APP_URL}`);
 console.log(`  DATABASE_URL ${env.DATABASE_URL.replace(/:\/\/[^@]*@/, '://***@')}`);
 console.log(`  REDIS_URL    ${env.REDIS_URL}`);
-console.log(`  Stripe       ${env.STRIPE_SECRET_KEY ? 'configured' : 'not configured (Phase 7)'}`);
+console.log(
+  `  Stripe       ${env.STRIPE_SECRET_KEY ? 'configured' : 'not configured (service billing is optional)'}`,
+);
 console.log('');

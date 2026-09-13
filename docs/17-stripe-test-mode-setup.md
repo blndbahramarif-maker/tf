@@ -1,65 +1,50 @@
-# 17 — Stripe Test Mode: local setup runbook
+# 17 — Stripe Test Mode: local verification runbook
 
-**For the owner to run locally. Nothing in this document requires pasting a
-secret into a chat, an issue, or a commit.**
+**For the owner to run locally. Nothing here requires pasting a secret into a
+chat, an issue, or a commit.**
 
-> **Test mode only.** Every step below is sandbox. A `sk_live_` key is refused
-> at startup and cannot be made to work by configuration — see §4. Stripe has
-> not approved Kurdora's business model in writing, so live mode stays blocked
-> (R-3, [D-A](./13-dependencies-and-blockers.md)).
+> **Rewritten 2026-09-13.** This document previously covered Stripe **Connect**
+> onboarding. Connect is gone: Kurdora is a contact-only marketplace and is
+> never party to a sale (ADR-0014). What Stripe now does is bill sellers for
+> **Kurdora's own service** — keeping a listing active (ADR-0015).
+>
+> **Test mode only.** A `sk_live_` key is refused at startup and cannot be made
+> to work by configuration. `LIVE_MODE_PERMITTED = false`.
 
 ---
 
 ## 1. The variables the code actually reads
 
-These are the **real names from `src/infra/env.ts`**. Nothing else is read.
+Real names from `src/infra/env.ts`. Nothing else is read.
 
-| Variable | Required? | Where it is read | Notes |
+| Variable | Required? | Read by | Notes |
 |---|---|---|---|
-| `STRIPE_SECRET_KEY` | **Yes**, to exercise Stripe | `src/infra/stripe/config.ts` | Must start `sk_test_`. `sk_live_` is refused; `rk_` (restricted) is refused. |
-| `STRIPE_WEBHOOK_SECRET` | **Yes**, always alongside the key | `src/infra/stripe/config.ts` | Must start `whsec_`. A secret key without this is refused — a payment nothing can confirm is worse than no payment. |
-| `APP_URL` | Yes (already set) | `src/lib/payments/onboarding-urls.ts` | `http://localhost:3000` locally. Builds the Stripe return/refresh URLs **server-side**; never accepted from a request. |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | **No — not yet** | `clientEnv()` in `src/infra/env.ts` | **`clientEnv()` has no call sites today.** There is no payment UI until Part 3. Leave it unset. |
-| `STRIPE_TEST_CONNECTED_ACCOUNT_ID` | Only for the BUY_NOW checks | `tests/api/stripe-live.test.ts` | An `acct_…` that has **already completed hosted onboarding** (§8). Test-only, never read by the application. **Not a secret** — an object id, safe to store and safe to quote as evidence. |
+| `STRIPE_SECRET_KEY` | **Yes** | `src/infra/stripe/config.ts` | Must start `sk_test_`. `sk_live_` and `rk_` are refused. |
+| `STRIPE_WEBHOOK_SECRET` | **Yes**, always with the key | `src/infra/stripe/config.ts` | Must start `whsec_`. A key without it is refused — a subscription nothing can confirm is worse than none. |
+| `APP_URL` | Yes (already set) | `src/lib/billing/subscription-urls.ts` | Builds the Checkout return URLs **server-side**; never accepted from a request. |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | **No** | `clientEnv()` | Still no call sites. Stripe-hosted Checkout needs no client-side key. Leave unset. |
 
-**Correction worth flagging:** `.env.example` previously listed
-`STRIPE_PUBLISHABLE_KEY`, a name **nothing in the codebase reads**. That was
-wrong and is now fixed. If you set that variable expecting it to do something,
-it did nothing.
+Both secrets are server-side only and must never carry a `NEXT_PUBLIC_` prefix.
+Lint and `tests/api/stripe-safety.test.ts` enforce that.
 
-Both secrets are **server-side only**. Neither may ever carry a `NEXT_PUBLIC_`
-prefix — lint and `tests/api/stripe-safety.test.ts` both enforce it.
+## 2. Stripe Dashboard setup
 
-## 2. Stripe dashboard setup (once)
+1. Sign in and switch to a **sandbox / test mode** account. Never live.
+   Stripe recommends a sandbox for new Billing integrations, and a separate one
+   for CI so automated tests do not disturb your products and prices.
+2. **Connect does not need to be enabled.** Kurdora does not use it.
+3. Copy the **test** secret key (starts `sk_test_`) from the API keys page.
 
-1. Sign in to Stripe and switch to a **sandbox / test mode** account.
-   Never a live account.
-2. Enable **Connect**. Complete the platform profile enough for test mode.
-3. Copy the **test** secret key from the API keys page. It starts `sk_test_`.
-
-**Connected-account setup:** none is needed in the dashboard. The application
-creates connected accounts itself, with this exact configuration
-(`CONNECT_CONTROLLER`, `src/domain/payments/connect-gateway.ts`):
-
-```
-controller[stripe_dashboard][type]  = express
-controller[fees][payer]             = application
-controller[losses][payments]        = application
-controller[requirement_collection]  = stripe
-capabilities                        = card_payments, transfers
-```
-
-This is the owner-approved GA combination (DL-5, ADR-0013 Amendment 1). If
-Stripe rejects `accounts.create` with a controller error, that is a finding to
-report — **not** something to "fix" by switching to the preview configuration.
+That is all the Dashboard work required. The Product and Price are created by
+script — see §4 — because they must match the plan row exactly, and a human
+copying four values between two systems eventually gets one wrong.
 
 ## 3. Put the values in `.env.local`
 
-Edit `.env.local` directly in your editor. Do not echo them to a terminal that
-is being recorded, and do not paste them anywhere.
+Edit the file in your editor. Do not echo them into a recorded terminal.
 
 ```bash
-STRIPE_SECRET_KEY=sk_test_...          # from the dashboard
+STRIPE_SECRET_KEY=sk_test_...          # from the Dashboard
 STRIPE_WEBHOOK_SECRET=whsec_...        # from `stripe listen`, see §5
 ```
 
@@ -69,27 +54,28 @@ Confirm without revealing anything:
 pnpm env:check        # prints "Stripe  configured", never a value
 ```
 
-## 4. What protects you if you get a key wrong
+## 4. Create the TEST Price
 
-Automated, and asserted by `tests/api/stripe-safety.test.ts`:
+```bash
+pnpm db:deploy                 # ensures the listing_monthly plan row exists
+pnpm stripe:setup-test-plan
+```
 
-| Mistake | What happens |
-|---|---|
-| You paste a `sk_live_` key | Refused: `live_mode_not_permitted`. No Stripe client is ever constructed, so no network call can occur. |
-| You paste a `pk_` or `rk_` key | Refused at the env schema (`sk_` prefix required) or as `mode_mismatch`. |
-| You set the key but not the webhook secret | Refused: `missing_webhook_secret`. |
-| You set a test key with `APP_ENV=production` | Startup refuses. |
-| Someone flips `LIVE_MODE_PERMITTED` | A test fails. |
-| A secret ends up on a `NEXT_PUBLIC_` variable | Lint error, plus a runtime test that scans the actual environment. |
-| Payments fail to configure | The error names the **reason** (`live_mode_not_permitted`), never any part of a key. |
+The script reads `service_plans` — the plan row is the source of truth — and
+creates a matching Stripe Product and Price in test mode, then links the price
+id back. It is idempotent, refuses to run unless the resolved Stripe mode is
+`test`, and **refuses to link a Price whose amount, currency or interval
+disagrees with the plan**. A mismatch there would charge a seller an amount the
+application believes is something else.
+
+To change the price, change the plan row (or an admin edits it), archive the old
+Stripe Price, and re-run.
 
 ## 5. Stripe CLI and webhooks
 
 ```bash
-# Install (macOS). See https://docs.stripe.com/cli/install for other platforms.
-brew install stripe/stripe-cli/stripe
-
-stripe login          # opens a browser; pairs the CLI with your TEST account
+brew install stripe/stripe-cli/stripe     # see docs.stripe.com/cli/install
+stripe login                              # pairs the CLI with your TEST account
 ```
 
 Then, in its **own terminal**, left running:
@@ -98,113 +84,112 @@ Then, in its **own terminal**, left running:
 stripe listen --forward-to localhost:3000/api/v1/webhooks/stripe
 ```
 
-**The webhook endpoint path is exactly `/api/v1/webhooks/stripe`**
-(`app/api/v1/webhooks/stripe/route.ts`).
+**The webhook path is exactly `/api/v1/webhooks/stripe`.**
 
-`stripe listen` prints a `whsec_…` **on start**. That value — **not** one from a
-dashboard endpoint — is what verifies these forwarded deliveries. Put it in
-`.env.local` as `STRIPE_WEBHOOK_SECRET` and restart `pnpm dev`.
+`stripe listen` prints a `whsec_…` **on start**. That value — not one from a
+registered Dashboard endpoint — verifies these forwarded deliveries. Put it in
+`.env.local` and restart `pnpm dev`.
 
-No `--events` filter is needed. The handler records every delivery and acts
-only on `HANDLED_EVENT_TYPES` (`src/infra/payments/webhook-service.ts`):
+No `--events` filter is needed: the handler records every delivery and acts only
+on `BILLING_EVENT_TYPES` (`src/infra/billing/webhook-service.ts`):
 
 ```
-payment_intent.succeeded        account.updated
-payment_intent.processing       charge.succeeded
-payment_intent.payment_failed   charge.updated
-payment_intent.canceled         charge.failed
-payment_intent.requires_action
+checkout.session.completed      invoice.paid
+customer.subscription.created   invoice.payment_failed
+customer.subscription.updated
+customer.subscription.deleted
+customer.subscription.paused
+customer.subscription.resumed
 ```
 
-A narrower filter can only hide an event you needed.
+### `stripe trigger` will not verify the mapping
 
-## 6. Callback / return URLs
+Stripe is explicit: events triggered by the CLI *"contain fake data that doesn't
+correlate to subscription information"*, and *"the most reliable way to test
+webhook notifications is to create actual test subscriptions"*.
 
-Built server-side from `APP_URL`; there is no request parameter that can name
-them, deliberately — an attacker who could set `return_url` would have Stripe
-redirect a seller mid-onboarding to a page of their choosing.
+So `stripe trigger customer.subscription.updated` exercises **signature
+verification and idempotency** — worth doing — but it will not prove that an
+event updates the right listing. For that, complete a real test checkout (§7).
 
-| Purpose | URL |
-|---|---|
-| Return (flow entered and exited) | `http://localhost:3000/en/dashboard/payouts?from=stripe` |
-| Refresh (link expired or used) | `http://localhost:3000/en/dashboard/payouts?link=expired` |
+## 6. Turn subscriptions on, deliberately
 
-`en` is `DEFAULT_LOCALE`. **Neither URL proves anything** — returning to the
-first triggers a fresh account read, per Stripe's own note that it "only means
-the flow was entered and exited properly".
+They are **OFF** by default. Nothing is charged and nothing goes dark until:
 
-## 7. Run it
+```sql
+UPDATE settings SET value = 'true'
+WHERE key = 'listing.subscription_required' AND scope = 'GLOBAL';
+```
+
+**Turning this on takes every unpaid listing down.** Do it on a test database
+first. Turn it back off with `'false'` when finished.
+
+## 7. The verification walkthrough
 
 ```bash
 # terminal 1
-pnpm docker:up          # or your local Postgres + Redis
-pnpm db:deploy && pnpm db:seed
-pnpm dev
-
+pnpm docker:up && pnpm db:deploy && pnpm db:seed && pnpm dev
 # terminal 2
 stripe listen --forward-to localhost:3000/api/v1/webhooks/stripe
-
 # terminal 3
-pnpm verify                                          # includes the real-API tests once keyed
-pnpm exec vitest run tests/api/stripe-live.test.ts   # the Stripe suites specifically
+pnpm verify
+pnpm exec vitest run tests/api/stripe-live.test.ts
 ```
 
-With no key configured, `tests/api/stripe-live.test.ts` prints
-`[stripe-live] SKIPPED: no sk_test_ key configured` and skips 11 tests. Once a
-`sk_test_` key is present those 11 run against the real API — that is the
-signal that real verification has actually happened.
+With no key, the live suite prints
+`[stripe-live] SKIPPED: no sk_test_ key configured` and skips. Once a
+`sk_test_` key is present those tests run against the real API — **that is the
+signal that real verification has actually happened.**
 
-## 8. The onboarding round trip
+Then, by hand:
 
-1. Register, create a seller profile, go to `/en/dashboard/payouts`.
-2. **Set up payouts** → you are sent to Stripe's hosted form.
-3. Complete it with Stripe's test values
-   (<https://docs.stripe.com/connect/testing>). Test SSN `000-00-0000`, test
-   bank routing `110000000` / account `000123456789` for US; for GB use the
-   test sort code and account number Stripe lists.
-4. You are returned to `?from=stripe`. The page **re-reads the account**.
-5. `stripe listen` should show `account.updated` forwarded, and the page
-   status should move (`ONBOARDING_STARTED` → `PENDING_VERIFICATION` or
-   `ACTIVE`).
+1. Register, create a seller profile, create a listing.
+2. `POST /api/v1/listings/{id}/subscription` → returns a Checkout URL.
+   (There is no billing UI yet, by design — use the API.)
+3. Open the URL, pay with **4242 4242 4242 4242**, any future expiry, any CVC.
+4. Watch `stripe listen`: `checkout.session.completed`,
+   `customer.subscription.created`, `invoice.paid`.
+5. `GET /api/v1/listings/{id}/subscription` → `status: "ACTIVE"`.
+6. Check the row: `current_period_end` must be **populated**. If it is null,
+   Stripe has moved the field again — it currently lives on the subscription
+   ITEM, not the root.
+7. Publish the listing. With the setting on, it goes live only now.
 
-**A human must complete step 3.** No automated test can make a seller payable,
-and neither can Kurdora — that is the design, not a gap.
+### Payment failure → `PAST_DUE`
 
-### Then unlock the BUY_NOW destination-charge checks
+Verified against Stripe's Billing testing documentation on 2026-09-13: attach
+**4000 0000 0000 0341** as the customer's default payment method and use a short
+trial to defer the first charge. The subscription activates, then the invoice
+fails when the trial ends. Expect `invoice.payment_failed` and a move to
+`PAST_DUE`.
 
-Verified against Stripe's testing documentation on 2026-09-13: **there is no
-documented way to fully onboard a connected account through the API** for the
-controller configuration Kurdora uses (`requirement_collection = stripe`). The
-published test values (`individual.dob = 1902-01-01`, `id_number = 000000000`,
-`address.line1 = address_full_match`) satisfy individual verification checks,
-but Stripe still collects the requirements itself.
+**The listing stays visible while `PAST_DUE`** — that is the approved rule, not
+a bug. Stripe retries for days and most recover.
 
-So a destination charge needs an account a human has onboarded. Once you have
-one, copy its id into `.env.local`:
+### Renewal, and cancellation
 
-```bash
-STRIPE_TEST_CONNECTED_ACCOUNT_ID=acct_...   # from step 5, or the Connect dashboard
-```
+Use a **test clock** to advance time rather than waiting a month
+(<https://docs.stripe.com/billing/testing/test-clocks>). Advancing one cycle
+should produce `invoice.paid` and push `current_period_end` forward.
 
-Three further tests then run automatically, covering the destination charge,
-the application fee and the transfer destination in one real object. Without
-it they skip with a message naming this section — never silently.
+Cancel from the Dashboard: expect `customer.subscription.deleted`, status
+`CANCELED`, and the listing moved to **PAUSED** — never REMOVED. A seller whose
+card expired has not done anything wrong; removal is a moderation outcome.
 
-## 9. Test cards
+### Duplicate and out-of-order delivery
 
-<https://docs.stripe.com/testing> · `4242 4242 4242 4242` succeeds,
-`4000 0000 0000 0002` is declined, `4000 0025 0000 3155` forces a 3DS
-challenge. Any future expiry, any CVC.
+In the `stripe listen` output, resend an event id you have already seen: the
+response is `{"received":true,"duplicate":true}` and nothing changes. For
+out-of-order, cancel a subscription and then resend an earlier `updated` event —
+the status must stay `CANCELED`.
 
-## 10. What must never appear anywhere
+## 8. What must never appear anywhere
 
-Not in a commit, an issue, a screenshot, a log, or a chat message:
+Not in a commit, issue, screenshot, log or chat message:
 
 - `sk_test_…` / `sk_live_…` secret keys
 - `whsec_…` webhook secrets
-- `pi_…_secret_…` client secrets
 - database passwords, `AUTH_SECRET`, `AUTH_ENCRYPTION_KEY`
 
-**Safe to share:** object IDs (`acct_…`, `pi_…`, `ch_…`, `evt_…`, `txn_…`),
-event type names, and HTTP status codes. Those are what an exit report should
-quote as evidence.
+**Safe to share as evidence:** object ids (`cus_…`, `price_…`, `cs_…`, `sub_…`,
+`in_…`, `evt_…`), event type names, and HTTP status codes.

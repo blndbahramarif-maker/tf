@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { StripeGateway, resetStripeGatewayCache } from '@/infra/stripe/gateway';
+import { StripeBillingGateway, resetStripeBillingCache } from '@/infra/stripe/billing';
 import { LIVE_MODE_PERMITTED, decideStripeConfig, readStripeConfig } from '@/infra/stripe/config';
 
 /**
@@ -208,5 +209,106 @@ describe('live mode is refused', () => {
     const off = decideStripeConfig(undefined, undefined);
     expect(off.ok).toBe(false);
     if (!off.ok) expect(off.reason).toBe('not_configured');
+  });
+});
+
+/**
+ * Kurdora's OWN subscription billing, against the REAL Stripe API in TEST MODE.
+ *
+ * Skipped without a `sk_test_` key, loudly, like the suite above — and **not
+ * observed passing** in the environment this was written in.
+ *
+ * These are the calls a real verification run needs to exercise. What they can
+ * prove unattended is everything up to the hosted Checkout page: the Customer,
+ * the Price, the Session, and reading a subscription back. Completing the
+ * payment needs a human with a test card, and the webhook needs the Stripe CLI
+ * forwarding to a running server — both are documented in
+ * `docs/17-stripe-test-mode-setup.md` rather than faked here.
+ *
+ * **Not Connect.** Every call is against Kurdora's own account. No
+ * `stripeAccount` header, no connected account, no transfer.
+ */
+describe.skipIf(!hasTestKey)('Stripe Billing test mode (real API)', () => {
+  let billing: StripeBillingGateway;
+
+  beforeAll(() => {
+    billing = new StripeBillingGateway(config.ok ? config.config : ({} as never));
+  });
+
+  afterAll(() => {
+    resetStripeBillingCache();
+  });
+
+  it('is in test mode, and says so', () => {
+    expect(billing.isTestMode).toBe(true);
+  });
+
+  it('creates a Customer on KURDORA’s own account', async () => {
+    const customerId = await billing.ensureCustomer({
+      email: `billing.${Date.now()}@kurdora.test`,
+      metadata: { kurdora_test: 'true' },
+      idempotencyKey: `test:cus:${Date.now()}`,
+    });
+
+    expect(customerId).toMatch(/^cus_/);
+  });
+
+  it('will not create two Customers for one idempotency key', async () => {
+    // A retry after a timeout must not split one user's billing history in two.
+    const params = {
+      email: `idem.${Date.now()}@kurdora.test`,
+      metadata: { kurdora_test: 'true' },
+      idempotencyKey: `test:cus:idem:${Date.now()}`,
+    };
+
+    const first = await billing.ensureCustomer(params);
+    const second = await billing.ensureCustomer(params);
+    expect(second).toBe(first);
+  });
+
+  it('answers null for a subscription that does not exist', async () => {
+    expect(await billing.retrieveSubscription('sub_0000000000000000')).toBeNull();
+  });
+
+  /*
+   * Gated on a second prerequisite: a TEST Price. `pnpm stripe:setup-test-plan`
+   * creates one from the plan row and links it, so this is one command away —
+   * but it is a Stripe object that must exist before a Checkout Session can
+   * name it, and inventing one here would fail for a reason unrelated to our
+   * code.
+   */
+  it('creates a subscription Checkout Session when a test price is linked', async () => {
+    const { prisma } = await import('@/infra/db/client');
+    const plan = await prisma.servicePlan.findFirst({
+      where: { key: 'listing_monthly', isActive: true },
+      select: { stripePriceId: true },
+    });
+
+    if (plan?.stripePriceId == null) {
+      console.warn(
+        '[stripe-live] Checkout Session check SKIPPED: no Stripe price linked. ' +
+          'Run `pnpm stripe:setup-test-plan` first (docs/17-stripe-test-mode-setup.md).',
+      );
+      return;
+    }
+
+    const customerId = await billing.ensureCustomer({
+      email: `checkout.${Date.now()}@kurdora.test`,
+      metadata: { kurdora_test: 'true' },
+      idempotencyKey: `test:cus:checkout:${Date.now()}`,
+    });
+
+    const session = await billing.createCheckoutSession({
+      customerId,
+      priceId: plan.stripePriceId,
+      successUrl: 'https://kurdora.test/en/dashboard/listings/x?billing=returned',
+      cancelUrl: 'https://kurdora.test/en/dashboard/listings/x?billing=cancelled',
+      metadata: { kurdora_test: 'true' },
+      idempotencyKey: `test:cs:${Date.now()}`,
+    });
+
+    expect(session.id).toMatch(/^cs_/);
+    // The hosted page a seller would be sent to. Single-use; never stored.
+    expect(session.url).toMatch(/^https:\/\//);
   });
 });

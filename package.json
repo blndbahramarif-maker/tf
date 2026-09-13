@@ -26,6 +26,7 @@
     "db:deploy": "prisma migrate deploy",
     "openapi:lint": "redocly lint",
     "env:check": "tsx scripts/check-env.ts",
+    "stripe:setup-test-plan": "tsx scripts/stripe-setup-test-plan.ts",
     "verify": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run check:migrations && pnpm run test && pnpm run openapi:lint",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
