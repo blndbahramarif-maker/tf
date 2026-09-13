@@ -302,3 +302,122 @@ describe.skipIf(!hasTestKey)('Stripe Connect test mode (real API)', () => {
     expect(await connect.retrieveAccount('acct_0000000000000000')).toBeNull();
   });
 });
+
+/**
+ * BUY_NOW destination charges against the REAL Stripe API, in TEST MODE.
+ *
+ * Gated on a SECOND prerequisite beyond a test key: the id of a connected
+ * account that has already completed Stripe's hosted onboarding, supplied as
+ * `STRIPE_TEST_CONNECTED_ACCOUNT_ID`.
+ *
+ * That gate is not caution, it is a documented constraint. Verified against
+ * Stripe's testing documentation on 2026-09-13: there is **no documented way
+ * to make a connected account fully onboarded through the API** for the
+ * controller configuration Kurdora uses (`requirement_collection = stripe`).
+ * The published test values help individual verification checks pass, but
+ * Stripe still collects the requirements itself. A transfer destination that
+ * has not been onboarded cannot receive a transfer, so a test that created its
+ * own account here would fail for a reason that has nothing to do with our
+ * code.
+ *
+ * So: a human completes onboarding ONCE, puts the resulting `acct_…` in
+ * `.env.local`, and from then on these run automatically. An account id is an
+ * object identifier, not a credential — it is safe to store and safe to quote
+ * as evidence.
+ */
+const onboardedAccountId = process.env.STRIPE_TEST_CONNECTED_ACCOUNT_ID ?? '';
+const hasOnboardedAccount = hasTestKey && onboardedAccountId.startsWith('acct_');
+
+if (hasTestKey && !hasOnboardedAccount) {
+  console.warn(
+    '[stripe-live] BUY_NOW destination-charge checks SKIPPED: set ' +
+      'STRIPE_TEST_CONNECTED_ACCOUNT_ID to an onboarded test account id ' +
+      '(see docs/17-stripe-test-mode-setup.md §8).',
+  );
+}
+
+describe.skipIf(!hasOnboardedAccount)('BUY_NOW destination charge (real API)', () => {
+  let gateway: StripeGateway;
+
+  beforeAll(() => {
+    gateway = new StripeGateway(config.ok ? config.config : ({} as never));
+  });
+
+  afterAll(() => {
+    resetStripeGatewayCache();
+  });
+
+  it('creates a destination charge carrying the fee AND the destination', async () => {
+    /*
+     * The exact shape ADR-0013 chose, verified against Stripe's
+     * destination-charges documentation on 2026-09-13:
+     *
+     *   application_fee_amount        — an explicit ApplicationFee object the
+     *                                   seller can see, rather than
+     *                                   transfer_data[amount], which hides the
+     *                                   gross from them
+     *   transfer_data[destination]    — the connected account
+     *   on_behalf_of                  — deliberately OMITTED; platform and
+     *                                   account are in the same region, and
+     *                                   cross-border payouts supports only
+     *                                   "destination charges without
+     *                                   on_behalf_of"
+     */
+    const intent = await gateway.createPaymentIntent({
+      amountMinor: 20_000n,
+      currency: 'GBP',
+      idempotencyKey: `test:buynow:${Date.now()}`,
+      destinationAccountId: onboardedAccountId,
+      applicationFeeMinor: 1_200n,
+      transferGroup: `test_order_${Date.now()}`,
+      statementDescriptorSuffix: 'KURDORA TEST',
+      metadata: { kurdora_flow: 'BUY_NOW', kurdora_test: 'true' },
+    });
+
+    expect(intent.id).toMatch(/^pi_/);
+    expect(intent.livemode).toBe(false);
+
+    // Both legs present, read back from the REAL object rather than from what
+    // we sent. This is items 7, 8 and 9 of the verification list in one
+    // assertion, because they are one object.
+    expect(intent.applicationFeeMinor).toBe(1_200n);
+    expect(intent.destinationAccountId).toBe(onboardedAccountId);
+
+    // The buyer pays the whole price; the fee is taken from it, not added.
+    expect(intent.amountMinor).toBe(20_000n);
+  });
+
+  it('refuses an application fee larger than the charge, before the network', async () => {
+    // The domain guard runs first, so this never reaches Stripe. Asserted here
+    // as well as in the unit tests because the real adapter is the thing that
+    // must call it.
+    await expect(
+      gateway.createPaymentIntent({
+        amountMinor: 1_000n,
+        currency: 'GBP',
+        idempotencyKey: `test:feetoobig:${Date.now()}`,
+        destinationAccountId: onboardedAccountId,
+        applicationFeeMinor: 2_000n,
+        metadata: { kurdora_test: 'true' },
+      }),
+    ).rejects.toThrow(/cannot exceed the charge amount/i);
+  });
+
+  it('returns the SAME intent for a repeated idempotency key', async () => {
+    // Stripe's own guarantee, on the destination-charge path specifically.
+    // Kurdora's durable guarantee is its own database — Stripe prunes keys
+    // after 24 hours — but this proves the key actually reaches the API.
+    const params = {
+      amountMinor: 5_000n,
+      currency: 'GBP',
+      idempotencyKey: `test:buynow:idem:${Date.now()}`,
+      destinationAccountId: onboardedAccountId,
+      applicationFeeMinor: 300n,
+      metadata: { kurdora_test: 'true' },
+    };
+
+    const first = await gateway.createPaymentIntent(params);
+    const second = await gateway.createPaymentIntent(params);
+    expect(second.id).toBe(first.id);
+  });
+});

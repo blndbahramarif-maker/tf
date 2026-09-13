@@ -20,6 +20,7 @@ These are the **real names from `src/infra/env.ts`**. Nothing else is read.
 | `STRIPE_WEBHOOK_SECRET` | **Yes**, always alongside the key | `src/infra/stripe/config.ts` | Must start `whsec_`. A secret key without this is refused — a payment nothing can confirm is worse than no payment. |
 | `APP_URL` | Yes (already set) | `src/lib/payments/onboarding-urls.ts` | `http://localhost:3000` locally. Builds the Stripe return/refresh URLs **server-side**; never accepted from a request. |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | **No — not yet** | `clientEnv()` in `src/infra/env.ts` | **`clientEnv()` has no call sites today.** There is no payment UI until Part 3. Leave it unset. |
+| `STRIPE_TEST_CONNECTED_ACCOUNT_ID` | Only for the BUY_NOW checks | `tests/api/stripe-live.test.ts` | An `acct_…` that has **already completed hosted onboarding** (§8). Test-only, never read by the application. **Not a secret** — an object id, safe to store and safe to quote as evidence. |
 
 **Correction worth flagging:** `.env.example` previously listed
 `STRIPE_PUBLISHABLE_KEY`, a name **nothing in the codebase reads**. That was
@@ -168,6 +169,26 @@ signal that real verification has actually happened.
 
 **A human must complete step 3.** No automated test can make a seller payable,
 and neither can Kurdora — that is the design, not a gap.
+
+### Then unlock the BUY_NOW destination-charge checks
+
+Verified against Stripe's testing documentation on 2026-09-13: **there is no
+documented way to fully onboard a connected account through the API** for the
+controller configuration Kurdora uses (`requirement_collection = stripe`). The
+published test values (`individual.dob = 1902-01-01`, `id_number = 000000000`,
+`address.line1 = address_full_match`) satisfy individual verification checks,
+but Stripe still collects the requirements itself.
+
+So a destination charge needs an account a human has onboarded. Once you have
+one, copy its id into `.env.local`:
+
+```bash
+STRIPE_TEST_CONNECTED_ACCOUNT_ID=acct_...   # from step 5, or the Connect dashboard
+```
+
+Three further tests then run automatically, covering the destination charge,
+the application fee and the transfer destination in one real object. Without
+it they skip with a message naming this section — never silently.
 
 ## 9. Test cards
 
