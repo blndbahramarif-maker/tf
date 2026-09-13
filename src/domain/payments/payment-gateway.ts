@@ -20,23 +20,18 @@ export interface GatewayMoney {
 }
 
 /**
- * What the platform asks the provider to collect.
+ * What Kurdora asks the provider to collect, for KURDORA'S OWN service.
  *
- * `destination` and `applicationFeeMinor` are present together or not at all —
- * see `assertTransferShape`. A FEE_ONLY charge carries neither, which is the
- * whole point of that flow: there is no transfer leg to get wrong.
+ * The marketplace vocabulary is GONE, not merely unused: there is no
+ * destination account, no application fee and no transfer group on this type.
+ * A destination charge is not something this codebase can express, which is a
+ * stronger guarantee than a rule saying not to write one (ADR-0014).
  */
 export interface CreateIntentInput {
   readonly amountMinor: bigint;
   readonly currency: string;
   /** Deterministic and durable. Ours, not the provider's. */
   readonly idempotencyKey: string;
-  /** Connected account receiving the funds. Omitted entirely for FEE_ONLY. */
-  readonly destinationAccountId?: string;
-  /** The platform's commission. Omitted entirely for FEE_ONLY. */
-  readonly applicationFeeMinor?: bigint;
-  /** Groups the charge and its transfer for reconciliation. */
-  readonly transferGroup?: string;
   /** Shown on the buyer's statement. Says what the charge is FOR. */
   readonly statementDescriptorSuffix?: string;
   /** Our own ids, echoed back on every webhook. Never trusted as authority. */
@@ -60,8 +55,6 @@ export interface GatewayIntent {
   /** Needed by the browser to confirm. Never logged, never stored. */
   readonly clientSecret: string | null;
   readonly latestChargeId: string | null;
-  readonly applicationFeeMinor: bigint | null;
-  readonly destinationAccountId: string | null;
   readonly livemode: boolean;
 }
 
@@ -108,9 +101,6 @@ export interface GatewayChargeSettlement {
   readonly refunded: boolean;
   readonly disputed: boolean;
   readonly paymentMethodType: string | null;
-  /** Present only when the charge carried a transfer leg. Null for FEE_ONLY. */
-  readonly transferId: string | null;
-  readonly destinationAccountId: string | null;
   /** From the balance transaction. Null until the charge settles. */
   readonly providerFeeMinor: bigint | null;
   readonly netMinor: bigint | null;
@@ -138,31 +128,4 @@ export interface PaymentGateway {
   constructEvent(rawBody: string, signatureHeader: string): GatewayEvent;
   /** True when the provider is configured in test/sandbox mode. */
   readonly isTestMode: boolean;
-}
-
-/**
- * The transfer shape invariant, checked in the domain before anything reaches
- * a provider.
- *
- * A destination without a fee, or a fee without a destination, is a bug that
- * would move real money to the wrong place. Refusing the pair outright is
- * cheaper than reasoning about which half is right.
- */
-export function assertTransferShape(input: CreateIntentInput): void {
-  const hasDestination = input.destinationAccountId !== undefined;
-  const hasFee = input.applicationFeeMinor !== undefined;
-
-  if (hasDestination !== hasFee) {
-    throw new Error(
-      'A destination account and an application fee must be present together or not at all.',
-    );
-  }
-  if (hasFee && input.applicationFeeMinor! > input.amountMinor) {
-    // Stripe caps it anyway; refusing here means the mistake is visible in our
-    // own stack trace rather than as a provider error two layers away.
-    throw new Error('The application fee cannot exceed the charge amount.');
-  }
-  if (input.amountMinor <= 0n) {
-    throw new Error('A charge amount must be positive.');
-  }
 }

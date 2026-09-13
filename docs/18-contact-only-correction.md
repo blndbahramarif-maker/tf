@@ -172,6 +172,26 @@ manufacture a pile-on.
 5. **Monetisation is unbuilt and unproven.**
 6. **Buyers have no payment protection**, by design. Stated in the UI.
 
+## 5b. Kurdora service billing (added 2026-09-13)
+
+> **Kurdora is a contact-only marketplace. The actual transaction for a listed
+> item occurs directly between buyer and seller outside Kurdora. Kurdora does
+> not collect, hold, escrow, transfer, or settle the item sale price.**
+>
+> **Kurdora may charge sellers for Kurdora's own services, such as listing
+> subscriptions or promotion.**
+
+Implemented in [ADR-0015](./adr/0015-kurdora-service-billing.md): Stripe Billing
+with hosted Checkout, on Kurdora's own account. Not Stripe Connect — no
+connected account, destination charge, application fee, transfer or payout, and
+those fields no longer exist on either gateway port.
+
+Price lives in `service_plans` and is admin-editable. The requirement is a
+setting that defaults to OFF. A subscription grants a listing visibility only
+while Stripe reports `trialing`, `active` or `past_due`; it is written by
+nothing but a signature-verified webhook, and a lapse pauses the listing rather
+than removing it.
+
 ## 6. Not a legal opinion
 
 This document records engineering work. It is **not** advice that the model is

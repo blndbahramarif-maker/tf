@@ -23,3 +23,4 @@ The record of what we believed at the time is the valuable part.
 | [0012](./0012-browser-session-transport.md) | Browser session transport: HttpOnly cookies and signed double-submit CSRF | Accepted |
 | [0013](./0013-phase-7-payment-architecture.md) | Phase 7 payment architecture, re-verified against Stripe docs | **Superseded by 0014** |
 | [0014](./0014-contact-only-marketplace.md) | Kurdora is a contact-only marketplace and is never party to a sale | Accepted |
+| [0015](./0015-kurdora-service-billing.md) | Kurdora service billing: Stripe Billing for Kurdora's own subscriptions, not Connect | Accepted |

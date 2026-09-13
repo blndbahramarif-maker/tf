@@ -18,6 +18,7 @@ import {
 import { POST as listingTransition } from '../../app/api/v1/listings/[id]/status/route';
 import { POST as startImageUpload } from '../../app/api/v1/listings/[id]/images/route';
 import { POST as reportListing } from '../../app/api/v1/listings/[id]/report/route';
+import { GET as getListingSubscription } from '../../app/api/v1/listings/[id]/subscription/route';
 import { POST as logout } from '../../app/api/v1/auth/logout/route';
 import { POST as stepUp } from '../../app/api/v1/auth/step-up/route';
 import { POST as changePassword } from '../../app/api/v1/auth/password/route';
@@ -471,6 +472,36 @@ const CASES: RouteCase[] = [
           token: user?.accessToken ?? null,
           params: { id: listingId },
           body: { reasonCode: 'prohibited_item' },
+        }),
+      ),
+  },
+  {
+    id: "GET /api/v1/listings/{id}/subscription (another seller's listing)",
+    method: 'GET',
+    path: '/api/v1/listings/{id}/subscription',
+    permission: 'listing:update_own',
+    ownership: 'explicit — the query is scoped to the token subject',
+    /*
+     * 404 for EVERY role, staff included. A seller's billing arrangement with
+     * Kurdora is theirs; there is no staff permission that reads it, and a 403
+     * would confirm the listing exists.
+     */
+    expect: {
+      buyer: 403,
+      seller: 404,
+      business_seller: 404,
+      moderator: 403,
+      support: 403,
+      finance: 403,
+      admin: 403,
+      super_admin: 404,
+    },
+    denied: 401,
+    run: (user, actors) =>
+      actors.makeForeignListing('ACTIVE').then((listingId) =>
+        callRoute(getListingSubscription, `/api/v1/listings/${listingId}/subscription`, {
+          token: user?.accessToken ?? null,
+          params: { id: listingId },
         }),
       ),
   },

@@ -18,13 +18,24 @@ Every category is `CONTACT_ONLY`, enforced by two CHECK constraints, and the
 seller-sale payment surface (orders, payments, Connect onboarding, payouts, the
 Stripe webhook) has been REMOVED, not disabled.
 
-**Retained and unwired:** `src/infra/stripe/` and
-`src/domain/payments/payment-gateway.ts` — the provider boundary, kept for a
-possible future charge for KURDORA'S OWN services (paid listings, promotion,
-advertising). That is a different thing from processing somebody else's sale.
-No route calls it, nothing charges anything, and `LIVE_MODE_PERMITTED = false`
-stays enforced. The order/payment/ledger/payout/refund/dispute TABLES are also
-retained, empty and unwritten.
+**Kurdora MAY charge sellers for Kurdora's own services** — a listing
+subscription, promotion, advertising. That is not a marketplace payment: Kurdora
+provides the service and is paid for it, and the buyer is not involved
+(ADR-0015). Built with **Stripe Billing + hosted Checkout on Kurdora's own
+account**. Price is DATA in `service_plans`, admin-editable; "£5/month" appears
+in a seeded row and nowhere in code.
+
+**Subscriptions are OFF by default.** `listing.subscription_required` defaults
+to false, so nothing is charged and nothing goes dark until an admin turns it
+on — and turning it on takes every unpaid listing down.
+
+**This is NOT Stripe Connect, and cannot become it by accident.** Neither
+gateway port has a connected account, destination, application fee, transfer or
+payout field. The vocabulary is absent from the types, so a marketplace payment
+cannot be expressed. `LIVE_MODE_PERMITTED = false` stays enforced, and the real
+Stripe API has still never been called. The Phase 7
+order/payment/ledger/payout/refund/dispute TABLES are retained, empty and
+unwritten.
 
 **Phases 1-6 stand:** catalogue, listings, auth and sessions, the seller
 dashboard, buyer-to-seller messaging, and the offer lifecycle. An accepted offer
@@ -170,6 +181,23 @@ and its own `lang`, never as HTML.
 
 **Business logic:** it goes in `src/domain`, with unit tests that need no
 database.
+
+**A subscription surface:** the request names a LISTING and nothing else. The
+plan, price, currency and Stripe customer are read from the database — there is
+no `amount`, `priceId`, `status` or `stripeSubscriptionId` field in any schema,
+so a forged one has nowhere to arrive. **Only `applyProviderSubscription` may
+change payability**, it takes a `ProviderSubscription` that only the Stripe
+adapter can produce, and a CHECK refuses an access-granting status without a
+provider id. `INCOMPLETE` is the ONLY status the platform may write, and it
+grants nothing. A lapse PAUSES a listing, never removes it — removal is a
+moderation outcome, and an expired card is not misconduct.
+
+**A billing webhook:** re-READ the subscription from Stripe rather than trusting
+the payload — an `invoice.*` payload carries no subscription status, and Stripe
+provisions on `invoice.paid` only when the subscription is active. Add a type to
+`SEMANTICALLY_UNIQUE` only if a second event about the same object is genuinely
+a duplicate; `customer.subscription.updated` is not, and deduping it would
+discard the event saying a seller stopped paying.
 
 **A listing-safety rule:** prohibited-item rules are DATA
 (`prohibited_item_rules`), matched by `src/domain/safety/prohibited-content.ts`.

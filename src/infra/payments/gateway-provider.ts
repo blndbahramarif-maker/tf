@@ -1,6 +1,8 @@
 import type { PaymentGateway } from '@/domain/payments/payment-gateway';
+import type { BillingGateway } from '@/domain/billing/billing-gateway';
 import { StripeNotConfiguredError, type StripeConfigIssue } from '@/infra/stripe/config';
 import { stripeGateway } from '@/infra/stripe/gateway';
+import { stripeBillingGateway } from '@/infra/stripe/billing';
 
 /**
  * Where a route would get a payment gateway.
@@ -63,6 +65,27 @@ export function paymentsAvailable(): boolean {
     return true;
   } catch (error) {
     if (error instanceof PaymentsUnavailableError) return false;
+    throw error;
+  }
+}
+
+/**
+ * The configured billing gateway, for KURDORA'S OWN subscriptions.
+ *
+ * Separate from `paymentGateway()` so the two capabilities cannot be confused:
+ * this one can create a Checkout Session for a Kurdora service, and it has no
+ * way to express a connected account, a transfer or an application fee.
+ *
+ * Same failure mode as the others: `PaymentsUnavailableError` becomes a 503,
+ * never a crash. A live key is still refused.
+ */
+export function billingGateway(): BillingGateway {
+  try {
+    return stripeBillingGateway();
+  } catch (error) {
+    if (error instanceof StripeNotConfiguredError) {
+      throw new PaymentsUnavailableError(error.reason);
+    }
     throw error;
   }
 }

@@ -39,6 +39,11 @@ export type AuditAction =
   // this listing down, and why" is the question that matters afterwards.
   | 'listing.reported'
   | 'listing.moderated'
+  // Kurdora's OWN service billing. Not a marketplace payment.
+  | 'subscription.checkout_started'
+  | 'subscription.cancelled'
+  | 'webhook.rejected'
+  | 'webhook.processed'
   | 'conversation.started'
   | 'conversation.reported'
   | 'message.flagged'

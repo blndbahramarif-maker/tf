@@ -4,6 +4,7 @@ import {
   screenListingContent,
   type ScreeningResult,
 } from '@/domain/safety/prohibited-content';
+import { checkListingBilling } from '@/infra/billing/listing-billing-policy';
 import { loadApplicableRules } from './prohibited-rules';
 
 /**
@@ -26,8 +27,12 @@ export type PublishDecision =
       readonly status: 'ACTIVE' | 'PENDING_REVIEW';
       readonly screening: ScreeningResult;
     }
-  /** Refused. The content matched a BLOCK rule. */
-  | { readonly ok: false; readonly screening: ScreeningResult };
+  /** Refused: the content matched a BLOCK rule, or billing does not allow it. */
+  | {
+      readonly ok: false;
+      readonly reason: 'prohibited_content' | 'subscription_required';
+      readonly screening: ScreeningResult;
+    };
 
 /** Screens arbitrary content, before a listing row necessarily exists. */
 export async function screenContent(input: {
@@ -70,7 +75,21 @@ export async function decidePublication(listingId: string): Promise<PublishDecis
     countryId: listing.countryId,
   });
 
-  if (screening.outcome === 'BLOCK') return { ok: false, screening };
+  if (screening.outcome === 'BLOCK') {
+    return { ok: false, reason: 'prohibited_content', screening };
+  }
+
+  /*
+   * The billing gate, checked HERE so both write paths get it.
+   *
+   * Deliberately after screening: a listing that is both prohibited and unpaid
+   * should be refused for being prohibited, which is the answer that tells the
+   * seller something useful. Paying does not buy past a BLOCK rule.
+   */
+  const billing = await checkListingBilling(listingId);
+  if (!billing.allowed) {
+    return { ok: false, reason: 'subscription_required', screening };
+  }
 
   const status = requiresHumanReview({
     categoryRequiresApproval: listing.category.requiresApproval,

@@ -73,10 +73,13 @@ describe.skipIf(!hasTestKey)('Stripe test mode (real API)', () => {
     expect(intent.amountMinor).toBe(25_000n);
     expect(intent.currency).toBe('GBP');
     expect(intent.clientSecret).toBeTruthy();
-    // No connected account and no transfer leg: a charge for a Kurdora
-    // service is an ordinary charge on Kurdora's own account.
-    expect(intent.destinationAccountId).toBeNull();
-    expect(intent.applicationFeeMinor).toBeNull();
+    /*
+     * There is nothing here to assert about a transfer leg, and that IS the
+     * assertion: `GatewayIntent` no longer HAS `destinationAccountId` or
+     * `applicationFeeMinor`, so a destination charge cannot be described by
+     * this codebase at all — a stronger guarantee than a test that one is
+     * absent.
+     */
     // Never live, whatever else happens.
     expect(intent.livemode).toBe(false);
   });
@@ -130,18 +133,15 @@ describe.skipIf(!hasTestKey)('Stripe test mode (real API)', () => {
     expect(await gateway.retrieveCharge('ch_0000000000000000000000')).toBeNull();
   });
 
-  it('refuses to create an intent with a malformed transfer leg', async () => {
-    // The domain guard runs before the network call, so this never reaches
-    // Stripe at all.
+  it('refuses a non-positive amount before the network call', async () => {
     await expect(
       gateway.createPaymentIntent({
-        amountMinor: 1_000n,
+        amountMinor: 0n,
         currency: 'GBP',
-        idempotencyKey: `test:bad:${Date.now()}`,
-        destinationAccountId: 'acct_missing_fee',
+        idempotencyKey: `test:zero:${Date.now()}`,
         metadata: {},
       }),
-    ).rejects.toThrow(/together or not at all/i);
+    ).rejects.toThrow(/must be positive/i);
   });
 });
 

@@ -309,6 +309,12 @@ export async function transitionListingAction(
     if (publication === null) return { error: 'not_found' };
 
     if (!publication.ok) {
+      if (publication.reason === 'subscription_required') {
+        // A billing refusal is not a content problem, and telling a seller
+        // their listing is "prohibited" when their card expired would be both
+        // wrong and alarming.
+        return { error: 'conflict', fieldErrors: { subscription: 'required' } };
+      }
       await recordScreening({
         listingId: listing.id,
         screening: publication.screening,

@@ -124,6 +124,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       if (publication === null) return notFound(request);
 
       if (!publication.ok) {
+        if (publication.reason === 'subscription_required') {
+          // Distinct from a content refusal: nothing is wrong with the
+          // listing, it simply is not paid for.
+          return fail(
+            'conflict',
+            'This listing needs an active subscription before it can be published.',
+            { request },
+          );
+        }
         await recordScreening({
           listingId: listing.id,
           screening: publication.screening,

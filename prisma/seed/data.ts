@@ -904,6 +904,20 @@ export const SETTINGS: SettingSeed[] = [
   },
   { key: 'platform.default_locale', value: 'en', isPublic: true, description: 'Fallback locale' },
   {
+    /*
+     * Whether a listing needs a paid Kurdora subscription to stay visible.
+     *
+     * Defaults to FALSE. Charging for listings is a deliberate act, not
+     * something that starts happening the moment the billing code ships — and
+     * flipping this takes every unpaid listing down, so it is a decision with
+     * a date attached.
+     */
+    key: 'listing.subscription_required',
+    value: false,
+    isPublic: false,
+    description: 'Require an active Kurdora subscription for a listing to be published',
+  },
+  {
     key: 'platform.enabled_locales',
     value: ['en', 'ckb'],
     isPublic: true,

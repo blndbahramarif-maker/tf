@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import {
-  assertTransferShape,
   type CreateIntentInput,
   type GatewayChargeSettlement,
   type GatewayEvent,
@@ -51,9 +50,6 @@ export class FakePaymentGateway implements PaymentGateway {
       throw error;
     }
 
-    // The same guard the real adapter runs, in the same place.
-    assertTransferShape(input);
-
     const existing = this.byKey.get(input.idempotencyKey);
     if (existing !== undefined) {
       // Recorded anyway: a test asserting "called once" wants to see the
@@ -69,8 +65,6 @@ export class FakePaymentGateway implements PaymentGateway {
       currency: input.currency.toUpperCase(),
       clientSecret: `pi_fake_secret_${randomUUID()}`,
       latestChargeId: null,
-      applicationFeeMinor: input.applicationFeeMinor ?? null,
-      destinationAccountId: input.destinationAccountId ?? null,
       livemode: false,
     };
 

@@ -1,7 +1,6 @@
 import Stripe from 'stripe';
 import { brand } from '@kurdora/brand';
 import {
-  assertTransferShape,
   type CreateIntentInput,
   type GatewayChargeSettlement,
   type GatewayEvent,
@@ -51,8 +50,6 @@ function assertAmountFitsNumber(amountMinor: bigint, field: string): number {
 }
 
 function toGatewayIntent(intent: Stripe.PaymentIntent): GatewayIntent {
-  const transferDestination = intent.transfer_data?.destination ?? null;
-
   return {
     id: intent.id,
     status: intent.status as GatewayIntentStatus,
@@ -60,14 +57,6 @@ function toGatewayIntent(intent: Stripe.PaymentIntent): GatewayIntent {
     currency: intent.currency.toUpperCase(),
     clientSecret: intent.client_secret ?? null,
     latestChargeId: typeof intent.latest_charge === 'string' ? intent.latest_charge : null,
-    applicationFeeMinor:
-      intent.application_fee_amount === null || intent.application_fee_amount === undefined
-        ? null
-        : BigInt(intent.application_fee_amount),
-    destinationAccountId:
-      typeof transferDestination === 'string'
-        ? transferDestination
-        : (transferDestination?.id ?? null),
     livemode: intent.livemode,
   };
 }
@@ -111,8 +100,6 @@ function toChargeSettlement(charge: Stripe.Charge): GatewayChargeSettlement {
   const balanceTransaction = charge.balance_transaction;
   const expanded = typeof balanceTransaction === 'object' ? balanceTransaction : null;
 
-  const transferDestination = charge.transfer_data?.destination ?? null;
-
   return {
     chargeId: charge.id,
     paymentIntentId:
@@ -131,12 +118,6 @@ function toChargeSettlement(charge: Stripe.Charge): GatewayChargeSettlement {
     refunded: charge.refunded ?? false,
     disputed: charge.disputed ?? false,
     paymentMethodType: charge.payment_method_details?.type ?? null,
-    transferId:
-      typeof charge.transfer === 'string' ? charge.transfer : (charge.transfer?.id ?? null),
-    destinationAccountId:
-      typeof transferDestination === 'string'
-        ? transferDestination
-        : (transferDestination?.id ?? null),
     providerFeeMinor: expanded === null ? null : BigInt(expanded.fee),
     netMinor: expanded === null ? null : BigInt(expanded.net),
     failureCode: charge.failure_code ?? null,
@@ -175,10 +156,7 @@ export class StripeGateway implements PaymentGateway {
   }
 
   async createPaymentIntent(input: CreateIntentInput): Promise<GatewayIntent> {
-    // Checked in the DOMAIN, before anything provider-shaped exists. A fee
-    // without a destination, or a destination without a fee, never reaches
-    // the network.
-    assertTransferShape(input);
+    if (input.amountMinor <= 0n) throw new Error('A charge amount must be positive.');
 
     const params: Stripe.PaymentIntentCreateParams = {
       amount: assertAmountFitsNumber(input.amountMinor, 'amount'),
@@ -187,25 +165,14 @@ export class StripeGateway implements PaymentGateway {
       metadata: { ...input.metadata },
     };
 
-    if (input.destinationAccountId !== undefined && input.applicationFeeMinor !== undefined) {
-      /*
-       * `application_fee_amount` rather than `transfer_data[amount]`: it
-       * creates an explicit ApplicationFee object linked to the charge, and it
-       * lets the seller see both the gross and the fee. `transfer_data[amount]`
-       * hides the gross from them (ADR-0013).
-       *
-       * `on_behalf_of` is deliberately NOT set. Cross-border payouts supports
-       * only "destination charges without on_behalf_of", and omitting it makes
-       * Kurdora the business of record — which is what we want anyway.
-       */
-      params.application_fee_amount = assertAmountFitsNumber(
-        input.applicationFeeMinor,
-        'application_fee_amount',
-      );
-      params.transfer_data = { destination: input.destinationAccountId };
-    }
-
-    if (input.transferGroup !== undefined) params.transfer_group = input.transferGroup;
+    /*
+     * No `transfer_data`, no `application_fee_amount`, no `on_behalf_of`.
+     *
+     * Not omitted by discipline — the input type has no fields for them, so a
+     * destination charge cannot be constructed here at all. Kurdora charges
+     * for its OWN service; the sale of a listed item never passes through
+     * Stripe (ADR-0014).
+     */
     if (input.statementDescriptorSuffix !== undefined) {
       params.statement_descriptor_suffix = input.statementDescriptorSuffix;
     }

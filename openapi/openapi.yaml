@@ -999,6 +999,160 @@ paths:
         '422': { $ref: '#/components/responses/UnprocessableEntity' }
         '429': { $ref: '#/components/responses/RateLimited' }
 
+  /listings/{id}/subscription:
+    post:
+      tags: [Listings]
+      summary: Start a Kurdora service subscription for a listing
+      operationId: startListingSubscription
+      description: |
+        Subscribes one listing to a **Kurdora service** — keeping it active.
+
+        **This is not a marketplace payment and not Stripe Connect.** Kurdora
+        is charging for its own service. There is no connected account, no
+        destination charge, no application fee, no transfer and no payout. The
+        sale of the listed item happens directly between buyer and seller,
+        outside Kurdora, and Kurdora never touches that money (ADR-0014).
+
+        Takes **no request body**, and that absence is the security property.
+        The plan, price, currency and Stripe customer are all read from the
+        database — there is no `amount`, `priceId`, `status` or
+        `stripeSubscriptionId` field anywhere in this operation, so a forged
+        one has nowhere to arrive.
+
+        Returns a Stripe-hosted Checkout URL. **Returning from it proves
+        nothing**: the subscription becomes payable only when a
+        signature-verified webhook says so.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '201':
+          description: A Stripe-hosted Checkout URL. Single-use; never cache it.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url, testMode]
+                properties:
+                  url: { type: string, format: uri }
+                  testMode:
+                    type: boolean
+                    description: True in Stripe TEST MODE, so a sandbox
+                      subscription cannot be mistaken for a real one.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: This listing already has a subscription.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503':
+          description: |
+            Billing is not configured, no plan is available, or a LIVE key was
+            refused because live mode is not permitted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+    get:
+      tags: [Listings]
+      summary: The caller's own subscription for a listing
+      operationId: getListingSubscription
+      description: |
+        Scoped by the session's user id inside the query, so a listing
+        belonging to somebody else answers `404` rather than `403`.
+
+        **Never calls Stripe.** Everything returned is mirrored from a verified
+        webhook, so a page poll cannot drive traffic at the provider and a
+        degraded Stripe cannot make a seller's own dashboard unreadable.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The mirrored subscription state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ListingSubscription' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /webhooks/stripe:
+    post:
+      tags: [Listings]
+      summary: Receive verified Stripe Billing events
+      operationId: stripeBillingWebhook
+      description: |
+        **The only way a subscription becomes payable.** No route, Server
+        Action or browser redirect can mark one paid.
+
+        Kurdora's OWN billing only — nothing here concerns a seller's sale.
+
+        - Reads the **RAW** request body; Stripe requires it for signature
+          verification, and re-serialising breaks the check.
+        - **No session and no CSRF token.** Authenticated by the HMAC signature
+          over that body. The one deliberate exception to the CSRF rule, safe
+          only because nothing in the handler reads a cookie.
+        - Answers **200 for every outcome** once the signature verifies. A bug
+          in our own code must not make Stripe retry for three days.
+
+        Duplicates are harmless three times over: `payment_events` has Stripe's
+        event id as its PRIMARY KEY; once-only event types are additionally
+        deduped on `(type, object id)`; and every effect is a guarded
+        transition that also refuses an out-of-order description.
+      security: []
+      parameters:
+        - name: Stripe-Signature
+          in: header
+          required: true
+          schema: { type: string }
+          description: '`t=<timestamp>,v1=<hmac>`. Verified with a 5-minute tolerance.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: A Stripe Event. Read raw, never parsed before verification.
+      responses:
+        '200':
+          description: Received. `outcome` says what happened.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received: { type: boolean }
+                  duplicate: { type: boolean }
+                  outcome:
+                    type: string
+                    enum: [processed, ignored, duplicate, deferred, failed]
+        '400':
+          description: |
+            The signature is missing or does not verify. The reason is NOT
+            echoed to the caller.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+        '503':
+          description: Stripe is not configured, so nothing can be verified.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+
   /listings/{id}/status:
     post:
       tags: [Listings]
@@ -1937,6 +2091,41 @@ components:
           examples: ['listing.priceMinor']
         message:
           type: string
+
+    ListingSubscription:
+      type: object
+      required: [status, amountMinor, currency, interval]
+      properties:
+        status:
+          type: string
+          enum:
+            - INCOMPLETE
+            - INCOMPLETE_EXPIRED
+            - TRIALING
+            - ACTIVE
+            - PAST_DUE
+            - UNPAID
+            - PAUSED
+            - CANCELED
+          description: |
+            Mirrored from Stripe and written by nothing but a
+            signature-verified webhook. `TRIALING`, `ACTIVE` and `PAST_DUE`
+            keep a listing visible — `PAST_DUE` because Stripe is still
+            retrying and most recover. `UNPAID` and `CANCELED` do not.
+        amountMinor:
+          type: string
+          pattern: '^\d+$'
+          description: |
+            Integer minor units as a string (ADR-0004/0006). A SNAPSHOT taken
+            at checkout: the plan can be re-priced, but what this seller agreed
+            to does not change under them.
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        interval: { type: string, enum: [month, year] }
+        planName: { type: string }
+        currentPeriodEnd:
+          type: [string, 'null']
+          format: date-time
+        cancelAtPeriodEnd: { type: boolean }
 
     Error:
       type: object
