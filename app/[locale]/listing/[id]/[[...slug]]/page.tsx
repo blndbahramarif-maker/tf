@@ -7,6 +7,7 @@ import { listingPath } from '@/domain/catalogue/slug';
 import { loadPublicListing, type PublicListing } from '@/infra/catalogue/read-model';
 import { isUuid } from '@/lib/api/guards';
 import { readSessionState } from '@/lib/auth/server-session';
+import { ReportListingForm } from '../../report-form';
 import { formatDate } from '@/lib/format/money';
 import { alternatesFor, canonicalUrl } from '@/lib/seo/urls';
 import { formatMinorAsDecimal } from '@/shared/money';
@@ -294,8 +295,14 @@ export default async function ListingPage({ params, searchParams }: PageProps) {
                 </a>
               )}
               <p className="text-ink-muted mt-3 text-sm">
-                {t(`contactNotice.${listing.category.transactionFlow}`)}
+                {t('contactNotice', { brandName: brand.name })}
               </p>
+
+              {/* Reporting needs an account: an anonymous report cannot be
+                  rate-limited per person and cannot be followed up. */}
+              {session.kind === 'authenticated' ? (
+                <ReportListingForm listingId={listing.id} csrfToken={session.session.csrfToken} />
+              ) : null}
             </div>
           </div>
         </aside>

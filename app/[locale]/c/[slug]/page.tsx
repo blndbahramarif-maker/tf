@@ -1,3 +1,4 @@
+import { brand } from '@kurdora/brand';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
@@ -115,7 +116,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
           buyer what to expect before they invest time in a listing; the copy is
           keyed by the flow value, so a new flow adds a message, not a branch.
         */}
-        <p className="text-ink-muted mt-3 text-sm">{t(`flowNotice.${category.transactionFlow}`)}</p>
+        <p className="text-ink-muted mt-3 text-sm">{t('flowNotice', { brandName: brand.name })}</p>
       </header>
 
       {category.children.length === 0 ? null : (

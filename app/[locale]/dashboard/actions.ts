@@ -12,9 +12,11 @@ import {
 } from '@/infra/catalogue/listing-service';
 import { prisma } from '@/infra/db/client';
 import { tryWriteAuditLog } from '@/infra/audit/audit-log';
-import { connectGateway, PaymentsUnavailableError } from '@/infra/payments/gateway-provider';
-import { refreshAccountState, startOnboarding } from '@/infra/payments/onboarding-service';
-import { connectRefreshUrl, connectReturnUrl } from '@/lib/payments/onboarding-urls';
+import {
+  decidePublication,
+  recordScreening,
+  screenContent,
+} from '@/infra/safety/listing-screening';
 import { requireActionAccess } from '@/lib/auth/action-guard';
 import type { ActionState } from './action-state';
 
@@ -137,6 +139,22 @@ export async function createListingAction(
     priceMinor < category.minPriceMinor
   ) {
     return { error: 'validation', fieldErrors: { priceMinor: 'below_category_minimum' } };
+  }
+
+  /*
+   * Screened BEFORE the row exists. A DRAFT is not public, so this is not
+   * strictly required for safety — but storing content we would refuse to
+   * publish serves nobody, and telling the seller now rather than at publish
+   * is the honest moment to do it.
+   */
+  const screening = await screenContent({
+    title,
+    description,
+    categoryId: category.id,
+    countryId: country.id,
+  });
+  if (screening.outcome === 'BLOCK') {
+    return { error: 'validation', fieldErrors: { title: 'prohibited_content' } };
   }
 
   const created = await prisma.$transaction(async (tx) => {
@@ -264,7 +282,7 @@ export async function transitionListingAction(
   if (listing === null) return { error: 'not_found' };
 
   const requested = field(form, 'to');
-  const target =
+  let target =
     requested === 'PUBLISH' ? publishTarget(listing.category.requiresApproval) : requested;
 
   const decision = canTransition(listing.status as never, target as never, 'owner');
@@ -275,6 +293,38 @@ export async function transitionListingAction(
       where: { listingId: listing.id, uploadStatus: 'READY' },
     });
     if (images === 0) return { error: 'validation', fieldErrors: { images: 'required' } };
+
+    /*
+     * Screened from the STORED text, at the moment of publication.
+     *
+     * Not from the form, and not only at creation: a seller can write a clean
+     * draft, have it pass, then edit it to something prohibited and publish.
+     * The text that matters is the text that is about to become public.
+     *
+     * The decision can also OVERRIDE the requested target — a listing in a
+     * category that needs no approval still goes to PENDING_REVIEW when
+     * screening found something worth a human looking at.
+     */
+    const publication = await decidePublication(listing.id);
+    if (publication === null) return { error: 'not_found' };
+
+    if (!publication.ok) {
+      await recordScreening({
+        listingId: listing.id,
+        screening: publication.screening,
+        outcome: 'blocked',
+      });
+      return { error: 'validation', fieldErrors: { title: 'prohibited_content' } };
+    }
+
+    if (publication.status === 'PENDING_REVIEW') {
+      target = 'PENDING_REVIEW';
+      await recordScreening({
+        listingId: listing.id,
+        screening: publication.screening,
+        outcome: 'sent_for_review',
+      });
+    }
   }
 
   const now = new Date();
@@ -382,94 +432,5 @@ export async function updateSellerProfileAction(
   });
 
   revalidatePath(`/${field(form, 'locale') || 'en'}/dashboard/profile`);
-  return { error: null, ok: true };
-}
-
-/**
- * Starts (or resumes) connected-account onboarding and sends the seller to
- * Stripe.
- *
- * Takes **no meaningful form input**. The only field it reads is the CSRF
- * token; the country, the email and the business name come from the caller's
- * own seller profile row, found by the session's user id. A seller who adds
- * fields to this form in devtools changes nothing, because nothing here looks
- * at them.
- *
- * On success it REDIRECTS to a Stripe-hosted URL. `redirect` throws a control
- * flow signal that Next catches, which is why there is no `return` after it
- * and why it must sit outside any `try`.
- */
-export async function startPayoutOnboardingAction(
-  _previous: ActionState,
-  form: FormData,
-): Promise<ActionState> {
-  const access = await requireActionAccess(form, { all: ['seller:manage_payouts'] });
-  if (!access.ok) return { error: access.error };
-
-  let gateway;
-  try {
-    gateway = connectGateway();
-  } catch (error) {
-    if (error instanceof PaymentsUnavailableError) {
-      // Payments switched off, half-configured, or a LIVE key refused. All
-      // three are operational states the seller should be told about plainly.
-      return { error: 'conflict' };
-    }
-    throw error;
-  }
-
-  const result = await startOnboarding({
-    userId: access.principal.userId,
-    gateway,
-    returnUrl: connectReturnUrl(),
-    refreshUrl: connectRefreshUrl(),
-  });
-
-  if (!result.ok) return { error: result.issue === 'no_seller_profile' ? 'not_found' : 'conflict' };
-
-  await tryWriteAuditLog(prisma, {
-    action: result.created ? 'connect.account_created' : 'connect.onboarding_link_issued',
-    actorType: 'user',
-    actorId: access.principal.userId,
-    entityType: 'connected_account',
-    entityId: result.accountId,
-    // Never the URL: it grants access to the account holder's personal
-    // information, which is the one thing an audit table must not hold.
-    after: { expiresAt: result.expiresAt.toISOString(), testMode: gateway.isTestMode },
-  });
-
-  redirect(result.url);
-}
-
-/**
- * Re-reads the connected account from the provider.
- *
- * The button behind this exists because onboarding state is the provider's to
- * declare: nothing the seller does on Kurdora can change it, and this asks
- * rather than asserts. `account.updated` normally gets there first; this is
- * for when a seller is looking at the page right now and wants to be sure.
- */
-export async function refreshPayoutStatusAction(
-  _previous: ActionState,
-  form: FormData,
-): Promise<ActionState> {
-  const access = await requireActionAccess(form, { all: ['seller:manage_payouts'] });
-  if (!access.ok) return { error: access.error };
-
-  let gateway;
-  try {
-    gateway = connectGateway();
-  } catch (error) {
-    if (error instanceof PaymentsUnavailableError) return { error: 'conflict' };
-    throw error;
-  }
-
-  const result = await refreshAccountState({
-    userId: access.principal.userId,
-    gateway,
-  });
-  if (!result.ok) return { error: result.issue === 'no_seller_profile' ? 'not_found' : 'conflict' };
-
-  revalidatePath('/dashboard/payouts');
   return { error: null, ok: true };
 }

@@ -29,9 +29,6 @@ async function loadProfile(id: string) {
       about: true,
       sellerType: true,
       verificationStatus: true,
-      payoutsEnabled: true,
-      chargesEnabled: true,
-      stripeAccountId: true,
       createdAt: true,
     },
   });
@@ -54,8 +51,6 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   });
   if (!owned.ok) return owned.response;
 
-  const isOwner = owned.value.ownerUserId === access.value.principal.userId;
-
   return noStore(
     ok({
       id: owned.value.id,
@@ -65,15 +60,10 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       sellerType: owned.value.sellerType,
       verificationStatus: owned.value.verificationStatus,
       createdAt: owned.value.createdAt.toISOString(),
-      // Payment-account details are shown to the owner only. Staff reading
-      // for support do not need the Stripe account id, so they do not get it.
-      ...(isOwner
-        ? {
-            payoutsEnabled: owned.value.payoutsEnabled,
-            chargesEnabled: owned.value.chargesEnabled,
-            stripeAccountId: owned.value.stripeAccountId,
-          }
-        : {}),
+      // No payment-account fields. Kurdora is contact-only: a seller has no
+      // connected account, nothing is paid out to them through the platform,
+      // and `payoutsEnabled` / `chargesEnabled` / `stripeAccountId` would each
+      // be a value that means nothing and implies something untrue.
     }),
   );
 }

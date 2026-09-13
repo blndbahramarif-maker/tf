@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { POST as stripeWebhook } from '../../app/api/v1/webhooks/stripe/route';
+import { describe, expect, it, vi } from 'vitest';
 import { prisma } from '@/infra/db/client';
 import {
   LIVE_MODE_PERMITTED,
@@ -183,7 +182,7 @@ describe.skipIf(!hasDatabase)('4b · a client secret never reaches the audit tra
     const marker = `pi_probe_secret_${Date.now()}`;
 
     await tryWriteAuditLog(prisma, {
-      action: 'payment.created',
+      action: 'listing.moderated',
       actorType: 'system',
       actorId: null,
       entityType: 'stripe_safety_probe',
@@ -228,106 +227,5 @@ describe('5 · no Stripe secret can reach the browser', () => {
     const clientBlock = source.slice(source.indexOf('const clientSchema'));
     expect(clientBlock).not.toContain('STRIPE_SECRET_KEY');
     expect(clientBlock).not.toContain('STRIPE_WEBHOOK_SECRET');
-  });
-});
-
-describe.skipIf(!hasDatabase)('6 · webhook signature verification is mandatory', () => {
-  const endpoint = 'http://localhost:3000/api/v1/webhooks/stripe';
-
-  const body = JSON.stringify({
-    id: `evt_safety_${Date.now()}`,
-    type: 'payment_intent.succeeded',
-    data: { object: { id: 'pi_safety_probe', status: 'succeeded' } },
-  });
-
-  beforeEach(async () => {
-    await prisma.paymentEvent.deleteMany({ where: { relatedObjectId: 'pi_safety_probe' } });
-  });
-
-  /** Did anything at all get recorded for the probe object? */
-  const recordedEvents = () =>
-    prisma.paymentEvent.count({ where: { relatedObjectId: 'pi_safety_probe' } });
-
-  it('refuses a request with NO signature header', async () => {
-    const response = await stripeWebhook(
-      new Request(endpoint, {
-        method: 'POST',
-        body,
-        headers: { 'content-type': 'application/json' },
-      }),
-    );
-
-    expect(response.status).toBe(400);
-    // And nothing was written. An unsigned body must not even be recorded,
-    // because a recorded event is something a retry could later act on.
-    expect(await recordedEvents()).toBe(0);
-  });
-
-  it('refuses a request whose signature does not verify', async () => {
-    const response = await stripeWebhook(
-      new Request(endpoint, {
-        method: 'POST',
-        body,
-        headers: { 'content-type': 'application/json', 'stripe-signature': 'INVALID-signature' },
-      }),
-    );
-
-    expect(response.status).toBe(400);
-    expect(await recordedEvents()).toBe(0);
-  });
-
-  it('tells an attacker nothing beyond "invalid"', async () => {
-    const response = await stripeWebhook(
-      new Request(endpoint, {
-        method: 'POST',
-        body,
-        headers: { 'content-type': 'application/json', 'stripe-signature': 'INVALID-signature' },
-      }),
-    );
-
-    const text = await response.text();
-    // No timestamp tolerance, no expected digest, no hint about which half of
-    // the check failed — any of which helps someone iterate toward a forgery.
-    expect(text).not.toMatch(/tolerance|timestamp|expected|digest|whsec/i);
-  });
-
-  it('records the forgery attempt in the audit trail', async () => {
-    const before = await prisma.auditLog.count({ where: { action: 'webhook.rejected' } });
-
-    await stripeWebhook(
-      new Request(endpoint, {
-        method: 'POST',
-        body,
-        headers: { 'content-type': 'application/json', 'stripe-signature': 'INVALID-signature' },
-      }),
-    );
-
-    // A forged webhook is an attempt to mark an order paid from the outside —
-    // the single most valuable thing an attacker could do to this system, so
-    // it is never a silent 400.
-    expect(await prisma.auditLog.count({ where: { action: 'webhook.rejected' } })).toBe(before + 1);
-  });
-
-  it('gains nothing from a session cookie', async () => {
-    /*
-     * The webhook is authenticated by HMAC over the raw body, not by a
-     * session. This is the one deliberate exception to the CSRF rule
-     * (ADR-0013), and it is only safe because nothing in the handler reads a
-     * cookie — so a request that arrives carrying one is no better off.
-     */
-    const response = await stripeWebhook(
-      new Request(endpoint, {
-        method: 'POST',
-        body,
-        headers: {
-          'content-type': 'application/json',
-          'stripe-signature': 'INVALID-signature',
-          cookie: 'kurdora_at=anything; kurdora_csrf=anything',
-        },
-      }),
-    );
-
-    expect(response.status).toBe(400);
-    expect(await recordedEvents()).toBe(0);
   });
 });

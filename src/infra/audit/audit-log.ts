@@ -34,25 +34,16 @@ export type AuditAction =
   | 'listing.image_uploaded'
   | 'listing.image_rejected'
   | 'listing.image_deleted'
+  // Safety. A report is a person telling us something is wrong; a moderation
+  // action is what a human did about it. Both are audited because "who took
+  // this listing down, and why" is the question that matters afterwards.
+  | 'listing.reported'
+  | 'listing.moderated'
   | 'conversation.started'
   | 'conversation.reported'
   | 'message.flagged'
   | 'offer.created'
   | 'offer.transitioned'
-  // Phase 7 Part 1. Money-adjacent actions are audited even when they move
-  // nothing, because "who started this payment" is the first question asked
-  // when something goes wrong.
-  | 'order.created'
-  | 'payment.created'
-  | 'payment.succeeded'
-  | 'webhook.rejected'
-  | 'webhook.processed'
-  // Phase 7 Part 2. Connected accounts: creating one is a durable object at
-  // the provider and issuing a link grants access to someone's personal
-  // information, so both are recorded even though neither moves money.
-  | 'connect.account_created'
-  | 'connect.onboarding_link_issued'
-  | 'connect.account_updated'
   | 'seller_profile.created'
   | 'seller_profile.updated'
   | 'session.revoked'

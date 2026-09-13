@@ -626,6 +626,73 @@ describe.skipIf(!hasDatabase)('database constraints', () => {
     });
   });
 
+  describe('contact-only marketplace', () => {
+    /**
+     * Kurdora provides the place to advertise and to make contact. The
+     * transaction happens directly between buyer and seller, outside the
+     * platform, and Kurdora never collects a sale price.
+     *
+     * That is enforced HERE as well as in application code, because a category
+     * is a row an admin can edit: without these constraints, re-enabling
+     * payment collection — or putting "bought and paid for through the
+     * platform" on a live page — would be one UPDATE away.
+     */
+    const newCategory = (columns: string, values: unknown[]) =>
+      client.query(
+        `INSERT INTO categories (id, path, slug, updated_at${columns ? ', ' + columns : ''})
+         VALUES (gen_random_uuid(), '/probe-${Date.now()}/', 'probe-${Date.now()}', now()${
+           values.length ? ', ' + values.map((_, i) => `$${i + 1}`).join(', ') : ''
+         })`,
+        values,
+      );
+
+    it('accepts a category created with no payment columns named', async () => {
+      // The DEFAULTS must satisfy the constraints. A default the constraint
+      // rejects is a trap for whoever writes the next fixture or admin form.
+      await expect(newCategory('', [])).resolves.toBeDefined();
+    });
+
+    it('REFUSES a category that permits online payment', async () => {
+      await expect(newCategory('allows_online_payment', [true])).rejects.toThrow(
+        /categories_no_online_payment_for_seller_goods/,
+      );
+    });
+
+    it('REFUSES a category carrying an online payment ceiling', async () => {
+      // A ceiling is only meaningful if something can be charged. Its presence
+      // would imply a payment flow that does not exist.
+      await expect(newCategory('max_online_amount_minor', [500_000])).rejects.toThrow(
+        /categories_no_online_payment_for_seller_goods/,
+      );
+    });
+
+    it('REFUSES any transaction flow but CONTACT_ONLY', async () => {
+      /*
+       * The flow is what the PUBLIC UI reads. The other flows say things like
+       * "bought and paid for through the platform" — a false claim about
+       * payment protection, which is a worse outcome than a charge that cannot
+       * happen anyway.
+       */
+      for (const flow of ['BUY_NOW', 'OFFER_THEN_PAY', 'FEE_ONLY']) {
+        await expect(
+          client.query(
+            `INSERT INTO categories (id, path, slug, transaction_flow, updated_at)
+             VALUES (gen_random_uuid(), '/f-${Date.now()}/', 'f-' || gen_random_uuid(), $1, now())`,
+            [flow],
+          ),
+          flow,
+        ).rejects.toThrow(/categories_contact_only_flow/);
+      }
+    });
+
+    it('REFUSES switching a live category back to a paying flow', async () => {
+      // The realistic attack is an UPDATE on an existing row, not an INSERT.
+      await expect(
+        client.query(`UPDATE categories SET allows_online_payment = true`),
+      ).rejects.toThrow(/categories_no_online_payment_for_seller_goods/);
+    });
+  });
+
   describe('connected-account integrity (Phase 7 Part 2)', () => {
     /**
      * Every assertion here is written in raw SQL with every TypeScript check

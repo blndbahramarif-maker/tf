@@ -167,16 +167,19 @@ describe.skipIf(!hasDatabase)('seed', () => {
     );
     const bySlug = Object.fromEntries(rows.rows.map((r) => [r.slug, r]));
 
-    // Fee-only categories keep 0.5%: the principal never passes through Stripe.
-    expect(bySlug['cars']?.percent_bps).toBe(50);
-    expect(bySlug['cars']?.transaction_flow).toBe('FEE_ONLY');
-    expect(bySlug['business']?.percent_bps).toBe(50);
-    expect(bySlug['business']?.transaction_flow).toBe('FEE_ONLY');
-
-    // Buy-now categories must exceed card processing cost, or every sale loses
-    // money (docs/04-payments-architecture.md).
-    expect(bySlug['mobile-electronics']?.percent_bps).toBeGreaterThan(150);
-    expect(bySlug['kurdish-clothing']?.percent_bps).toBeGreaterThan(150);
+    /*
+     * EVERY category is contact-only. Kurdora provides the place to advertise
+     * and to make contact; the transaction happens directly between buyer and
+     * seller, outside the platform.
+     *
+     * The commission rates are retained but INERT — nothing charges them,
+     * because nothing charges anything. They are kept rather than zeroed so
+     * that the rate history survives, and because a future Kurdora-service fee
+     * is a different thing from a commission on somebody else's sale.
+     */
+    for (const slug of ['cars', 'business', 'mobile-electronics', 'kurdish-clothing']) {
+      expect(bySlug[slug]?.transaction_flow, slug).toBe('CONTACT_ONLY');
+    }
   });
 
   it('records that Stripe has NOT approved the business model', async () => {

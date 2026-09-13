@@ -247,12 +247,13 @@ export const CATEGORIES: CategorySeed[] = [
     parentSlug: null,
     position: 1,
     isActive: true,
-    transactionFlow: 'FEE_ONLY',
-    allowsOnlinePayment: true,
+    transactionFlow: 'CONTACT_ONLY',
+    allowsOnlinePayment: false,
     feePayer: 'BUYER',
-    // Only the fee is charged online, never the vehicle price. A hard ceiling
-    // so a misconfiguration cannot put a £50,000 charge through this flow.
-    maxOnlineAmountMinor: 500_000n, // £5,000.00
+    // No online payment at all, so there is no amount to cap. Kept NULL rather
+    // than at a number that would quietly become meaningful if the flow ever
+    // changed without someone re-reading this line.
+    maxOnlineAmountMinor: null,
     requiresApproval: true,
     requiresVerifiedSeller: true,
     maxImages: 20,
@@ -361,10 +362,10 @@ export const CATEGORIES: CategorySeed[] = [
     parentSlug: null,
     position: 2,
     isActive: true,
-    transactionFlow: 'BUY_NOW',
-    allowsOnlinePayment: true,
+    transactionFlow: 'CONTACT_ONLY',
+    allowsOnlinePayment: false,
     feePayer: 'BUYER',
-    maxOnlineAmountMinor: 500_000n, // £5,000.00
+    maxOnlineAmountMinor: null,
     requiresApproval: false,
     requiresVerifiedSeller: false,
     maxImages: 12,
@@ -430,10 +431,10 @@ export const CATEGORIES: CategorySeed[] = [
     parentSlug: null,
     position: 3,
     isActive: true,
-    transactionFlow: 'BUY_NOW',
-    allowsOnlinePayment: true,
+    transactionFlow: 'CONTACT_ONLY',
+    allowsOnlinePayment: false,
     feePayer: 'BUYER',
-    maxOnlineAmountMinor: 200_000n, // £2,000.00
+    maxOnlineAmountMinor: null,
     requiresApproval: false,
     requiresVerifiedSeller: false,
     maxImages: 12,
@@ -516,10 +517,10 @@ export const CATEGORIES: CategorySeed[] = [
     parentSlug: null,
     position: 4,
     isActive: true,
-    transactionFlow: 'FEE_ONLY',
-    allowsOnlinePayment: true,
+    transactionFlow: 'CONTACT_ONLY',
+    allowsOnlinePayment: false,
     feePayer: 'BUYER',
-    maxOnlineAmountMinor: 1_000_000n, // £10,000.00 fee ceiling
+    maxOnlineAmountMinor: null,
     requiresApproval: true,
     requiresVerifiedSeller: true,
     maxImages: 20,
@@ -686,38 +687,11 @@ export const PERMISSIONS: PermissionSeed[] = [
   },
   { key: 'geo:manage', category: 'catalogue', description: 'Manage countries and cities' },
   // Orders and money
-  { key: 'order:create', category: 'commerce', description: 'Create an order to buy a listing' },
-  {
-    key: 'payment:create',
-    category: 'commerce',
-    description: 'Begin payment for an order the caller owns',
-  },
-  { key: 'order:read_own', category: 'commerce', description: 'View own orders' },
-  { key: 'order:read_any', category: 'commerce', description: 'View any order' },
-  { key: 'order:cancel', category: 'commerce', description: 'Cancel an order' },
-  { key: 'payment:read_any', category: 'commerce', description: 'View any payment' },
-  { key: 'refund:issue', category: 'commerce', description: 'Issue a refund' },
-  { key: 'payout:read_own', category: 'commerce', description: 'View own payouts' },
-  {
-    /*
-     * Separate from `seller:update_own_profile` on purpose. Editing a shop
-     * description and opening a connected account that will receive money are
-     * not the same capability, and a future role that may do the first must
-     * not silently acquire the second.
-     */
-    key: 'seller:manage_payouts',
-    category: 'commerce',
-    description: 'Start and view own connected-account onboarding',
-  },
-  { key: 'payout:read_any', category: 'commerce', description: 'View any payout' },
-  { key: 'payout:release', category: 'commerce', description: 'Release a held payout' },
-  { key: 'payout:hold', category: 'commerce', description: 'Hold a payout' },
   {
     key: 'commission:manage',
     category: 'commerce',
     description: 'Create and edit commission rules',
   },
-  { key: 'dispute:manage', category: 'commerce', description: 'Respond to disputes' },
   // Selling
   {
     key: 'seller:verify',
@@ -781,9 +755,6 @@ export const ROLES: RoleSeed[] = [
       'account:update_self',
       'account:manage_security',
       'seller:create_profile',
-      'order:create',
-      'payment:create',
-      'order:read_own',
       'message:read_own',
       'message:send',
       'offer:create',
@@ -804,11 +775,6 @@ export const ROLES: RoleSeed[] = [
       'listing:update_own',
       'listing:delete_own',
       'listing:publish',
-      'order:create',
-      'payment:create',
-      'order:read_own',
-      'payout:read_own',
-      'seller:manage_payouts',
       'message:read_own',
       'message:send',
       // A seller is also a buyer elsewhere on the platform, so they get both
@@ -832,11 +798,6 @@ export const ROLES: RoleSeed[] = [
       'listing:update_own',
       'listing:delete_own',
       'listing:publish',
-      'order:create',
-      'payment:create',
-      'order:read_own',
-      'payout:read_own',
-      'seller:manage_payouts',
       'analytics:read_basic',
       'message:read_own',
       'message:send',
@@ -871,9 +832,6 @@ export const ROLES: RoleSeed[] = [
       'account:update_self',
       'account:manage_security',
       'user:read',
-      'order:read_any',
-      'payment:read_any',
-      'payout:read_any',
       'report:triage',
     ],
   },
@@ -885,14 +843,7 @@ export const ROLES: RoleSeed[] = [
       'account:read_self',
       'account:update_self',
       'account:manage_security',
-      'order:read_any',
-      'payment:read_any',
-      'refund:issue',
-      'payout:read_any',
-      'payout:release',
-      'payout:hold',
       'commission:manage',
-      'dispute:manage',
       'analytics:read_basic',
       'analytics:read_financial',
     ],
@@ -911,9 +862,6 @@ export const ROLES: RoleSeed[] = [
       'category:manage',
       'category:set_commission',
       'geo:manage',
-      'order:read_any',
-      'payment:read_any',
-      'payout:read_any',
       'seller:verify',
       'seller:suspend',
       'message:read_reported',

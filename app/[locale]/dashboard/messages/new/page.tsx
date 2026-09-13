@@ -123,7 +123,7 @@ export default async function ContactSellerPage({
             Keyed by the category's transaction flow, which is DATA on the
             category row. No branch here knows a category by name.
           */}
-          {t(`offerNotice.${listing.category.transactionFlow}`)}
+          {t('offerNotice')}
         </p>
         <div className="mt-4">
           <MakeOfferForm

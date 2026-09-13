@@ -5,57 +5,39 @@ Read `docs/README.md` before making architectural changes. Read
 
 ## Current state
 
-**Phase 7 Parts 1 and 2 complete: the payment foundation and connected-account
-onboarding, Stripe TEST MODE only.** Orders, a payment gateway port with a
-Stripe adapter behind it, destination charges for BUY_NOW, fee-only charges for
-Cars and Business, database-durable idempotency, and a signature-verified
-webhook. On top of that: a `ConnectGateway` port, server-side account creation
-under a deterministic idempotency key, Stripe-hosted onboarding, `account.updated`
-and `charge.*` handling, and a seller payouts page.
+**Kurdora is a CONTACT-ONLY marketplace (ADR-0014).** It provides the place
+where sellers advertise and buyers find them and make contact. The transaction
+happens directly between buyer and seller, OUTSIDE Kurdora.
 
-**The real Stripe API has never been called.** This environment has no Stripe
-credentials and no Stripe CLI, so `tests/api/stripe-live.test.ts` is written and
-SKIPPED, and no webhook has ever been received from Stripe. Everything above is
-proven against a labelled fake provider. See `docs/16-phase-7-part-2.md`.
+Kurdora does not, for a seller's sale: collect the price, hold buyer money,
+provide escrow, transfer money to sellers, act as payment intermediary, or
+guarantee the transaction, the goods or either party. **Never write copy or
+code that implies otherwise** — see the wording rules below.
 
-**Live mode is refused at startup** (`LIVE_MODE_PERMITTED = false` in
-`src/infra/stripe/config.ts`). Stripe has NOT approved the business model in
-writing; re-confirmed on 2026-09-12 as a hard go-live blocker (R-3, D-A,
-`docs/15-phase-7-gate.md`). Legal review of FEE_ONLY is also outstanding. While
-both stand: no live keys, no live payments, no production seller onboarding, no
-real-money operation — and **Kurdora must never be described as
-Stripe-production-ready**. No real seller has been onboarded and no real payment
-has been taken.
+Every category is `CONTACT_ONLY`, enforced by two CHECK constraints, and the
+seller-sale payment surface (orders, payments, Connect onboarding, payouts, the
+Stripe webhook) has been REMOVED, not disabled.
 
-**The Connect controller configuration is SETTLED — do not "fix" it.**
-`CONNECT_CONTROLLER` uses `losses.payments = application` on GA API version
-`2026-08-26.dahlia`. That is a deliberate, owner-approved departure from
-ADR-0013 Decision 4, which chose `losses.payments = stripe`: that combination
-requires the Express Dashboard public preview and API version
-`2026-08-26.preview`. Kurdora absorbs the negative-balance exposure knowingly.
-`stripe_dashboard.type` is IMMUTABLE per account, so changing this means
-recreating every connected account. See DL-5 and ADR-0013 Amendment 1. A test
-pins it.
+**Retained and unwired:** `src/infra/stripe/` and
+`src/domain/payments/payment-gateway.ts` — the provider boundary, kept for a
+possible future charge for KURDORA'S OWN services (paid listings, promotion,
+advertising). That is a different thing from processing somebody else's sale.
+No route calls it, nothing charges anything, and `LIVE_MODE_PERMITTED = false`
+stays enforced. The order/payment/ledger/payout/refund/dispute TABLES are also
+retained, empty and unwritten.
 
-**Phase 6 complete: messaging and offers.** On top of Phases 1-5 there are now
-buyer-to-seller conversations (per-participant read state, keyset-paginated
-history, plain-text safety, reporting) and an explicit offer lifecycle driven by
-a transition table with an append-only audit trail. Inbox, thread, contact,
-offer list and offer detail pages ship with them.
+**Phases 1-6 stand:** catalogue, listings, auth and sessions, the seller
+dashboard, buyer-to-seller messaging, and the offer lifecycle. An accepted offer
+records agreement and moves no money — it never did.
 
-**Phase 6 collects no money.** An accepted offer records agreement and nothing
-else — no order, no payment, no ledger entry, no payout. A test asserts it.
+**Safety layer (the current focus, since there is no payment step to interrupt):**
+prohibited-item screening on create and publish, listing reporting, moderation
+actions with an audit trail, and suspension enforced at the guard.
 
-There is still NO payment UI, NO payouts, NO refund or dispute handling, NO
-reconciliation, NO realtime transport, NO message attachments, NO blocking, NO
-counter-offers, NO subscriptions, NO advertising, NO reviews and NO moderation
-UI. See `docs/10-roadmap.md`.
-
-**Refunds and disputes are MIRRORED, not handled.** `charge.*` writes
-`refunded`, `disputed` and `amount_refunded_minor` onto a payment attempt
-because those are facts the provider reported. Nothing reverses a ledger entry,
-changes an order status or holds a payout. A column holding `true` is not the
-platform having handled what it describes.
+There is NO payment UI, NO payouts, NO refunds, NO disputes, NO reconciliation,
+NO realtime transport, NO message attachments, NO blocking, NO counter-offers,
+NO subscriptions, NO advertising, NO reviews and NO moderation dashboard.
+See `docs/10-roadmap.md`.
 
 ## Commands
 
@@ -103,15 +85,20 @@ genuinely wrong, change the rule deliberately and write an ADR.
    editable by an admin without a deploy.
 8. **Secrets are server-side only.** Never `NEXT_PUBLIC_*`, never in a client
    component, never logged.
-9. **Payment state comes only from verified webhooks.** Never trust the browser.
+9. **Kurdora is never party to a seller's sale.** No route may collect a sale
+    price, hold buyer money, or pay a seller. Enforced by
+    `categories_no_online_payment_for_seller_goods` and
+    `categories_contact_only_flow` (ADR-0014). If a feature needs one of those
+    relaxed, it is the wrong feature.
 10. **Database changes are migrations.** Never manual production DDL, and
     **every migration ships a `down.sql`** — the migration tests fail without one.
 11. **Invariants belong in the database as well as the domain.** Money rules are
     CHECK constraints and triggers, not only TypeScript (ADR-0010). Application
     checks bind only code that goes through them.
-12. **The ledger is append-only and must balance.** Every money movement is a
-    balanced entry group; use the recipes in `src/domain/ledger/postings.ts`
-    rather than writing entries by hand.
+12. **The ledger is append-only and must balance.** Currently DORMANT — nothing
+    writes to it, because nothing moves money. If that changes, every movement
+    is a balanced entry group; use the recipes in
+    `src/domain/ledger/postings.ts` rather than writing entries by hand.
 13. **Every protected route declares a permission.** An empty requirement is
     DENIED — that is the deny-by-default rule, not an oversight to work around.
 14. **Identity comes from the bearer token, never from the request.** No route
@@ -162,39 +149,6 @@ is never "strip the dangerous part" — that is a blocklist. Content is refused
 with a reason or SCORED and still delivered; it is never silently rewritten or
 truncated.
 
-**A connected-account surface:** the request names NOTHING. The country, the
-email and the business name come from the caller's own seller profile row,
-found by the session's user id — there is no `stripeAccountId`, `country` or
-`capabilities` parameter anywhere, so a forged one has nowhere to arrive.
-**Only `applyAccountState` may change a seller's payability**, it takes a
-`ProviderAccountState` that only the Stripe adapter can produce, and it refuses
-any transition `ONBOARDING_TRANSITIONS` disallows while still recording the
-mirrored facts. Stripe's return URL "only means the flow was entered and exited
-properly" — treat it as a cue to re-read the account, never as evidence.
-`REJECTED` is terminal.
-
-**A webhook event type:** decide whether a SECOND event about the same object
-is a duplicate before adding it to `HANDLED_EVENT_TYPES`. Add it to
-`SEMANTICALLY_UNIQUE_EVENT_TYPES` only if it describes a once-only transition.
-`account.updated` and `charge.updated` are emitted repeatedly with real new
-state each time; deduping them would silently discard the event that says a
-seller has been restricted.
-
-**Anything that takes money:** the request names a resource id and nothing
-else. The amount, currency, seller, connected account and commission are all
-re-read from the database — they are not merely validated, they are absent from
-the request schema, so `z.object`'s stripping means a forged field has nowhere
-to arrive. **Only a signature-verified webhook may move an order to PAID**;
-`canTransitionOrder` reserves it to the `system` actor and no route, action or
-redirect can produce one.
-
-**A FEE_ONLY charge:** the buyer pays the commission and nothing else. The sale
-principal is recorded in `orders.principal_minor` and **never sent to a payment
-provider**. Guarded four times over: `computeOrderAmounts`, `assertChargeIsSafe`
-one call before the network, and the CHECK constraints
-`orders_fee_only_charges_fee_alone` and `orders_fee_only_principal_recorded`.
-Never weaken any of them.
-
 **A rate limit:** decide the key deliberately. Credential paths
 (`enforceRateLimit` default) key on IP AND account together. Abuse paths —
 messaging, offers — pass `{ keyBy: 'subject' }` so the limit follows the
@@ -217,8 +171,15 @@ and its own `lang`, never as HTML.
 **Business logic:** it goes in `src/domain`, with unit tests that need no
 database.
 
-**A money movement:** add a recipe to `src/domain/ledger/postings.ts` with a
-test proving it balances. Never insert ledger entries ad hoc.
+**A listing-safety rule:** prohibited-item rules are DATA
+(`prohibited_item_rules`), matched by `src/domain/safety/prohibited-content.ts`.
+BLOCK refuses, REQUIRE_APPROVAL forces `PENDING_REVIEW`, FLAG publishes to
+review rather than to the public. Both the dashboard action and the API route
+go through `decidePublication` — one implementation, because a second is how
+one path ends up missing a rule type. Screening reads the STORED text at
+publish time, never the form, because a seller can write a clean draft and edit
+it before publishing. **Never claim screening catches everything:** it reads
+text against a list a human wrote, cannot see images and cannot infer intent.
 
 **A database constraint:** put it in a migration with matching `down.sql`, and
 add a test in `tests/db/constraints.test.ts` that writes something which should
@@ -237,7 +198,29 @@ so privileges cannot quietly accumulate.
 
 - Do not mark a feature complete unless it actually works and is tested.
 - Label mock and test-mode code as such, in the code and in any summary.
-- **Never claim Stripe has approved the business model.** Written confirmation
-  does not exist yet (R-3, ADR-0007).
 - Re-verify Stripe API behaviour against official documentation before writing
-  payment code. Do not rely on memory or on what this repository's docs say.
+  any provider code. Do not rely on memory or on what this repository's docs say.
+
+### Wording — what the product may never say
+
+Kurdora is not party to the sale and holds no money. Copy that implies
+otherwise is not a tone problem, it is a false statement to someone deciding
+whether to hand over cash. **Never write, in UI text, docs or a summary:**
+
+- "Kurdora guarantees the seller / the buyer / the transaction"
+- "buyer protection", "we protect your payment", "secure payment", "escrow"
+- anything implying Kurdora has checked the goods, vetted the seller, or will
+  recover a buyer's money
+
+An E2E test asserts these strings are absent from the public pages. Say what is
+true instead: buyer and seller arrange payment, delivery and collection between
+themselves, and Kurdora is not part of the transaction.
+
+Equally, do not overclaim the safety layer. Screening is a net, not a
+guarantee, and reporting records a claim rather than removing a listing.
+
+### Not legal advice
+
+Nothing in this repository is a legal opinion. Do not describe the model as
+legally risk-free, exempt from regulation, or free of obligations — a
+marketplace hosting listings still has duties. No lawyer has reviewed it.

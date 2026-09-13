@@ -67,12 +67,7 @@
     "metaDescription": "Îlanên {category} bibîne.",
     "subcategories": "Jêrkategorî",
     "results": "Îlan",
-    "flowNotice": {
-      "BUY_NOW": "Tiştên vê kategoriyê bi rêya platformê têne kirîn û pere lê tê dayîn.",
-      "OFFER_THEN_PAY": "Di vê kategoriyê de kirryar pêşniyara bihayê dike, û dema firoşyar qebûl kir pere dide.",
-      "FEE_ONLY": "Firotinên bi biha yên vê kategoriyê rasterast di navbera kirryar û firoşyar de tên rêkxistin. Li vir tenê heqê platformê tê dayîn — qet bihayê tiştî na.",
-      "CONTACT_ONLY": "Îlanên vê kategoriyê tenê ji bo têkiliyê ne. Bi rêya platformê tu pere nayê girtin."
-    }
+    "flowNotice": "Kirryar û firoşyar her tiştî di navbera xwe de saz dikin. {brandName} drav nagire, drav nahêle û beşdarî firotinê nabe."
   },
   "listing": {
     "noImage": "Wêne nîne",
@@ -98,14 +93,31 @@
       "FOR_PARTS": "Ji bo parçeyan",
       "NOT_APPLICABLE": "Ne girêdayî ye"
     },
-    "contactNotice": {
-      "BUY_NOW": "Message the seller to ask about this item or make an offer. Paying through the site arrives with the payments release.",
-      "OFFER_THEN_PAY": "Message the seller or make an offer. Paying through the site arrives with the payments release.",
-      "FEE_ONLY": "Message the seller to arrange the sale directly. For this category only the platform fee is ever paid online, never the price of the item.",
-      "CONTACT_ONLY": "Message the seller to arrange this directly."
-    },
+    "contactNotice": "Ji bo saz kirina rasterast peyamê ji firoşyar re bişîne. Dayîn, gihandin û wergirtin di navbera te û firoşyar de ne — {brandName} ne beşek ji muamelê ye û berî ku tu muamele bikî ne mal û ne firoşyar kontrol dike.",
     "contactSeller": "Contact the seller",
-    "signInToContact": "Sign in to contact the seller"
+    "signInToContact": "Sign in to contact the seller",
+    "report": {
+      "open": "Vê îlanê ragihîne",
+      "title": "Vê îlanê ragihîne",
+      "reason": "Tu çima wê ragihînî?",
+      "choose": "Sedemekê hilbijêre",
+      "details": "Tiştekî din ku divê em bizanin (bijarte)",
+      "send": "Ragihandinê bişîne",
+      "sending": "Tê şandin…",
+      "cancel": "Betal bike",
+      "received": "Spas. Ragihandina te hate wergirtin û kesek lê binêre.",
+      "disclaimer": "Ragihandin îlanê ranake. Kesek ragihandinan dinirxîne û biryar dide. {brandName} malan kontrol nake û nikare piştrast bike ku her îlanek rast an qanûnî ye.",
+      "reasons": {
+        "prohibited_item": "Tiştê qedexe an sînordar",
+        "counterfeit": "Sexte an teqlîd",
+        "stolen_goods": "Dibe ku dizî be",
+        "scam": "Sextekarî an fêl",
+        "unsafe_or_illegal": "Ne ewle an neqanûnî",
+        "offensive": "Naveroka aciz",
+        "wrong_category": "Kategoriya çewt",
+        "other": "Tiştekî din"
+      }
+    }
   },
   "sell": {
     "title": "Firotin çawa dixebite",
@@ -461,12 +473,7 @@
       "existing": "You already have a conversation about this listing. Open it.",
       "ownListing": "This is your own listing.",
       "offerTitle": "Make an offer",
-      "offerNotice": {
-        "BUY_NOW": "An offer records what you are willing to pay. No money is taken now.",
-        "OFFER_THEN_PAY": "An offer records what you are willing to pay. No money is taken now.",
-        "FEE_ONLY": "For this category the sale is arranged directly between you and the seller. An offer records what you agreed. No money is taken now.",
-        "CONTACT_ONLY": "An offer records what you are willing to pay. No money is taken now."
-      }
+      "offerNotice": "Pêşniyarek tomar dike ku tu amade yî çiqas bidî. Tu drav nayê girtin, û hûn bi xwe dayînê bi firoşyar re saz dikin."
     },
     "report": {
       "title": "Report this conversation",

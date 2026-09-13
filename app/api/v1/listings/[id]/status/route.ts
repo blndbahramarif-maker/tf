@@ -5,6 +5,7 @@ import {
   type ListingActor,
   type ListingStatus,
 } from '@/domain/catalogue/listing-status';
+import { decidePublication, recordScreening } from '@/infra/safety/listing-screening';
 import { loadListingForOwner } from '@/infra/catalogue/listing-service';
 import { prisma } from '@/infra/db/client';
 import { tryWriteAuditLog } from '@/infra/audit/audit-log';
@@ -63,7 +64,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   // decides whether that means ACTIVE or PENDING_REVIEW. No category name is
   // consulted anywhere.
   const requested = body.value.to as ListingStatus;
-  const target =
+  let target =
     requested === 'ACTIVE' && actor === 'owner'
       ? publishTarget(listing.category.requiresApproval)
       : requested;
@@ -92,18 +93,69 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   }
 
   const now = new Date();
-  const becomingActive = target === 'ACTIVE';
+  // Whether the caller ASKED to go live. Screening below can still divert that
+  // to PENDING_REVIEW, so what actually happened is re-read afterwards.
+  const publishRequested = target === 'ACTIVE';
 
   // Publishing requires at least one processed, approved image: a listing with
   // no picture is the most common low-quality and scam pattern.
-  if (becomingActive) {
+  if (publishRequested) {
     const readyImages = await prisma.listingImage.count({
       where: { listingId: listing.id, uploadStatus: 'READY', moderationStatus: 'APPROVED' },
     });
     if (readyImages === 0) {
       return fail('conflict', 'Add at least one image before publishing.', { request });
     }
+
+    /*
+     * Prohibited-content screening, from the STORED text.
+     *
+     * The same `decidePublication` the dashboard action uses — one
+     * implementation, so this route cannot drift into missing a rule type.
+     *
+     * A MODERATOR approving out of PENDING_REVIEW is exempt. They have read the
+     * listing and decided; re-running a keyword match over their judgement
+     * would make approval impossible for anything a FLAG rule touches, which is
+     * exactly the set of listings that most needs a human to be able to say
+     * yes.
+     */
+    if (actor === 'owner') {
+      const publication = await decidePublication(listing.id);
+      if (publication === null) return notFound(request);
+
+      if (!publication.ok) {
+        await recordScreening({
+          listingId: listing.id,
+          screening: publication.screening,
+          outcome: 'blocked',
+        });
+        return fail(
+          'conflict',
+          'This listing cannot be published because its content matches a prohibited-item rule.',
+          { request },
+        );
+      }
+
+      if (publication.status === 'PENDING_REVIEW') {
+        target = 'PENDING_REVIEW';
+        await recordScreening({
+          listingId: listing.id,
+          screening: publication.screening,
+          outcome: 'sent_for_review',
+        });
+      }
+    }
   }
+
+  /*
+   * Re-read AFTER screening, not before.
+   *
+   * Screening can divert a publish to PENDING_REVIEW. Deciding "is this going
+   * live" up front and reusing that answer would stamp `published_at` and an
+   * expiry on a listing sitting in a moderation queue — publicly unlisted, but
+   * carrying every field that says it went live.
+   */
+  const becomingActive = target === 'ACTIVE';
 
   await prisma.$transaction(async (tx) => {
     await tx.listing.update({
@@ -124,6 +176,46 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         ...(target === 'REMOVED' ? { deletedAt: now } : {}),
       },
     });
+
+    /*
+     * A moderator's decision gets its own row, in the SAME transaction as the
+     * status change.
+     *
+     * The audit log records that a transition happened; this records that a
+     * HUMAN made a moderation decision, who they were and on what grounds.
+     * Writing it in the same transaction means there is no window in which a
+     * listing is removed with no record of who removed it.
+     *
+     * Only for moderator actions. A seller pausing their own listing is not
+     * moderation, and filling the moderation history with it would bury the
+     * decisions that matter.
+     */
+    if (
+      actor === 'moderator' &&
+      (target === 'REJECTED' || target === 'REMOVED' || target === 'ACTIVE')
+    ) {
+      await tx.moderationAction.create({
+        data: {
+          moderatorId: principal.userId,
+          targetType: 'LISTING',
+          targetId: listing.id,
+          action: target === 'ACTIVE' ? 'approve' : target === 'REJECTED' ? 'reject' : 'remove',
+          // The transition table already refuses REJECTED without a reason, so
+          // this is never the empty string in practice.
+          reason: body.value.reason ?? 'no reason given',
+          notes: `from ${from}`,
+        },
+      });
+
+      // Any open reports on this listing are now a reviewer's answered
+      // question, not an outstanding one.
+      if (target === 'REJECTED' || target === 'REMOVED') {
+        await tx.report.updateMany({
+          where: { targetType: 'LISTING', targetId: listing.id, status: 'OPEN' },
+          data: { status: 'ACTIONED', resolvedAt: now, assignedTo: principal.userId },
+        });
+      }
+    }
   });
 
   await tryWriteAuditLog(prisma, {

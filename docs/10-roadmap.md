@@ -161,46 +161,23 @@ E2E tests pass.
 - **No money, anywhere.** An accepted offer records agreement. It creates no
   order, no payment, no ledger entry and no payout, and a test asserts that.
 
-### Phase 7 — Stripe Connect  ⚠️ the highest-risk phase  ← **Parts 1 and 2 complete (TEST MODE), Part 3 not started**
+### Phase 7 — ~~Stripe Connect~~ **CANCELLED: business-model correction (2026-09-13)**
 
-**Part 1 delivered (2026-09-12):** the `stripe` package behind a
-`PaymentGateway` port; orders priced entirely server-side; BUY_NOW destination
-charges with `application_fee_amount`; FEE_ONLY plain charges with no transfer
-leg; database-durable idempotency; a raw-body, signature-verified webhook with
-three independent layers of duplicate protection; the Order / Payment /
-PaymentAttempt state machines. 856 tests pass.
+Phase 7 built Stripe Connect marketplace payments in test mode across two
+parts. It has been **removed**, not deferred: Kurdora is a **contact-only
+marketplace** and is never party to a seller's sale (ADR-0014).
 
-**Part 2 delivered (2026-09-12):** a `ConnectGateway` port with a Stripe
-adapter; server-side connected-account creation under a deterministic
-idempotency key; Stripe-hosted onboarding links, minted fresh every time;
-`account.updated` handling that is out-of-order safe and cannot re-enable a
-rejected seller; `charge.*` handling that completes a PaymentAttempt with the
-REAL provider fee and net from an expanded balance transaction; seller
-eligibility hardened to include outstanding requirements; a seller payouts page
-in four languages. 917 tests and 49 E2E tests pass.
+Every category is `CONTACT_ONLY`, enforced by two CHECK constraints. The order,
+payment, Connect-onboarding, payout and webhook surface is deleted. The Stripe
+provider boundary is retained and unwired, for a possible future charge for
+KURDORA'S OWN services — a different thing from processing somebody else's sale.
 
-**Part 2 did NOT deliver, and does not claim to:** any payment UI, payouts,
-refunds, disputes, reconciliation, or a single real payment. **The real Stripe
-API was never called, and no webhook was ever received from Stripe** — this
-environment has no credentials and no Stripe CLI, so
-`tests/api/stripe-live.test.ts` is written and SKIPPED. See
-[16 — Phase 7 Part 2](./16-phase-7-part-2.md) for exactly what is unverified.
+**What replaced it:** the platform safety layer. With no payment step to
+interrupt a bad transaction, screening, reporting and moderation are the only
+controls the platform has. See `docs/18-contact-only-correction.md`.
 
-
-**Gate report:** [15 — Phase 7 gate](./15-phase-7-gate.md) · **ADR:** [0013](./adr/0013-phase-7-payment-architecture.md)
-Architecture decided against Stripe documentation re-verified on 2026-09-12.
-Classified **B — implementation-ready but Stripe business approval still
-required**. Test-mode build may proceed; **live mode is blocked** until written
-Stripe approval exists (R-3). No payment code, package, migration or webhook
-route exists.
-**Starts with re-verification of the Stripe docs and a written decision on
-Accounts v2 vs v1 + controller properties.** Seller onboarding via Stripe-hosted
-onboarding, `account.updated` handling, capability gating, PaymentIntent creation,
-Payment Element, webhook infrastructure (signature verification, exactly-once,
-async processing), idempotency everywhere, **test mode only**.
-*Exit:* full test-mode payment with the Stripe CLI; replayed webhooks cause no double
-credit; a forged signature is rejected and alerted; a simulated timeout-then-retry
-creates exactly one charge; SCA/3DS challenge path passes.
+**Monetisation** is now paid listings, featured/promoted listings, business
+advertising, and seller subscriptions later. **None is implemented.**
 
 ### Phase 8 — Orders, payouts, commissions, refunds
 Order state machine, commission engine with snapshotting, internal ledger, payout

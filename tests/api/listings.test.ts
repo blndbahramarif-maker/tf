@@ -127,8 +127,13 @@ describe.skipIf(!hasDatabase)('listings', () => {
     it('exposes transaction behaviour as DATA, so no client branches on a name', async () => {
       const result = await callRoute(listCategories, '/api/v1/categories', {});
       const data = result.body.data as Array<{ slug: string; transactionFlow: string }>;
-      expect(data.find((c) => c.slug === 'cars')?.transactionFlow).toBe('FEE_ONLY');
-      expect(data.find((c) => c.slug === 'mobile-electronics')?.transactionFlow).toBe('BUY_NOW');
+      // Contact-only everywhere. The field stays in the API because the client
+      // must read behaviour as DATA rather than branching on a category name —
+      // that principle outlives any particular value.
+      expect(data.find((c) => c.slug === 'cars')?.transactionFlow).toBe('CONTACT_ONLY');
+      expect(data.find((c) => c.slug === 'mobile-electronics')?.transactionFlow).toBe(
+        'CONTACT_ONLY',
+      );
     });
 
     it('returns a category with its attribute definitions and options', async () => {

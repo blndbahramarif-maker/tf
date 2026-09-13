@@ -770,9 +770,16 @@ model Category {
   isActive Boolean @default(true) @map("is_active")
 
   /// Transaction behaviour is DATA. No code branches on a category name.
-  transactionFlow     TransactionFlow @default(BUY_NOW) @map("transaction_flow")
-  allowsOnlinePayment Boolean         @default(true) @map("allows_online_payment")
-  /// Who pays the platform fee in FEE_ONLY categories.
+  ///
+  /// CONTACT_ONLY and false are the only values the CHECK constraints
+  /// `categories_contact_only_flow` and
+  /// `categories_no_online_payment_for_seller_goods` permit: Kurdora is a
+  /// contact-only marketplace and is never party to a sale. They are the
+  /// DEFAULTS as well so that a category created without naming them is valid
+  /// — a default the constraint rejects is a trap for the next person.
+  transactionFlow     TransactionFlow @default(CONTACT_ONLY) @map("transaction_flow")
+  allowsOnlinePayment Boolean         @default(false) @map("allows_online_payment")
+  /// Retained for a future Kurdora-service fee. Unused while nothing is paid.
   feePayer            FeePayer        @default(BUYER) @map("fee_payer")
 
   minPriceMinor        BigInt? @map("min_price_minor")

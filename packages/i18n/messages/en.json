@@ -67,12 +67,7 @@
     "metaDescription": "Browse {category} listings.",
     "subcategories": "Subcategories",
     "results": "Listings",
-    "flowNotice": {
-      "BUY_NOW": "Items in this category are bought and paid for through the platform.",
-      "OFFER_THEN_PAY": "Buyers make an offer in this category, and pay once the seller accepts.",
-      "FEE_ONLY": "High-value sales in this category are arranged directly between buyer and seller. Only the platform fee is paid here — never the purchase price.",
-      "CONTACT_ONLY": "Listings in this category are for contact only. No payment is taken through the platform."
-    }
+    "flowNotice": "Buyers and sellers arrange everything between themselves. {brandName} does not take payment, hold money, or take part in the sale."
   },
   "listing": {
     "noImage": "No photo",
@@ -98,14 +93,31 @@
       "FOR_PARTS": "For parts",
       "NOT_APPLICABLE": "Not applicable"
     },
-    "contactNotice": {
-      "BUY_NOW": "Message the seller to ask about this item or make an offer. Paying through the site arrives with the payments release.",
-      "OFFER_THEN_PAY": "Message the seller or make an offer. Paying through the site arrives with the payments release.",
-      "FEE_ONLY": "Message the seller to arrange the sale directly. For this category only the platform fee is ever paid online, never the price of the item.",
-      "CONTACT_ONLY": "Message the seller to arrange this directly."
-    },
+    "contactNotice": "Message the seller to arrange this directly. Payment, delivery and collection are between you and the seller — {brandName} is not part of the transaction and does not check goods or sellers before you deal with them.",
     "contactSeller": "Contact the seller",
-    "signInToContact": "Sign in to contact the seller"
+    "signInToContact": "Sign in to contact the seller",
+    "report": {
+      "open": "Report this listing",
+      "title": "Report this listing",
+      "reason": "Why are you reporting it?",
+      "choose": "Choose a reason",
+      "details": "Anything else we should know (optional)",
+      "send": "Send report",
+      "sending": "Sending…",
+      "cancel": "Cancel",
+      "received": "Thank you. Your report has been received and a person will look at it.",
+      "disclaimer": "Reporting does not remove a listing. A person reviews reports and decides. {brandName} does not inspect goods and cannot confirm that any listing is genuine or lawful.",
+      "reasons": {
+        "prohibited_item": "Prohibited or restricted item",
+        "counterfeit": "Counterfeit or fake",
+        "stolen_goods": "Possibly stolen",
+        "scam": "Scam or fraud",
+        "unsafe_or_illegal": "Unsafe or illegal",
+        "offensive": "Offensive content",
+        "wrong_category": "Wrong category",
+        "other": "Something else"
+      }
+    }
   },
   "sell": {
     "title": "How selling works",
@@ -461,12 +473,7 @@
       "existing": "You already have a conversation about this listing. Open it.",
       "ownListing": "This is your own listing.",
       "offerTitle": "Make an offer",
-      "offerNotice": {
-        "BUY_NOW": "An offer records what you are willing to pay. No money is taken now.",
-        "OFFER_THEN_PAY": "An offer records what you are willing to pay. No money is taken now.",
-        "FEE_ONLY": "For this category the sale is arranged directly between you and the seller. An offer records what you agreed. No money is taken now.",
-        "CONTACT_ONLY": "An offer records what you are willing to pay. No money is taken now."
-      }
+      "offerNotice": "An offer records what you are willing to pay. No money is taken, and you arrange payment with the seller yourselves."
     },
     "report": {
       "title": "Report this conversation",

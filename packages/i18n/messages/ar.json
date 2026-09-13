@@ -67,12 +67,7 @@
     "metaDescription": "تصفح إعلانات {category}.",
     "subcategories": "الفئات الفرعية",
     "results": "الإعلانات",
-    "flowNotice": {
-      "BUY_NOW": "تُشترى سلع هذه الفئة ويُدفع ثمنها عبر المنصة.",
-      "OFFER_THEN_PAY": "في هذه الفئة يقدّم المشتري عرضاً، ويدفع بعد قبول البائع.",
-      "FEE_ONLY": "تُرتَّب عمليات البيع مرتفعة القيمة في هذه الفئة مباشرةً بين المشتري والبائع. لا يُدفع هنا سوى رسوم المنصة — وليس ثمن الشراء إطلاقاً.",
-      "CONTACT_ONLY": "إعلانات هذه الفئة للتواصل فقط. لا تُحصَّل أي مبالغ عبر المنصة."
-    }
+    "flowNotice": "يرتب المشتري والبائع كل شيء فيما بينهما. لا يتلقى {brandName} أي مبالغ ولا يحتفظ بأموال ولا يكون طرفًا في البيع."
   },
   "listing": {
     "noImage": "لا توجد صورة",
@@ -98,14 +93,31 @@
       "FOR_PARTS": "لقطع الغيار",
       "NOT_APPLICABLE": "غير منطبق"
     },
-    "contactNotice": {
-      "BUY_NOW": "Message the seller to ask about this item or make an offer. Paying through the site arrives with the payments release.",
-      "OFFER_THEN_PAY": "Message the seller or make an offer. Paying through the site arrives with the payments release.",
-      "FEE_ONLY": "Message the seller to arrange the sale directly. For this category only the platform fee is ever paid online, never the price of the item.",
-      "CONTACT_ONLY": "Message the seller to arrange this directly."
-    },
+    "contactNotice": "راسل البائع للترتيب مباشرة. الدفع والتسليم والاستلام تتم بينك وبين البائع — {brandName} ليس طرفًا في المعاملة ولا يفحص السلع أو البائعين قبل تعاملك معهم.",
     "contactSeller": "Contact the seller",
-    "signInToContact": "Sign in to contact the seller"
+    "signInToContact": "Sign in to contact the seller",
+    "report": {
+      "open": "الإبلاغ عن هذا الإعلان",
+      "title": "الإبلاغ عن هذا الإعلان",
+      "reason": "لماذا تبلّغ عنه؟",
+      "choose": "اختر سببًا",
+      "details": "أي شيء آخر ينبغي أن نعرفه (اختياري)",
+      "send": "إرسال البلاغ",
+      "sending": "جارٍ الإرسال…",
+      "cancel": "إلغاء",
+      "received": "شكرًا لك. تم استلام بلاغك وسيطّلع عليه شخص.",
+      "disclaimer": "الإبلاغ لا يزيل الإعلان. يراجع شخص البلاغات ويقرر. لا يفحص {brandName} السلع ولا يمكنه تأكيد أن أي إعلان حقيقي أو قانوني.",
+      "reasons": {
+        "prohibited_item": "سلعة محظورة أو مقيدة",
+        "counterfeit": "مقلّد أو مزيّف",
+        "stolen_goods": "قد تكون مسروقة",
+        "scam": "احتيال أو نصب",
+        "unsafe_or_illegal": "غير آمن أو غير قانوني",
+        "offensive": "محتوى مسيء",
+        "wrong_category": "فئة خاطئة",
+        "other": "شيء آخر"
+      }
+    }
   },
   "sell": {
     "title": "كيف يعمل البيع",
@@ -461,12 +473,7 @@
       "existing": "You already have a conversation about this listing. Open it.",
       "ownListing": "This is your own listing.",
       "offerTitle": "Make an offer",
-      "offerNotice": {
-        "BUY_NOW": "An offer records what you are willing to pay. No money is taken now.",
-        "OFFER_THEN_PAY": "An offer records what you are willing to pay. No money is taken now.",
-        "FEE_ONLY": "For this category the sale is arranged directly between you and the seller. An offer records what you agreed. No money is taken now.",
-        "CONTACT_ONLY": "An offer records what you are willing to pay. No money is taken now."
-      }
+      "offerNotice": "يسجّل العرض المبلغ الذي أنت مستعد لدفعه. لا تُؤخذ أي أموال، وترتّبان الدفع مع البائع بأنفسكما."
     },
     "report": {
       "title": "Report this conversation",
