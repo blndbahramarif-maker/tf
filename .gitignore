@@ -38,3 +38,7 @@ pnpm-debug.log*
 # Local object storage. The LocalStorageDriver writes uploaded and re-encoded
 # images here when LOCAL_STORAGE_DIR is unset. User content, never committed.
 .storage/
+
+# Redis snapshot. `redis-server` writes this into its working directory when
+# run locally instead of through Docker. Runtime state, never committed.
+dump.rdb
