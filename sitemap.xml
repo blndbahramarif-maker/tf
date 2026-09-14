@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Replace www.your-domain.co.uk below with your real domain once you have
+  one, then uncomment the Sitemap line in robots.txt. Until then this file
+  does no harm, but search engines cannot use it.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://www.your-domain.co.uk/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>

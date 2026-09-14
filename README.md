@@ -92,18 +92,12 @@ If you host the site on Netlify, add `netlify` and `name="quote"` to the `<form>
 
 ## 4. Putting the website online
 
-The site is a folder of files, so almost any host works:
+**See `DEPLOY.md`** for full step-by-step instructions covering Netlify, Vercel, connecting a
+`.co.uk` domain, and getting listed on Google.
 
-* **Netlify Drop** — drag this folder onto <https://app.netlify.com/drop>; it is live in seconds.
-* **GitHub Pages** — push this repository and enable Pages in the repository settings.
-* **Normal web hosting (cPanel, 123-reg, IONOS, etc.)** — upload the contents of this folder to
-  `public_html` by FTP.
-
-Once you have a domain name, two small edits are worth making:
-
-1. In `index.html`, change `<link rel="canonical" href="./index.html">` to your full address,
-   e.g. `<link rel="canonical" href="https://www.yourdomain.co.uk/">`.
-2. In `robots.txt`, uncomment the `Sitemap:` line and point it at your domain.
+The short version: drag this folder onto <https://app.netlify.com/drop> and the site is live in
+seconds. Other hosts work too — GitHub Pages, or any normal web hosting where you upload the
+contents of this folder to `public_html` by FTP.
 
 ---
 
@@ -128,15 +122,23 @@ and search engines read.
 
 ```
 index.html                 The whole website (one page)
+404.html                   Shown if someone follows a broken link
 robots.txt                 Search engine instructions
+sitemap.xml                Page list for search engines (set your domain after launch)
+site.webmanifest           Name and icon when the site is saved to a phone home screen
+netlify.toml               Hosting settings, used automatically by Netlify
+vercel.json                Hosting settings, used automatically by Vercel
+DEPLOY.md                  Step-by-step guide to publishing and connecting a domain
 assets/css/styles.css      All styling
 assets/js/main.js          Menu, scroll animations, form handling
 assets/fonts/              Barlow Condensed + Inter (self-hosted, SIL Open Font Licence)
-assets/img/                Photographs (WebP + JPEG) and the favicon
+assets/img/                Photographs (AVIF + WebP + JPEG), logo and app icons
 ```
 
-Total page weight is around 1 MB on first load, most of it photographs. Images below the fold are
-lazy-loaded, WebP versions are served to browsers that support them, and the fonts are preloaded.
+The entire page, including every photograph further down, is about **590 KB**; the first screen is
+roughly 240 KB. Each photograph is stored in three formats and the browser picks the smallest one
+it understands (AVIF, then WebP, then JPEG), images below the fold load only as you scroll, and the
+two typefaces are preloaded so text never flashes.
 
 ---
 

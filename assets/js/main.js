@@ -99,12 +99,19 @@
       revealObserver.observe(el);
     });
 
-    /* Safety net: never leave content hidden if an observer misfires. */
-    window.setTimeout(function () {
+    /* Safety net: reveal anything already on screen that the observer
+       missed (fast scrolling, an anchor jump, a restored scroll position).
+       Only what is in view, so sections further down still animate in. */
+    var revealInView = function () {
       Array.prototype.forEach.call(revealItems, function (el) {
-        el.classList.add('is-visible');
+        var box = el.getBoundingClientRect();
+        if (box.top < window.innerHeight * 0.95 && box.bottom > 0) {
+          el.classList.add('is-visible');
+        }
       });
-    }, 2500);
+    };
+    window.addEventListener('load', revealInView);
+    window.setTimeout(revealInView, 1200);
   }
 
   /* 5. Quote form ----------------------------------------------------- */

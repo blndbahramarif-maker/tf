@@ -5,7 +5,7 @@
 <script>document.documentElement.classList.add('js');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mobile Mechanic Rochester | 24/7 Mobile Mechanic</title>
-<meta name="description" content="Mobile mechanic in Rochester, Kent. 24/7 vehicle servicing, repairs and diagnostics carried out at your location, with 8 years of experience. Covering approximately 20 miles of Rochester — call 077067547383.">
+<meta name="description" content="24/7 mobile mechanic in Rochester, Kent. Vehicle servicing, repairs and diagnostics at your location, 8 years of experience. Call&nbsp;077067547383.">
 <meta name="author" content="Harem M S B">
 <meta name="theme-color" content="#0a0d11">
 <meta name="robots" content="index, follow">
@@ -17,11 +17,13 @@
 <meta property="og:site_name" content="Mobile Mechanic">
 <meta property="og:title" content="Mobile Mechanic Rochester | 24/7 Mobile Mechanic">
 <meta property="og:description" content="Professional mobile mechanic services at your door in and around Rochester, Kent. Servicing, repairs and diagnostics, 24 hours a day, 7 days a week.">
-<meta property="og:image" content="assets/img/hero-mechanic-1600.jpg">
+<meta property="og:image" content="assets/img/hero-mechanic-1200.jpg">
 <meta name="twitter:card" content="summary_large_image">
 
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="assets/img/favicon.svg">
+<link rel="icon" href="assets/img/icon-180.png" sizes="180x180">
+<link rel="apple-touch-icon" href="assets/img/icon-180.png">
+<link rel="manifest" href="site.webmanifest">
 
 <link rel="preload" href="assets/fonts/inter-variable.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/barlow-condensed-700.woff2" as="font" type="font/woff2" crossorigin>
@@ -33,7 +35,7 @@
   "@type": "AutoRepair",
   "name": "Mobile Mechanic",
   "description": "Professional mobile mechanic providing vehicle servicing, repairs and diagnostics at the customer's location in and around Rochester, Kent.",
-  "image": "assets/img/hero-mechanic-1600.jpg",
+  "image": "assets/img/hero-mechanic-1200.jpg",
   "telephone": "077067547383",
   "email": "haremmohamed245@gmail.com",
   "founder": { "@type": "Person", "name": "Harem M S B" },
@@ -116,7 +118,7 @@
       <li><svg class="icon"><use href="#i-pin"></use></svg> Rochester, Kent, ME1 3AR</li>
       <li><svg class="icon"><use href="#i-radius"></use></svg> Approximately 20-mile service area</li>
     </ul>
-    <p style="margin:0"><a class="topbar__phone" href="tel:077067547383">Call 077067547383</a></p>
+    <p class="topbar__call"><a class="topbar__phone" href="tel:077067547383">Call&nbsp;077067547383</a></p>
   </div>
 </div>
 
@@ -140,7 +142,7 @@
 
       <div class="nav__actions">
         <a class="btn btn--call nav__call" href="tel:077067547383">
-          <svg class="icon"><use href="#i-phone"></use></svg><span class="nav__call-short">Call</span><span class="nav__call-long">Call Now &middot; 077067547383</span>
+          <svg class="icon"><use href="#i-phone"></use></svg><span class="nav__call-short">Call</span><span class="nav__call-long">Call Now &middot;&nbsp;077067547383</span>
         </a>
         <button class="nav__toggle" type="button" id="navToggle" aria-expanded="false" aria-controls="mobileNav" aria-label="Open menu">
           <svg class="icon icon--menu"><use href="#i-menu"></use></svg>
@@ -159,7 +161,7 @@
         <li><a href="#contact">Contact <svg class="icon"><use href="#i-arrow"></use></svg></a></li>
       </ul>
       <div class="mobile-nav__cta">
-        <a class="btn btn--call btn--block" href="tel:077067547383"><svg class="icon"><use href="#i-phone"></use></svg>Call 077067547383</a>
+        <a class="btn btn--call btn--block" href="tel:077067547383"><svg class="icon"><use href="#i-phone"></use></svg>Call&nbsp;077067547383</a>
         <a class="btn btn--ghost btn--block" href="#contact"><svg class="icon"><use href="#i-clipboard"></use></svg>Get a Quote</a>
       </div>
     </div>
@@ -187,7 +189,7 @@
         </div>
 
         <p class="hero__phone" data-reveal data-reveal-delay="3">
-          <svg class="icon" style="width:20px;height:20px;color:var(--red-bright)"><use href="#i-phone"></use></svg>
+          <svg class="icon icon--accent"><use href="#i-phone"></use></svg>
           <a href="tel:077067547383">Call <strong>077067547383</strong></a>
         </p>
 
@@ -210,8 +212,10 @@
       <div class="hero__media" data-reveal data-reveal-delay="2">
         <div class="hero__frame">
           <picture>
-            <source media="(min-width: 860px)" type="image/webp" srcset="assets/img/hero-mechanic-1600.webp">
-            <source media="(min-width: 860px)" srcset="assets/img/hero-mechanic-1600.jpg">
+            <source media="(min-width: 860px)" type="image/avif" srcset="assets/img/hero-mechanic-1200.avif">
+            <source media="(min-width: 860px)" type="image/webp" srcset="assets/img/hero-mechanic-1200.webp">
+            <source media="(min-width: 860px)" srcset="assets/img/hero-mechanic-1200.jpg">
+            <source type="image/avif" srcset="assets/img/hero-mechanic-900.avif">
             <source type="image/webp" srcset="assets/img/hero-mechanic-900.webp">
             <img src="assets/img/hero-mechanic-900.jpg" width="900" height="1350" fetchpriority="high" decoding="async"
                  alt="Mobile mechanic working on a car engine under an open bonnet with a work light">
@@ -270,6 +274,7 @@
         <div class="split__media media-stack" data-reveal>
           <div class="media media--tall">
             <picture>
+              <source type="image/avif" srcset="assets/img/timing-belt-1000.avif">
               <source type="image/webp" srcset="assets/img/timing-belt-1000.webp">
               <img src="assets/img/timing-belt-1000.jpg" width="1000" height="750" loading="lazy" decoding="async"
                    alt="Close-up of an engine belt running over pulleys inside an engine bay">
@@ -277,6 +282,7 @@
           </div>
           <div class="media media--wide">
             <picture>
+              <source type="image/avif" srcset="assets/img/diagnostics-1000.avif">
               <source type="image/webp" srcset="assets/img/diagnostics-1000.webp">
               <img src="assets/img/diagnostics-1000.jpg" width="1000" height="1500" loading="lazy" decoding="async"
                    alt="Diagnostic laptop plugged into a vehicle to read fault codes">
@@ -284,17 +290,17 @@
           </div>
         </div>
 
-        <div class="section-head" data-reveal data-reveal-delay="1" style="margin-bottom:0">
+        <div class="section-head section-head--flush" data-reveal data-reveal-delay="1">
           <span class="eyebrow">Vehicle Repairs</span>
           <h2>Professional Vehicle Repairs</h2>
           <p class="lede">Timing belts, engine repairs and full vehicle diagnostics carried out at your location by a mechanic with 8 years of experience. Available 24 hours a day, 7 days a week.</p>
-          <div class="btn-row" style="margin-top:1.4rem">
-            <a class="btn btn--call" href="tel:077067547383"><svg class="icon"><use href="#i-phone"></use></svg>Call 077067547383</a>
+          <div class="btn-row btn-row--spaced">
+            <a class="btn btn--call" href="tel:077067547383"><svg class="icon"><use href="#i-phone"></use></svg>Call&nbsp;077067547383</a>
           </div>
         </div>
       </div>
 
-      <ul class="cards" style="margin-top:clamp(2rem,5vw,3.2rem)">
+      <ul class="cards cards--below">
         <li class="card" data-reveal>
           <span class="card__num" aria-hidden="true">04</span>
           <span class="card__icon"><svg class="icon"><use href="#i-belt"></use></svg></span>
@@ -326,21 +332,24 @@
       <div class="split">
         <div class="split__media" data-reveal>
           <div class="media media--tall">
-            <img src="assets/img/wheel-tyre-1000.jpg" width="1000" height="667" loading="lazy" decoding="async"
-                 alt="Mechanic in gloves checking a car wheel and tyre">
+            <picture>
+              <source type="image/avif" srcset="assets/img/wheel-tyre-1000.avif">
+              <img src="assets/img/wheel-tyre-1000.jpg" width="1000" height="667" loading="lazy" decoding="async"
+                   alt="Mechanic in gloves checking a car wheel and tyre">
+            </picture>
           </div>
         </div>
-        <div class="section-head" data-reveal data-reveal-delay="1" style="margin-bottom:0">
+        <div class="section-head section-head--flush" data-reveal data-reveal-delay="1">
           <span class="eyebrow">Exhaust &middot; Suspension &middot; Bearings</span>
           <h2>More Mobile Mechanic Services</h2>
           <p class="lede">Exhaust, suspension and wheel bearing work completed at your home or workplace — no garage visit and no waiting around.</p>
-          <div class="btn-row" style="margin-top:1.4rem">
+          <div class="btn-row btn-row--spaced">
             <a class="btn btn--ghost" href="#contact"><svg class="icon"><use href="#i-clipboard"></use></svg>Get a Quote</a>
           </div>
         </div>
       </div>
 
-      <ul class="cards" style="margin-top:clamp(2rem,5vw,3.2rem)">
+      <ul class="cards cards--below">
         <li class="card" data-reveal>
           <span class="card__num" aria-hidden="true">07</span>
           <span class="card__icon"><svg class="icon"><use href="#i-exhaust"></use></svg></span>
@@ -371,8 +380,11 @@
     <div class="container about__grid">
       <div class="about__media" data-reveal>
         <div class="media">
-          <img src="assets/img/about-mechanic-1000.jpg" width="1000" height="563" loading="lazy" decoding="async"
-               alt="Mechanic inspecting a car engine bay with the bonnet raised">
+          <picture>
+            <source type="image/avif" srcset="assets/img/about-mechanic-1000.avif">
+            <img src="assets/img/about-mechanic-1000.jpg" width="1000" height="563" loading="lazy" decoding="async"
+                 alt="Mechanic inspecting a car engine bay with the bonnet raised">
+          </picture>
         </div>
         <div class="about__badge" aria-hidden="true">
           <strong>8+</strong>
@@ -397,7 +409,7 @@
 
         <div class="about__cta">
           <p>Need a mechanic? Get in touch today.</p>
-          <a class="btn btn--call" href="tel:077067547383"><svg class="icon"><use href="#i-phone"></use></svg>Call 077067547383</a>
+          <a class="btn btn--call" href="tel:077067547383"><svg class="icon"><use href="#i-phone"></use></svg>Call&nbsp;077067547383</a>
         </div>
       </div>
     </div>
@@ -407,7 +419,8 @@
   <section class="cta-band">
     <div class="cta-band__bg" aria-hidden="true">
       <picture>
-        <source type="image/webp" srcset="assets/img/repairs-band-1600.webp">
+        <source type="image/avif" srcset="assets/img/repairs-band-1600.avif">
+              <source type="image/webp" srcset="assets/img/repairs-band-1600.webp">
         <img src="assets/img/repairs-band-1600.jpg" width="1600" height="1200" loading="lazy" decoding="async" alt="">
       </picture>
     </div>
@@ -498,14 +511,14 @@
               </div>
             </li>
           </ul>
-          <div class="btn-row" style="margin-top:1.5rem">
+          <div class="btn-row btn-row--spaced">
             <a class="btn btn--call btn--block" href="tel:077067547383"><svg class="icon"><use href="#i-phone"></use></svg>Call Now</a>
           </div>
         </div>
 
         <div class="form-card" data-reveal data-reveal-delay="1">
           <h3>Request a Quote</h3>
-          <p style="font-size:.95rem">Fill in your details and I will get back to you about your vehicle.</p>
+          <p class="form-intro">Fill in your details and I will get back to you about your vehicle.</p>
 
           <form class="form-grid" id="quoteForm" novalidate>
             <div class="field">
@@ -541,7 +554,7 @@
 
           <p class="form-note">
             <svg class="icon"><use href="#i-info"></use></svg>
-            <span>This website has no server attached, so the form cannot send email on its own. Pressing <strong>Request a Quote</strong> opens your own email app with everything filled in, ready to send to haremmohamed245@gmail.com. For urgent work, please call <a href="tel:077067547383" style="color:#fff;text-decoration:underline">077067547383</a>.</span>
+            <span>This website has no server attached, so the form cannot send email on its own. Pressing <strong>Request a Quote</strong> opens your own email app with everything filled in, ready to send to haremmohamed245@gmail.com. For urgent work, please call&nbsp;<a class="form-note__link" href="tel:077067547383">077067547383</a>.</span>
           </p>
         </div>
       </div>
@@ -601,8 +614,8 @@
     </div>
 
     <div class="footer__bottom">
-      <p style="margin:0">&copy; 2026 Mobile Mechanic. All rights reserved.</p>
-      <p style="margin:0"><a href="tel:077067547383">Call 077067547383</a> &middot; <a href="mailto:haremmohamed245@gmail.com">Email</a></p>
+      <p class="footer__bottom-line">&copy; 2026 Mobile Mechanic. All rights reserved.</p>
+      <p class="footer__bottom-line"><a href="tel:077067547383">Call&nbsp;077067547383</a> &middot; <a href="mailto:haremmohamed245@gmail.com">Email</a></p>
     </div>
   </div>
 </footer>
