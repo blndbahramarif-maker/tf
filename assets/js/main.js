@@ -98,6 +98,13 @@
     Array.prototype.forEach.call(revealItems, function (el) {
       revealObserver.observe(el);
     });
+
+    /* Safety net: never leave content hidden if an observer misfires. */
+    window.setTimeout(function () {
+      Array.prototype.forEach.call(revealItems, function (el) {
+        el.classList.add('is-visible');
+      });
+    }, 2500);
   }
 
   /* 5. Quote form ----------------------------------------------------- */
