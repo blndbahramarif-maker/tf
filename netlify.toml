@@ -18,15 +18,21 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-# The page, stylesheet and script are re-checked on every visit, so edits
-# you publish show up straight away.
+# Security headers on every address, including the bare "/" that visitors
+# actually type. ("/*.html" alone misses it.)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "SAMEORIGIN"
+
+# The page itself is re-checked on every visit, so edits show up straight
+# away. (Netlify already does this for HTML by default.)
 [[headers]]
   for = "/*.html"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
-    X-Content-Type-Options = "nosniff"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    X-Frame-Options = "SAMEORIGIN"
 
 [[headers]]
   for = "/assets/css/*"
