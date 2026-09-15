@@ -12,7 +12,7 @@
   'use strict';
 
   var BUSINESS_EMAIL = 'haremmohamed245@gmail.com';
-  var PHONE = '077067547383';
+  var PHONE = '07767547383';
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* 1. Sticky header ------------------------------------------------- */

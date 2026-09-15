@@ -38,7 +38,7 @@ Then open <http://localhost:8000> in your browser.
 | Footer | Business details, menu links, all nine services, copyright |
 | Mobile only | Sticky bottom bar with **Call Now** and **Get a Quote** |
 
-The phone number **077067547383** appears in the top bar, the header button, the hero, the repairs
+The phone number **07767547383** appears in the top bar, the header button, the hero, the repairs
 section, the about call-to-action, the service-area section, the contact card, the footer and the
 mobile sticky bar. Every instance is a `tel:` link, so tapping it starts a call. The email address
 is a `mailto:` link everywhere it appears.
@@ -105,7 +105,7 @@ contents of this folder to `public_html` by FTP.
 
 | What you want to change | Where |
 | --- | --- |
-| Phone number | Search `077067547383` in `index.html` (and `PHONE` in `assets/js/main.js`) and replace everywhere |
+| Phone number | Search `07767547383` in `index.html` (and `PHONE` in `assets/js/main.js`) and replace everywhere |
 | Email address | Search `haremmohamed245@gmail.com` in `index.html` (and `BUSINESS_EMAIL` in `assets/js/main.js`) |
 | Service names and descriptions | The `<li class="card">` blocks in `index.html` |
 | About text | The `#about` section in `index.html` |
