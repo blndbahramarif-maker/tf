@@ -2,7 +2,8 @@
 
 Everything the business owner needs to know about the website.
 
-**Live website:** https://mobile-mechanic-rochester.netlify.app
+**Live website:** https://mobilemechanicrochester.co.uk
+(also reachable at https://mobile-mechanic-rochester.netlify.app)
 
 ---
 
