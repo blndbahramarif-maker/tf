@@ -11,7 +11,6 @@
 (function () {
   'use strict';
 
-  var BUSINESS_EMAIL = 'haremmohamed245@gmail.com';
   var PHONE = '07767547383';
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -116,7 +115,7 @@
 
   /* 5. Quote form ----------------------------------------------------- */
   /* There is no backend on this site. The form collects the details and
-     hands them to the visitor's own email app, pre-addressed to the
+     hands them to the visitor's own messaging app, pre-addressed to the
      business. See README.md to connect a form service instead.        */
   var form = document.getElementById('quoteForm');
   var status = document.getElementById('formStatus');
@@ -134,7 +133,6 @@
       var data = {
         name: form.name.value.trim(),
         phone: form.phone.value.trim(),
-        email: form.email.value.trim(),
         vehicle: form.vehicle.value.trim(),
         problem: form.problem.value.trim(),
         datetime: form.datetime.value.trim()
@@ -154,28 +152,22 @@
 
       var lines = [
         'Quote request from the Mobile Mechanic website',
-        '',
         'Name: ' + data.name,
         'Phone: ' + data.phone,
-        'Email: ' + (data.email || 'Not provided'),
-        'Vehicle make & model: ' + (data.vehicle || 'Not provided'),
+        'Vehicle: ' + (data.vehicle || 'Not provided'),
         'Preferred date/time: ' + (data.datetime || 'Not provided'),
-        '',
-        'Problem:',
-        data.problem
+        'Problem: ' + data.problem
       ];
 
-      var mailto =
-        'mailto:' + BUSINESS_EMAIL +
-        '?subject=' + encodeURIComponent('Quote request - ' + data.name) +
-        '&body=' + encodeURIComponent(lines.join('\n'));
-
-      window.location.href = mailto;
+      /* sms: opens the visitor's messaging app with the details filled in.
+         The ?&body= form works on iOS, &body= on Android.              */
+      var body = encodeURIComponent(lines.join('\n'));
+      var isApple = /iP(hone|ad|od)|Mac/.test(navigator.userAgent);
+      window.location.href = 'sms:' + PHONE + (isApple ? '&body=' : '?body=') + body;
 
       showStatus(
-        'Your email app should now open with your details ready to send. ' +
-        'If nothing happens, please call <a href="tel:' + PHONE + '" style="color:#fff">' + PHONE + '</a> ' +
-        'or email <a href="mailto:' + BUSINESS_EMAIL + '" style="color:#fff">' + BUSINESS_EMAIL + '</a>.'
+        'Your messaging app should now open with your details ready to send. ' +
+        'If nothing happens, please call <a href="tel:' + PHONE + '" style="color:#fff">' + PHONE + '</a>.'
       );
     });
   }

@@ -82,7 +82,7 @@ pushed to GitHub — the live site updates itself within a minute.
 
 The form on the contact section does **not** send email by itself, because the site has no
 server. When a customer presses *Request a Quote*, their own email app opens with all their
-details filled in, addressed to **haremmohamed245@gmail.com**, ready for them to send.
+details filled in, addressed to **07767547383**, ready for them to send.
 
 To have enquiries land in the inbox automatically instead, connect a free form service —
 `README.md` section 3 gives the step-by-step instructions (about five minutes).
@@ -127,8 +127,7 @@ Business details used throughout:
 Business:     Mobile Mechanic
 Mechanic:     Lawe H
 Phone:        07767547383
-Email:        haremmohamed245@gmail.com
-Base:         Rochester, Kent, ME1 3AR
+Base:         Rochester, Kent
 Availability: 24 hours a day, 7 days a week
 Service area: Approximately 20 miles from Rochester
 Experience:   8 years

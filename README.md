@@ -52,7 +52,7 @@ The "Enquire" button on each service card scrolls the visitor to the contact for
 **The form does not send email on its own, because a static website has no server.**
 
 Right now, pressing **Request a Quote** validates the details and then opens the visitor's own email
-app with a message pre-addressed to `haremmohamed245@gmail.com`, with their name, phone, email,
+app with a message pre-addressed to `07767547383`, with their name, phone, email,
 vehicle, problem and preferred date/time already filled in. They still have to press *send* in their
 email app. This works without any account or subscription, and nothing is lost if a visitor ignores
 it — the phone number is the main call to action.
@@ -62,7 +62,7 @@ The two simplest options:
 
 ### Option A — Web3Forms (no account needed to start)
 
-1. Go to <https://web3forms.com> and enter `haremmohamed245@gmail.com` to get an **access key**.
+1. Go to <https://web3forms.com> and enter `07767547383` to get an **access key**.
 2. In `index.html`, find `<form class="form-grid" id="quoteForm" novalidate>` and change it to:
 
    ```html
@@ -78,7 +78,7 @@ The two simplest options:
 
 ### Option B — Formspree
 
-1. Create a form at <https://formspree.io> using `haremmohamed245@gmail.com`; you receive an
+1. Create a form at <https://formspree.io> using `07767547383`; you receive an
    endpoint such as `https://formspree.io/f/abcdwxyz`.
 2. Change the form tag to `<form class="form-grid" id="quoteForm" action="https://formspree.io/f/abcdwxyz" method="POST">`.
 3. Do steps 3 and 4 from Option A.
@@ -106,7 +106,7 @@ contents of this folder to `public_html` by FTP.
 | What you want to change | Where |
 | --- | --- |
 | Phone number | Search `07767547383` in `index.html` (and `PHONE` in `assets/js/main.js`) and replace everywhere |
-| Email address | Search `haremmohamed245@gmail.com` in `index.html` (and `BUSINESS_EMAIL` in `assets/js/main.js`) |
+| Email address | Search `07767547383` in `index.html` (and `BUSINESS_EMAIL` in `assets/js/main.js`) |
 | Service names and descriptions | The `<li class="card">` blocks in `index.html` |
 | About text | The `#about` section in `index.html` |
 | Copyright year | Bottom of `index.html`, in `footer__bottom` |
