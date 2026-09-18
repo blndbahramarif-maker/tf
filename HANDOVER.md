@@ -116,7 +116,7 @@ One page that scrolls, containing:
 * Hero: 24/7 mobile mechanic, Rochester, approximately 20-mile service area, 8 years of
   experience, Call Now and Get a Quote buttons
 * All nine services, in three groups of three
-* About section — Harem M S B, 8 years of experience, why a mobile service is convenient
+* About section — Lawe H, 8 years of experience, why a mobile service is convenient
 * Service area and 24/7 call-to-action
 * Contact details and a quote form
 * Footer with every service listed
@@ -125,7 +125,7 @@ Business details used throughout:
 
 ```
 Business:     Mobile Mechanic
-Mechanic:     Harem M S B
+Mechanic:     Lawe H
 Phone:        07767547383
 Email:        haremmohamed245@gmail.com
 Base:         Rochester, Kent, ME1 3AR

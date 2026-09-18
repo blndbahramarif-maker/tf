@@ -1,6 +1,6 @@
 # Mobile Mechanic — Rochester, Kent
 
-Website for **Mobile Mechanic**, a 24/7 mobile mechanic business run by **Harem M S B**, based in
+Website for **Mobile Mechanic**, a 24/7 mobile mechanic business run by **Lawe H**, based in
 Rochester, Kent and travelling approximately 20 miles to customers.
 
 It is a static website: plain HTML, CSS and a small amount of JavaScript. There is no build step,
