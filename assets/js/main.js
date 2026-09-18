@@ -12,6 +12,7 @@
   'use strict';
 
   var PHONE = '07767547383';
+  var WHATSAPP = 'https://wa.me/447767547383';
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* 1. Sticky header ------------------------------------------------- */
@@ -159,14 +160,11 @@
         'Problem: ' + data.problem
       ];
 
-      /* sms: opens the visitor's messaging app with the details filled in.
-         The ?&body= form works on iOS, &body= on Android.              */
-      var body = encodeURIComponent(lines.join('\n'));
-      var isApple = /iP(hone|ad|od)|Mac/.test(navigator.userAgent);
-      window.location.href = 'sms:' + PHONE + (isApple ? '&body=' : '?body=') + body;
+      /* Opens WhatsApp with the details filled in, ready to send. */
+      window.open(WHATSAPP + '?text=' + encodeURIComponent(lines.join('\n')), '_blank', 'noopener');
 
       showStatus(
-        'Your messaging app should now open with your details ready to send. ' +
+        'WhatsApp should now open with your details ready to send. ' +
         'If nothing happens, please call <a href="tel:' + PHONE + '" style="color:#fff">' + PHONE + '</a>.'
       );
     });
