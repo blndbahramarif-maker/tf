@@ -183,6 +183,8 @@
     </nav>
   </div>
 
+  <span class="header__progress" id="scrollProgress" aria-hidden="true"></span>
+
   <div class="mobile-nav" id="mobileNav">
     <div class="container">
       <ul>
@@ -205,8 +207,21 @@
   <!-- SCROLL 1 — Hero                                             -->
   <!-- =========================================================== -->
   <section class="scroll hero" id="home">
+    <div class="hero__scene" aria-hidden="true">
+      <picture class="hero__bg" data-parallax="0.12">
+        <source type="image/avif" srcset="assets/img/repairs-band-1600.avif">
+        <source type="image/webp" srcset="assets/img/repairs-band-1600.webp">
+        <img src="assets/img/repairs-band-1600.jpg" width="1600" height="1200" alt="">
+      </picture>
+      <span class="hero__scrim"></span>
+      <span class="hero__beam"></span>
+      <span class="hero__grid"></span>
+    </div>
+
     <div class="container hero__inner">
       <div class="hero__copy">
+        <p class="kicker reveal"><span></span> Mobile mechanic — Rochester &amp; Medway</p>
+
         <div class="lockup reveal">
           <span class="logo" aria-hidden="true"><span>R</span><span class="logo__d">D</span><span>F</span></span>
           <div class="lockup__rule" aria-hidden="true"><span></span><span></span></div>
@@ -217,9 +232,8 @@
         <h1 class="sr-only">RDF Mobile Mechanic — servicing, brakes and repairs at your door</h1>
 
         <p class="hero__lead reveal">
-          Servicing, brakes, timing belts, clutches, diagnostics and general repairs — carried out on
-          your driveway, outside your workplace or at the roadside. No garage drop-off, no courtesy
-          car, no waiting room. Experienced, fully equipped and priced up front.
+          Servicing, brakes, timing belts, clutches, diagnostics and repairs — carried out properly
+          at your home, your workplace or the roadside. Priced up front, no garage visit.
         </p>
 
         <div class="btn-row reveal">
@@ -229,20 +243,17 @@
           <a class="btn btn--wa" href="https://wa.me/447706696124" rel="noopener">
             <svg class="icon"><use href="#i-whatsapp"></use></svg> WhatsApp us
           </a>
-          <a class="btn btn--ghost" href="#services">
-            View services <svg class="icon"><use href="#i-arrow"></use></svg>
-          </a>
         </div>
 
         <ul class="hero__pills reveal">
-          <li class="pill"><svg class="icon"><use href="#i-shield"></use></svg> Member of Checkatrade</li>
-          <li class="pill"><svg class="icon"><use href="#i-van"></use></svg> Fully mobile service</li>
-          <li class="pill"><svg class="icon"><use href="#i-tag"></use></svg> Competitive prices</li>
+          <li class="pill"><svg class="icon"><use href="#i-shield"></use></svg> Checkatrade member</li>
+          <li class="pill"><svg class="icon"><use href="#i-van"></use></svg> Fully mobile</li>
+          <li class="pill"><svg class="icon"><use href="#i-tag"></use></svg> Priced up front</li>
         </ul>
       </div>
 
       <div class="hero__media reveal">
-        <div class="hero__frame">
+        <div class="hero__frame" data-tilt data-tilt-max="7">
           <picture>
             <source type="image/avif" srcset="assets/img/hero-mechanic-900.avif 900w, assets/img/hero-mechanic-1200.avif 1200w" sizes="(max-width: 960px) 92vw, 44vw">
             <source type="image/webp" srcset="assets/img/hero-mechanic-900.webp 900w, assets/img/hero-mechanic-1200.webp 1200w" sizes="(max-width: 960px) 92vw, 44vw">
@@ -263,13 +274,19 @@
       </div>
     </div>
 
-    <div class="container">
-      <div class="strip reveal">
-        <ul>
-          <li>Fast</li>
-          <li>Reliable</li>
-          <li>Convenient</li>
-        </ul>
+    <div class="hero__bottom">
+      <div class="container">
+        <div class="strip">
+          <ul>
+            <li>Fast</li>
+            <li>Reliable</li>
+            <li>Convenient</li>
+          </ul>
+        </div>
+        <a class="scrollcue" href="#services" aria-label="Scroll to services">
+          <span class="scrollcue__mouse"><span></span></span>
+          <span class="scrollcue__label">Scroll</span>
+        </a>
       </div>
     </div>
   </section>
@@ -278,6 +295,7 @@
   <!-- SCROLL 2 — Services                                         -->
   <!-- =========================================================== -->
   <section class="scroll scroll--alt" id="services">
+    <span class="ghost" aria-hidden="true" data-parallax="0.05">Services</span>
     <div class="container">
       <div class="section-head">
         <p class="count"><b>01</b> — Our work</p>
@@ -291,7 +309,7 @@
       </div>
 
       <div class="grid services__grid">
-        <article class="service reveal">
+        <article class="service reveal" data-tilt>
           <div class="hex"><svg class="icon"><use href="#i-oil"></use></svg></div>
           <div>
             <h3>Servicing</h3>
@@ -300,7 +318,7 @@
           <a class="service__more" href="#contact">Enquire <svg class="icon"><use href="#i-arrow"></use></svg></a>
         </article>
 
-        <article class="service reveal">
+        <article class="service reveal" data-tilt>
           <div class="hex"><svg class="icon"><use href="#i-brake"></use></svg></div>
           <div>
             <h3>Brakes</h3>
@@ -309,7 +327,7 @@
           <a class="service__more" href="#contact">Enquire <svg class="icon"><use href="#i-arrow"></use></svg></a>
         </article>
 
-        <article class="service reveal">
+        <article class="service reveal" data-tilt>
           <div class="hex"><svg class="icon"><use href="#i-belt"></use></svg></div>
           <div>
             <h3>Timing belts</h3>
@@ -318,7 +336,7 @@
           <a class="service__more" href="#contact">Enquire <svg class="icon"><use href="#i-arrow"></use></svg></a>
         </article>
 
-        <article class="service reveal">
+        <article class="service reveal" data-tilt>
           <div class="hex"><svg class="icon"><use href="#i-clutch"></use></svg></div>
           <div>
             <h3>Clutches</h3>
@@ -327,7 +345,7 @@
           <a class="service__more" href="#contact">Enquire <svg class="icon"><use href="#i-arrow"></use></svg></a>
         </article>
 
-        <article class="service reveal">
+        <article class="service reveal" data-tilt>
           <div class="hex"><svg class="icon"><use href="#i-diag"></use></svg></div>
           <div>
             <h3>Diagnostics</h3>
@@ -336,7 +354,7 @@
           <a class="service__more" href="#contact">Enquire <svg class="icon"><use href="#i-arrow"></use></svg></a>
         </article>
 
-        <article class="service reveal">
+        <article class="service reveal" data-tilt>
           <div class="hex"><svg class="icon"><use href="#i-tools"></use></svg></div>
           <div>
             <h3>General repairs</h3>
@@ -357,9 +375,10 @@
   <!-- SCROLL 3 — Why choose RDF                                   -->
   <!-- =========================================================== -->
   <section class="scroll" id="why">
+    <span class="ghost ghost--right" aria-hidden="true" data-parallax="0.05">Trusted</span>
     <div class="container">
       <div class="why__inner">
-        <div class="why__media reveal">
+        <div class="why__media reveal" data-tilt data-tilt-max="6">
           <picture>
             <source type="image/avif" srcset="assets/img/about-mechanic-1000.avif">
             <img src="assets/img/about-mechanic-1000.jpg" width="1000" height="750" loading="lazy"
@@ -409,10 +428,10 @@
       </div>
 
       <ul class="stats reveal">
-        <li class="stat"><b>6</b><span>Core services covered</span></li>
-        <li class="stat"><b>100%</b><span>Work done at your location</span></li>
-        <li class="stat"><b>1</b><span>Number for calls &amp; WhatsApp</span></li>
-        <li class="stat"><b>0</b><span>Garage waiting rooms</span></li>
+        <li class="stat"><b data-count-to="6">6</b><span>Core services covered</span></li>
+        <li class="stat"><b data-count-to="100" data-count-suffix="%">100%</b><span>Work done at your location</span></li>
+        <li class="stat"><b data-count-to="1">1</b><span>Number for calls &amp; WhatsApp</span></li>
+        <li class="stat"><b data-count-to="0">0</b><span>Garage waiting rooms</span></li>
       </ul>
 
       <div class="member reveal">
@@ -427,6 +446,7 @@
   <!-- SCROLL 4 — How it works & coverage                          -->
   <!-- =========================================================== -->
   <section class="scroll scroll--alt" id="how">
+    <span class="ghost" aria-hidden="true" data-parallax="0.05">Mobile</span>
     <div class="container">
       <div class="section-head section-head--center">
         <p class="count"><b>03</b> — How it works</p>
@@ -435,17 +455,17 @@
       </div>
 
       <div class="grid steps">
-        <article class="step reveal">
+        <article class="step reveal" data-tilt data-tilt-max="6">
           <div class="hex"><svg class="icon"><use href="#i-chat"></use></svg></div>
           <h3>Call or WhatsApp</h3>
           <p>Tell us the make, model, mileage and what the vehicle is doing. Photos and videos over WhatsApp help. You get a clear price or a diagnostic plan there and then.</p>
         </article>
-        <article class="step reveal">
+        <article class="step reveal" data-tilt data-tilt-max="6">
           <div class="hex"><svg class="icon"><use href="#i-van"></use></svg></div>
           <h3>We come to you</h3>
           <p>We arrive at your home, your workplace or the roadside with the tools and the parts for the job. You carry on with your day.</p>
         </article>
-        <article class="step reveal">
+        <article class="step reveal" data-tilt data-tilt-max="6">
           <div class="hex"><svg class="icon"><use href="#i-clipboard"></use></svg></div>
           <h3>Job done &amp; explained</h3>
           <p>The work is completed on site, the old parts are there to see and anything extra is agreed with you before it is fitted. Never a surprise on the bill.</p>
@@ -487,6 +507,7 @@
   <!-- SCROLL 5 — Contact                                          -->
   <!-- =========================================================== -->
   <section class="scroll scroll--black" id="contact">
+    <span class="ghost ghost--right" aria-hidden="true" data-parallax="0.05">Call</span>
     <div class="container">
       <div class="section-head">
         <p class="count"><b>04</b> — Get in touch</p>
@@ -496,7 +517,7 @@
 
       <div class="contact__inner">
         <div>
-          <div class="callcard reveal">
+          <div class="callcard reveal" data-tilt data-tilt-max="5">
             <span>Call or WhatsApp</span>
             <a class="callcard__number" href="tel:07706696124">07706 696124</a>
             <div class="btn-row">
@@ -671,6 +692,8 @@
   <a class="actionbar__call" href="tel:07706696124"><svg class="icon"><use href="#i-phone"></use></svg> Call</a>
   <a class="actionbar__wa" href="https://wa.me/447706696124" rel="noopener"><svg class="icon"><use href="#i-whatsapp"></use></svg> WhatsApp</a>
 </div>
+
+<div class="grain" aria-hidden="true"></div>
 
 <script src="assets/js/main.js" defer></script>
 </body>

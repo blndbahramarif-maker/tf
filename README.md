@@ -130,7 +130,25 @@ Anything real can be added later.
 
 ---
 
-## 7. Accessibility and performance notes
+## 7. The cinematic layer
+
+The page is deliberately filmic: a darkened workshop photograph behind the hero with a slow
+Ken Burns drift, a red key light, a perspective floor grid, film grain over the whole page,
+and oversized outlined words drifting behind each section.
+
+The depth is real CSS 3D, not images: the cards, the hero photograph and the call card tilt
+towards the pointer (`[data-tilt]` in `index.html`, handled in `assets/js/main.js`), the
+hexagon icons sit forward of their cards on the Z axis, and sections rise out of the page as
+they enter the viewport.
+
+All of it is switched off for visitors whose system asks for reduced motion, and the tilt
+never runs on touch screens — a finger cannot hover, and a tilt on tap just feels loose.
+To dial the whole effect down, lower `--shadow-3d`, the `.grain` opacity, or delete the
+`data-tilt` attributes.
+
+---
+
+## 8. Accessibility and performance notes
 
 * Every image has alternative text; the icons are decorative SVG symbols.
 * Colour contrast follows the flyer's white-on-black, which passes AA comfortably.

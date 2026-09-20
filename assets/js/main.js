@@ -7,6 +7,10 @@
    4. Scroll reveal animations
    5. Quote form -> pre-written WhatsApp message
    6. Current year in the footer
+   7. Reading-progress bar
+   8. Pointer-driven 3D tilt on cards and photographs
+   9. Scroll parallax for the hero scene and the ghost words
+   10. Stat counters
    ============================================================= */
 (function () {
   'use strict';
@@ -197,4 +201,121 @@
   /* 6. Footer year ----------------------------------------------------- */
   var year = document.getElementById('year');
   if (year) year.textContent = String(new Date().getFullYear());
+
+  /* 7. Reading-progress bar --------------------------------------------- */
+  var progress = document.getElementById('scrollProgress');
+
+  /* 8. 3D tilt ----------------------------------------------------------- */
+  /* Pointer-driven only: a finger cannot hover, and a tilt that fires on
+     touch just makes the page feel loose. */
+  var finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  var tiltables = Array.prototype.slice.call(document.querySelectorAll('[data-tilt]'));
+
+  if (finePointer && !reduceMotion) {
+    tiltables.forEach(function (card) {
+      var max = parseFloat(card.getAttribute('data-tilt-max')) || 8;
+      var restX = 0;
+      var restY = 0;
+      var frame = null;
+
+      /* The hero photograph sits at an angle to begin with — tilt from there. */
+      if (card.classList.contains('hero__frame')) {
+        restX = 2.5;
+        restY = -7;
+      }
+
+      var sheen = document.createElement('span');
+      sheen.className = 'tilt-sheen';
+      card.appendChild(sheen);
+
+      card.addEventListener('pointermove', function (event) {
+        if (frame) return;
+        frame = requestAnimationFrame(function () {
+          frame = null;
+          var box = card.getBoundingClientRect();
+          var px = (event.clientX - box.left) / box.width;
+          var py = (event.clientY - box.top) / box.height;
+          card.style.setProperty('--ry', (restY + (px - 0.5) * max * 2).toFixed(2) + 'deg');
+          card.style.setProperty('--rx', (restX - (py - 0.5) * max * 2).toFixed(2) + 'deg');
+          card.style.setProperty('--mx', (px * 100).toFixed(1) + '%');
+          card.style.setProperty('--my', (py * 100).toFixed(1) + '%');
+          card.classList.add('is-tilting');
+        });
+      });
+
+      card.addEventListener('pointerleave', function () {
+        card.classList.remove('is-tilting');
+        card.style.setProperty('--rx', restX + 'deg');
+        card.style.setProperty('--ry', restY + 'deg');
+      });
+    });
+  }
+
+  /* 9. Parallax ---------------------------------------------------------- */
+  var layers = Array.prototype.slice.call(document.querySelectorAll('[data-parallax]'));
+  var ticking = false;
+
+  function paint() {
+    ticking = false;
+
+    if (progress) {
+      var scrollable = document.documentElement.scrollHeight - window.innerHeight;
+      var ratio = scrollable > 0 ? window.scrollY / scrollable : 0;
+      progress.style.setProperty('--progress', Math.min(1, Math.max(0, ratio)).toFixed(4));
+    }
+
+    if (reduceMotion) return;
+
+    for (var i = 0; i < layers.length; i++) {
+      var layer = layers[i];
+      var depth = parseFloat(layer.getAttribute('data-parallax')) || 0.08;
+      var box = layer.getBoundingClientRect();
+      var offset = (box.top + box.height / 2 - window.innerHeight / 2) * -depth;
+      var centred = layer.classList.contains('ghost') ? ' translateY(-50%)' : '';
+      layer.style.transform = 'translate3d(0, ' + offset.toFixed(1) + 'px, 0)' + centred;
+    }
+  }
+
+  function requestPaint() {
+    if (!ticking) {
+      ticking = true;
+      requestAnimationFrame(paint);
+    }
+  }
+
+  window.addEventListener('scroll', requestPaint, { passive: true });
+  window.addEventListener('resize', requestPaint);
+  requestPaint();
+
+  /* 10. Stat counters ----------------------------------------------------- */
+  var counters = Array.prototype.slice.call(document.querySelectorAll('[data-count-to]'));
+
+  function countUp(el) {
+    var target = parseFloat(el.getAttribute('data-count-to')) || 0;
+    var suffix = el.getAttribute('data-count-suffix') || '';
+    var duration = 1300;
+    var started = null;
+
+    function step(now) {
+      if (started === null) started = now;
+      var t = Math.min(1, (now - started) / duration);
+      var eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = Math.round(target * eased) + suffix;
+      if (t < 1) requestAnimationFrame(step);
+    }
+
+    requestAnimationFrame(step);
+  }
+
+  if (counters.length && !reduceMotion && 'IntersectionObserver' in window) {
+    var countObserver = new IntersectionObserver(function (entries, observer) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        countUp(entry.target);
+        observer.unobserve(entry.target);
+      });
+    }, { threshold: 0.6 });
+
+    counters.forEach(function (el) { countObserver.observe(el); });
+  }
 })();
