@@ -201,6 +201,16 @@
   </div>
 </header>
 
+<nav class="rail" id="rail" aria-label="Scroll sections">
+  <ol>
+    <li><a href="#home" data-rail="home"><span class="rail__n">01</span><span class="rail__label">Home</span></a></li>
+    <li><a href="#services" data-rail="services"><span class="rail__n">02</span><span class="rail__label">Services</span></a></li>
+    <li><a href="#why" data-rail="why"><span class="rail__n">03</span><span class="rail__label">Why RDF</span></a></li>
+    <li><a href="#how" data-rail="how"><span class="rail__n">04</span><span class="rail__label">How it works</span></a></li>
+    <li><a href="#contact" data-rail="contact"><span class="rail__n">05</span><span class="rail__label">Contact</span></a></li>
+  </ol>
+</nav>
+
 <main id="main">
 
   <!-- =========================================================== -->
@@ -220,7 +230,7 @@
 
     <div class="container hero__inner">
       <div class="hero__copy">
-        <p class="kicker reveal"><span></span> Mobile mechanic — Rochester &amp; Medway</p>
+        <p class="count reveal"><b>Scroll 01</b> <i>/ 05</i> — Rochester &amp; Medway</p>
 
         <div class="lockup reveal">
           <span class="logo" aria-hidden="true"><span>R</span><span class="logo__d">D</span><span>F</span></span>
@@ -253,7 +263,7 @@
       </div>
 
       <div class="hero__media reveal">
-        <div class="hero__frame" data-tilt data-tilt-max="7">
+        <div class="hero__frame" data-tilt data-tilt-max="9">
           <picture>
             <source type="image/avif" srcset="assets/img/hero-mechanic-900.avif 900w, assets/img/hero-mechanic-1200.avif 1200w" sizes="(max-width: 960px) 92vw, 44vw">
             <source type="image/webp" srcset="assets/img/hero-mechanic-900.webp 900w, assets/img/hero-mechanic-1200.webp 1200w" sizes="(max-width: 960px) 92vw, 44vw">
@@ -298,70 +308,87 @@
     <span class="ghost" aria-hidden="true" data-parallax="0.05">Services</span>
     <div class="container">
       <div class="section-head">
-        <p class="count"><b>01</b> — Our work</p>
+        <p class="count"><b>Scroll 02</b> <i>/ 05</i> — Our work</p>
         <span class="ribbon">Services we offer</span>
         <h2 class="sr-only">Services we offer</h2>
         <p>
-          Everything a small garage does for routine work and common failures, brought to your
-          address in a fully stocked van. Tell us the make, model and the symptoms and you will get a
-          clear price before anything is touched.
+          Everything a small garage does for routine work and common failures — at your address,
+          priced before anything is touched.
         </p>
       </div>
 
       <div class="grid services__grid">
-        <article class="service reveal" data-tilt>
-          <div class="hex"><svg class="icon"><use href="#i-oil"></use></svg></div>
-          <div>
-            <h3>Servicing</h3>
-            <p>Keep your vehicle running smoothly and efficiently. Interim and full services with oil, filters and a full check-over, recorded for your service history.</p>
+        <a class="service reveal" data-tilt data-tilt-max="11" href="#contact">
+          <div class="service__row">
+            <div class="hex"><svg class="icon"><use href="#i-oil"></use></svg></div>
+            <div>
+              <h3>Servicing</h3>
+              <p>Oil, filters and a full check-over, recorded for your service history.</p>
+            </div>
           </div>
-          <a class="service__more" href="#contact">Enquire <svg class="icon"><use href="#i-arrow"></use></svg></a>
-        </article>
+          <span class="service__go" aria-hidden="true"><svg class="icon"><use href="#i-arrow"></use></svg></span>
+          <span class="sr-only">Enquire about this service</span>
+        </a>
 
-        <article class="service reveal" data-tilt>
-          <div class="hex"><svg class="icon"><use href="#i-brake"></use></svg></div>
-          <div>
-            <h3>Brakes</h3>
-            <p>Safe stopping power when you need it most. Pads, discs, calipers, shoes and fluid changes — inspected first, then replaced with quality parts.</p>
+        <a class="service reveal" data-tilt data-tilt-max="11" href="#contact">
+          <div class="service__row">
+            <div class="hex"><svg class="icon"><use href="#i-brake"></use></svg></div>
+            <div>
+              <h3>Brakes</h3>
+              <p>Pads, discs, calipers and fluid — inspected before anything is replaced.</p>
+            </div>
           </div>
-          <a class="service__more" href="#contact">Enquire <svg class="icon"><use href="#i-arrow"></use></svg></a>
-        </article>
+          <span class="service__go" aria-hidden="true"><svg class="icon"><use href="#i-arrow"></use></svg></span>
+          <span class="sr-only">Enquire about this service</span>
+        </a>
 
-        <article class="service reveal" data-tilt>
-          <div class="hex"><svg class="icon"><use href="#i-belt"></use></svg></div>
-          <div>
-            <h3>Timing belts</h3>
-            <p>Prevent costly engine damage with timely replacement. Belts, tensioners and water pumps changed to the manufacturer's schedule and torque settings.</p>
+        <a class="service reveal" data-tilt data-tilt-max="11" href="#contact">
+          <div class="service__row">
+            <div class="hex"><svg class="icon"><use href="#i-belt"></use></svg></div>
+            <div>
+              <h3>Timing belts</h3>
+              <p>Belts, tensioners and water pumps, to the manufacturer's schedule.</p>
+            </div>
           </div>
-          <a class="service__more" href="#contact">Enquire <svg class="icon"><use href="#i-arrow"></use></svg></a>
-        </article>
+          <span class="service__go" aria-hidden="true"><svg class="icon"><use href="#i-arrow"></use></svg></span>
+          <span class="sr-only">Enquire about this service</span>
+        </a>
 
-        <article class="service reveal" data-tilt>
-          <div class="hex"><svg class="icon"><use href="#i-clutch"></use></svg></div>
-          <div>
-            <h3>Clutches</h3>
-            <p>Smooth gear changes and better performance. Slipping, dragging or juddering clutches diagnosed and replaced — kits, bearings and flywheels where needed.</p>
+        <a class="service reveal" data-tilt data-tilt-max="11" href="#contact">
+          <div class="service__row">
+            <div class="hex"><svg class="icon"><use href="#i-clutch"></use></svg></div>
+            <div>
+              <h3>Clutches</h3>
+              <p>Slipping, dragging or juddering clutches diagnosed and replaced on site.</p>
+            </div>
           </div>
-          <a class="service__more" href="#contact">Enquire <svg class="icon"><use href="#i-arrow"></use></svg></a>
-        </article>
+          <span class="service__go" aria-hidden="true"><svg class="icon"><use href="#i-arrow"></use></svg></span>
+          <span class="sr-only">Enquire about this service</span>
+        </a>
 
-        <article class="service reveal" data-tilt>
-          <div class="hex"><svg class="icon"><use href="#i-diag"></use></svg></div>
-          <div>
-            <h3>Diagnostics</h3>
-            <p>Accurate fault finding and expert advice. Warning lights read with professional equipment, then explained in plain English with the options and the cost.</p>
+        <a class="service reveal" data-tilt data-tilt-max="11" href="#contact">
+          <div class="service__row">
+            <div class="hex"><svg class="icon"><use href="#i-diag"></use></svg></div>
+            <div>
+              <h3>Diagnostics</h3>
+              <p>Warning lights read with professional kit, explained in plain English.</p>
+            </div>
           </div>
-          <a class="service__more" href="#contact">Enquire <svg class="icon"><use href="#i-arrow"></use></svg></a>
-        </article>
+          <span class="service__go" aria-hidden="true"><svg class="icon"><use href="#i-arrow"></use></svg></span>
+          <span class="sr-only">Enquire about this service</span>
+        </a>
 
-        <article class="service reveal" data-tilt>
-          <div class="hex"><svg class="icon"><use href="#i-tools"></use></svg></div>
-          <div>
-            <h3>General repairs</h3>
-            <p>From minor fixes to major repairs — we've got you covered. Suspension, exhausts, batteries, belts, hoses, leaks and the jobs that only show up once we look.</p>
+        <a class="service reveal" data-tilt data-tilt-max="11" href="#contact">
+          <div class="service__row">
+            <div class="hex"><svg class="icon"><use href="#i-tools"></use></svg></div>
+            <div>
+              <h3>General repairs</h3>
+              <p>Suspension, exhausts, batteries, hoses, leaks — and everything between.</p>
+            </div>
           </div>
-          <a class="service__more" href="#contact">Enquire <svg class="icon"><use href="#i-arrow"></use></svg></a>
-        </article>
+          <span class="service__go" aria-hidden="true"><svg class="icon"><use href="#i-arrow"></use></svg></span>
+          <span class="sr-only">Enquire about this service</span>
+        </a>
       </div>
 
       <p class="services__note reveal">
@@ -387,7 +414,7 @@
         </div>
 
         <div>
-          <p class="count"><b>02</b> — Why RDF</p>
+          <p class="count"><b>Scroll 03</b> <i>/ 05</i> — Why RDF</p>
           <h2>Experienced hands,<br>honest prices</h2>
           <p>
             RDF Mobile Mechanic is a one-van operation, so the person who quotes the job is the
@@ -406,27 +433,28 @@
               <span class="check__mark"><svg class="icon"><use href="#i-check"></use></svg></span>
               <div>
                 <h3>Competitive prices</h3>
-                <p>No workshop overheads to pass on. You get the price before the work starts, not after.</p>
+                <p>No workshop overheads to pass on — the price comes before the work, not after.</p>
               </div>
             </li>
             <li class="check reveal">
               <span class="check__mark"><svg class="icon"><use href="#i-check"></use></svg></span>
               <div>
                 <h3>Quality parts &amp; workmanship</h3>
-                <p>Parts that meet or better the original specification, fitted properly and checked before we leave.</p>
+                <p>Parts that match or better the original specification, fitted properly and checked.</p>
               </div>
             </li>
             <li class="check reveal">
               <span class="check__mark"><svg class="icon"><use href="#i-check"></use></svg></span>
               <div>
                 <h3>Convenient &amp; trusted</h3>
-                <p>Your car stays where it is. No drop-off, no pick-up, no day off work — and a Checkatrade-verified trade behind it.</p>
+                <p>Your car stays where it is — no drop-off, no day off work, and a Checkatrade-verified trade behind it.</p>
               </div>
             </li>
           </ul>
         </div>
       </div>
 
+      <div class="why__band">
       <ul class="stats reveal">
         <li class="stat"><b data-count-to="6">6</b><span>Core services covered</span></li>
         <li class="stat"><b data-count-to="100" data-count-suffix="%">100%</b><span>Work done at your location</span></li>
@@ -439,6 +467,7 @@
         <span class="member__name"><span>Checka</span><span>trade</span></span>
         <span class="member__strap">Trusted trades.<br>Quality verified.</span>
       </div>
+      </div>
     </div>
   </section>
 
@@ -449,23 +478,23 @@
     <span class="ghost" aria-hidden="true" data-parallax="0.05">Mobile</span>
     <div class="container">
       <div class="section-head section-head--center">
-        <p class="count"><b>03</b> — How it works</p>
+        <p class="count"><b>Scroll 04</b> <i>/ 05</i> — How it works</p>
         <h2>Three steps, no garage visit</h2>
         <p>Booking a mobile mechanic should take one phone call. Here is exactly what happens.</p>
       </div>
 
       <div class="grid steps">
-        <article class="step reveal" data-tilt data-tilt-max="6">
+        <article class="step reveal" data-tilt data-tilt-max="9">
           <div class="hex"><svg class="icon"><use href="#i-chat"></use></svg></div>
           <h3>Call or WhatsApp</h3>
           <p>Tell us the make, model, mileage and what the vehicle is doing. Photos and videos over WhatsApp help. You get a clear price or a diagnostic plan there and then.</p>
         </article>
-        <article class="step reveal" data-tilt data-tilt-max="6">
+        <article class="step reveal" data-tilt data-tilt-max="9">
           <div class="hex"><svg class="icon"><use href="#i-van"></use></svg></div>
           <h3>We come to you</h3>
           <p>We arrive at your home, your workplace or the roadside with the tools and the parts for the job. You carry on with your day.</p>
         </article>
-        <article class="step reveal" data-tilt data-tilt-max="6">
+        <article class="step reveal" data-tilt data-tilt-max="9">
           <div class="hex"><svg class="icon"><use href="#i-clipboard"></use></svg></div>
           <h3>Job done &amp; explained</h3>
           <p>The work is completed on site, the old parts are there to see and anything extra is agreed with you before it is fitted. Never a surprise on the bill.</p>
@@ -510,9 +539,9 @@
     <span class="ghost ghost--right" aria-hidden="true" data-parallax="0.05">Call</span>
     <div class="container">
       <div class="section-head">
-        <p class="count"><b>04</b> — Get in touch</p>
-        <h2>Call or WhatsApp<br>07706 696124</h2>
-        <p>One number for everything: quotes, bookings and advice. Prefer to write it down? Use the form and it will open WhatsApp with your details ready to send.</p>
+        <p class="count"><b>Scroll 05</b> <i>/ 05</i> — Get in touch</p>
+        <h2>Talk to a mechanic</h2>
+        <p>One number for everything — quotes, bookings and advice. Prefer to write it down? The form opens WhatsApp with your details ready to send.</p>
       </div>
 
       <div class="contact__inner">
@@ -565,8 +594,8 @@
         <form class="form reveal" id="quoteForm" novalidate>
           <h3>Request a quote</h3>
           <p class="form__intro">
-            Fill this in and press the button — your phone or computer opens WhatsApp with the message
-            written for you. Nothing is sent from this website and nothing is stored here.
+            Press the button and WhatsApp opens with the message written for you. Nothing is sent from
+            this website and nothing is stored here.
           </p>
 
           <div class="form__grid">

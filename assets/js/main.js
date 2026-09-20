@@ -58,13 +58,13 @@
     });
   }
 
-  /* 3. Active navigation link ---------------------------------------- */
+  /* 3. Active navigation link + scroll rail ---------------------------- */
   var navLinks = Array.prototype.slice.call(
-    document.querySelectorAll('#primary-links a[href^="#"]')
+    document.querySelectorAll('#primary-links a[href^="#"], .rail a[href^="#"]')
   );
   var sections = navLinks
     .map(function (link) { return document.querySelector(link.getAttribute('href')); })
-    .filter(Boolean);
+    .filter(function (section, index, all) { return section && all.indexOf(section) === index; });
 
   if ('IntersectionObserver' in window && sections.length) {
     var navObserver = new IntersectionObserver(function (entries) {
@@ -248,6 +248,35 @@
         card.style.setProperty('--rx', restX + 'deg');
         card.style.setProperty('--ry', restY + 'deg');
       });
+    });
+  }
+
+  /* 8b. The hero "camera" ------------------------------------------------ */
+  /* Moving the pointer leans the whole opening scene: the copy and the
+     photograph rotate, the backdrop slides the other way. */
+  var hero = document.getElementById('home');
+
+  if (hero && finePointer && !reduceMotion) {
+    var cameraFrame = null;
+
+    hero.addEventListener('pointermove', function (event) {
+      if (cameraFrame) return;
+      cameraFrame = requestAnimationFrame(function () {
+        cameraFrame = null;
+        var px = event.clientX / window.innerWidth - 0.5;
+        var py = event.clientY / window.innerHeight - 0.5;
+        hero.style.setProperty('--scene-ry', (px * 5).toFixed(2) + 'deg');
+        hero.style.setProperty('--scene-rx', (-py * 3.5).toFixed(2) + 'deg');
+        hero.style.setProperty('--scene-x', (-px * 34).toFixed(1) + 'px');
+        hero.style.setProperty('--scene-y', (-py * 22).toFixed(1) + 'px');
+      });
+    });
+
+    hero.addEventListener('pointerleave', function () {
+      hero.style.setProperty('--scene-ry', '0deg');
+      hero.style.setProperty('--scene-rx', '0deg');
+      hero.style.setProperty('--scene-x', '0px');
+      hero.style.setProperty('--scene-y', '0px');
     });
   }
 

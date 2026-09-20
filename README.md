@@ -36,7 +36,7 @@ header and footer.
 | --- | --- |
 | Sticky header | RDF lockup, Home / Services / Why RDF / How it works / Contact, phone button, hamburger menu on mobile |
 | **Scroll 1 — Hero** (`#home`) | Full RDF lockup and strapline, what the business does, Call / WhatsApp / View services buttons, trust pills, FAST \| RELIABLE \| CONVENIENT strip |
-| **Scroll 2 — Services** (`#services`) | "Services we offer" ribbon and the six services from the flyer: servicing, brakes, timing belts, clutches, diagnostics, general repairs |
+| **Scroll 2 — Services** (`#services`) | "Services we offer" ribbon and the six services from the flyer, laid out as the flyer does it — red hexagon left, name and line right. Each card is a link to the contact form |
 | **Scroll 3 — Why RDF** (`#why`) | The flyer's four promises (experienced & reliable, competitive prices, quality parts & workmanship, convenient & trusted), a photograph, a small stats band and the Checkatrade membership panel |
 | **Scroll 4 — How it works** (`#how`) | Three steps (call or WhatsApp → we come to you → job done & explained) and the area covered |
 | **Scroll 5 — Contact** (`#contact`) | Large call/WhatsApp card, what to have ready, and a quote form that opens WhatsApp |
@@ -130,7 +130,19 @@ Anything real can be added later.
 
 ---
 
-## 7. The cinematic layer
+## 7. The five scrolls
+
+Each of the five sections is at least one screen tall and the page snaps gently onto them
+(`scroll-snap-type: y proximity`), so the site reads as five deliberate panels rather than one
+long page. Every section is labelled — *Scroll 01 / 05* through *Scroll 05 / 05* — and a rail
+on the right edge (wide screens only) shows which one you are on and jumps to any of them.
+
+The sections are sized to fit a 900px-tall laptop screen: Scroll 05 is taller because it holds
+the quote form, which people expect to scroll.
+
+---
+
+## 8. The cinematic layer
 
 The page is deliberately filmic: a darkened workshop photograph behind the hero with a slow
 Ken Burns drift, a red key light, a perspective floor grid, film grain over the whole page,
@@ -148,7 +160,7 @@ To dial the whole effect down, lower `--shadow-3d`, the `.grain` opacity, or del
 
 ---
 
-## 8. Accessibility and performance notes
+## 9. Accessibility and performance notes
 
 * Every image has alternative text; the icons are decorative SVG symbols.
 * Colour contrast follows the flyer's white-on-black, which passes AA comfortably.
