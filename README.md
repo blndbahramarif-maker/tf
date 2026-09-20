@@ -1,11 +1,14 @@
-# Mobile Mechanic — Rochester, Kent
+# RDF Mobile Mechanic — website
 
-Website for **Mobile Mechanic**, a 24/7 mobile mechanic business run by **Lawe H**, based in
-Rochester, Kent and travelling approximately 20 miles to customers.
+Website for **RDF Mobile Mechanic** — *bringing the workshop to you*. A mobile mechanic
+covering Rochester, the Medway towns and the surrounding Kent area.
 
-It is a static website: plain HTML, CSS and a small amount of JavaScript. There is no build step,
-no framework and no dependencies to install — the fonts and photographs are stored in this folder,
-so the site loads quickly and works without any third-party services.
+It is a static website: plain HTML, CSS and a small amount of JavaScript. There is no build
+step, no framework and no dependencies to install — the fonts and photographs are stored in
+this folder, so the site loads quickly and works without any third-party services.
+
+The design follows the RDF flyer (`assets/img/rdf-flyer.jpg`): black, red and white, condensed
+italic headings, red hexagon service icons and the **FAST | RELIABLE | CONVENIENT** strip.
 
 ---
 
@@ -26,137 +29,114 @@ Then open <http://localhost:8000> in your browser.
 
 ## 2. What is on the page
 
+The page is built as **five scrolls** — five full sections the visitor moves through — plus a
+header and footer.
+
 | Section | Content |
 | --- | --- |
-| Sticky header | Logo, Home / Services / About / Contact, **Call Now** button, hamburger menu on mobile |
-| Scroll 1 | Hero + first 3 services (Servicing, Clutch, Auto Electrician) |
-| Scroll 2 | "Professional Vehicle Repairs" — Timing Belt, Engine Repairs, Diagnostics |
-| Scroll 3 | "More Mobile Mechanic Services" — Exhaust, Suspension, Wheel Bearing |
-| Scroll 4 | About / Why choose Mobile Mechanic + call-to-action |
-| Scroll 5 | Service area + 24/7 call-to-action |
-| Contact | Full contact details and a quote request form |
-| Footer | Business details, menu links, all nine services, copyright |
-| Mobile only | Sticky bottom bar with **Call Now** and **Get a Quote** |
+| Sticky header | RDF lockup, Home / Services / Why RDF / How it works / Contact, phone button, hamburger menu on mobile |
+| **Scroll 1 — Hero** (`#home`) | Full RDF lockup and strapline, what the business does, Call / WhatsApp / View services buttons, trust pills, FAST \| RELIABLE \| CONVENIENT strip |
+| **Scroll 2 — Services** (`#services`) | "Services we offer" ribbon and the six services from the flyer: servicing, brakes, timing belts, clutches, diagnostics, general repairs |
+| **Scroll 3 — Why RDF** (`#why`) | The flyer's four promises (experienced & reliable, competitive prices, quality parts & workmanship, convenient & trusted), a photograph, a small stats band and the Checkatrade membership panel |
+| **Scroll 4 — How it works** (`#how`) | Three steps (call or WhatsApp → we come to you → job done & explained) and the area covered |
+| **Scroll 5 — Contact** (`#contact`) | Large call/WhatsApp card, what to have ready, and a quote form that opens WhatsApp |
+| Footer | Brand, menu, all six services, contact details, Checkatrade line |
+| Mobile only | Sticky bottom bar with **Call** and **WhatsApp** |
 
-The phone number **07767547383** appears in the top bar, the header button, the hero, the repairs
-section, the about call-to-action, the service-area section, the contact card, the footer and the
-mobile sticky bar. Every instance is a `tel:` link, so tapping it starts a call. The email address
-is a `mailto:` link everywhere it appears.
-
-The "Enquire" button on each service card scrolls the visitor to the contact form.
+The phone number **07706696124** appears in the top bar, the header button, the hero, the hero
+photo badge, the services note, the coverage panel, the contact card, the form, the footer and
+the mobile sticky bar. Every instance is a `tel:` link, so tapping it starts a call. The
+WhatsApp buttons open `https://wa.me/447706696124`.
 
 ---
 
 ## 3. The quote form — important
 
-**The form does not send email on its own, because a static website has no server.**
+**The form does not send email, because a static website has no server, and the business has
+no email address on the flyer.**
 
-Right now, pressing **Request a Quote** validates the details and then opens the visitor's own email
-app with a message pre-addressed to `07767547383`, with their name, phone, email,
-vehicle, problem and preferred date/time already filled in. They still have to press *send* in their
-email app. This works without any account or subscription, and nothing is lost if a visitor ignores
-it — the phone number is the main call to action.
+When a visitor presses **Send on WhatsApp**, the details are validated and then WhatsApp opens
+with a tidy message already written:
 
-If you want form submissions delivered to your inbox automatically, connect a free form service.
-The two simplest options:
+```
+Quote request from the RDF website
 
-### Option A — Web3Forms (no account needed to start)
+Name: Jane Smith
+Phone: 07000 000000
+Vehicle: Ford Focus 1.6 TDCi
+Registration: AB12 CDE
+Service: Brakes
+Area: ME1
 
-1. Go to <https://web3forms.com> and enter `07767547383` to get an **access key**.
-2. In `index.html`, find `<form class="form-grid" id="quoteForm" novalidate>` and change it to:
+Details: Grinding noise from the front when braking...
+```
 
-   ```html
-   <form class="form-grid" id="quoteForm" action="https://api.web3forms.com/submit" method="POST">
-     <input type="hidden" name="access_key" value="YOUR-ACCESS-KEY-HERE">
-     <input type="hidden" name="subject" value="New quote request from the website">
-   ```
+They still have to press *send* in WhatsApp. Nothing is stored on the website and nothing is
+sent anywhere else. If they ignore the form, the phone number is on screen throughout.
 
-3. In `assets/js/main.js`, delete (or comment out) section **5. Quote form** so the browser submits
-   the form normally instead of opening an email app.
-4. Remove the note under the form in `index.html` (the paragraph with `class="form-note"`), as it
-   will no longer be accurate.
-
-### Option B — Formspree
-
-1. Create a form at <https://formspree.io> using `07767547383`; you receive an
-   endpoint such as `https://formspree.io/f/abcdwxyz`.
-2. Change the form tag to `<form class="form-grid" id="quoteForm" action="https://formspree.io/f/abcdwxyz" method="POST">`.
-3. Do steps 3 and 4 from Option A.
-
-### Option C — Netlify
-
-If you host the site on Netlify, add `netlify` and `name="quote"` to the `<form>` tag, then do steps
-3 and 4 from Option A. Submissions appear in the Netlify dashboard and can be emailed to you.
+If enquiries should arrive by **email** instead, add a free form service (Web3Forms, Formspree
+or Netlify Forms) — that needs an email address to send to, and a small change in
+`assets/js/main.js` where the WhatsApp link is built.
 
 ---
 
-## 4. Putting the website online
+## 4. The files
 
-**See `DEPLOY.md`** for full step-by-step instructions covering Netlify, Vercel, connecting a
-`.co.uk` domain, and getting listed on Google.
-
-The short version: drag this folder onto <https://app.netlify.com/drop> and the site is live in
-seconds. Other hosts work too — GitHub Pages, or any normal web hosting where you upload the
-contents of this folder to `public_html` by FTP.
+```
+index.html          the whole page
+404.html            "page not found" page
+assets/css/         the single stylesheet
+assets/js/          the menu, scroll animations and quote form
+assets/img/         photographs, icons and the original flyer
+assets/fonts/       Barlow Condensed (headings) and Inter (body text)
+netlify.toml        Netlify settings (caching and security headers)
+vercel.json         the same for Vercel, if used instead
+sitemap.xml         helps Google find the page
+robots.txt          tells search engines the site may be indexed
+site.webmanifest    name and icons when saved to a phone home screen
+DEPLOY.md           how to put the site online and connect a domain
+HANDOVER.md         plain-English notes for the business owner
+```
 
 ---
 
-## 5. Editing the content
+## 5. Changing the details
 
-| What you want to change | Where |
+| What to change | Where |
 | --- | --- |
-| Phone number | Search `07767547383` in `index.html` (and `PHONE` in `assets/js/main.js`) and replace everywhere |
-| Email address | Search `07767547383` in `index.html` (and `BUSINESS_EMAIL` in `assets/js/main.js`) |
-| Service names and descriptions | The `<li class="card">` blocks in `index.html` |
-| About text | The `#about` section in `index.html` |
-| Copyright year | Bottom of `index.html`, in `footer__bottom` |
-| Colours | The `:root` variables at the top of `assets/css/styles.css` (`--red`, `--bg`, and so on) |
-| Photographs | Replace the files in `assets/img/` keeping the same filenames, or update the `src`/`srcset` in `index.html` |
+| Phone number | Search `07706696124` and `07706 696124` in `index.html` and `404.html`, and `PHONE` in `assets/js/main.js` |
+| WhatsApp number | Search `447706696124` in `index.html`, and `WHATSAPP_NUMBER` in `assets/js/main.js` |
+| Business name / strapline | The `.brand`, `.lockup` and `<title>` blocks in `index.html` |
+| Services and their wording | The six `<article class="service">` blocks in Scroll 2 |
+| The four promises | The `<li class="check">` blocks in Scroll 3 |
+| Towns covered | The `<ul class="areas">` list in Scroll 4 |
+| Colours | The `:root` block at the top of `assets/css/styles.css` |
+| Photographs | Replace the files in `assets/img/` keeping the same names, or update the `<picture>` blocks |
 
-**Please keep the alt text on images accurate if you swap the photos** — it is what screen readers
-and search engines read.
-
----
-
-## 6. Files
-
-```
-index.html                 The whole website (one page)
-404.html                   Shown if someone follows a broken link
-robots.txt                 Search engine instructions
-sitemap.xml                Page list for search engines (set your domain after launch)
-site.webmanifest           Name and icon when the site is saved to a phone home screen
-netlify.toml               Hosting settings, used automatically by Netlify
-vercel.json                Hosting settings, used automatically by Vercel
-DEPLOY.md                  Step-by-step guide to publishing and connecting a domain
-assets/css/styles.css      All styling
-assets/js/main.js          Menu, scroll animations, form handling
-assets/fonts/              Barlow Condensed + Inter (self-hosted, SIL Open Font Licence)
-assets/img/                Photographs (AVIF + WebP + JPEG), logo and app icons
-```
-
-The entire page, including every photograph further down, is about **590 KB**; the first screen is
-roughly 240 KB. Each photograph is stored in three formats and the browser picks the smallest one
-it understands (AVIF, then WebP, then JPEG), images below the fold load only as you scroll, and the
-two typefaces are preloaded so text never flashes.
+**Note on the towns and the base location:** the flyer gives no address, so Rochester and the
+surrounding Medway towns were carried over from the previous version of this site. If the
+business is based somewhere else, change the coverage list in Scroll 4, the `addressLocality`
+in the structured data at the top of `index.html`, and the mentions in the footer and contact
+section.
 
 ---
 
-## 7. Photographs
+## 6. What was **not** invented
 
-The photographs come from [Unsplash](https://unsplash.com) and are used under the
-[Unsplash Licence](https://unsplash.com/license), which allows free commercial use. They are stored
-in this repository rather than hot-linked, so the site keeps working regardless of Unsplash.
-
-Replacing them with photographs of your own van, tools and completed work would make the site even
-more convincing to local customers — just keep the same filenames, or update the paths in
-`index.html`.
+No reviews, prices, guarantees, qualifications, opening hours or years of experience appear on
+the site, because none were given. The claims on the page are the ones printed on the flyer:
+the six services, the four promises, Checkatrade membership, and fast / reliable / convenient.
+Anything real can be added later.
 
 ---
 
-## 8. Notes on accuracy
+## 7. Accessibility and performance notes
 
-The website deliberately contains **no** reviews, testimonials, prices, discounts, awards,
-qualifications, certifications, customer numbers, named towns inside the service area, guarantees or
-parts warranties, because none were provided. If you would like any of these added, send the real
-details and they can be included.
+* Every image has alternative text; the icons are decorative SVG symbols.
+* Colour contrast follows the flyer's white-on-black, which passes AA comfortably.
+* The page works without JavaScript — only the mobile menu, the reveal animation and the
+  WhatsApp form need it.
+* `prefers-reduced-motion` is respected: animations are switched off for visitors who ask for
+  that in their system settings.
+* Fonts and photographs are served from this folder, so there are no third-party requests and
+  no cookies. There is nothing to consent to and no cookie banner is needed.

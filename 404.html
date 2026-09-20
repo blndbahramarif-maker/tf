@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Page Not Found | Mobile Mechanic Rochester</title>
+<title>Page Not Found | RDF Mobile Mechanic</title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#0a0d11">
+<meta name="theme-color" content="#000000">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/img/icon-180.png">
 <link rel="stylesheet" href="assets/css/styles.css">
@@ -17,32 +17,42 @@
     text-align: center;
     padding: 3rem 1.25rem;
     background:
-      radial-gradient(800px 460px at 50% 0%, rgba(216, 31, 42, 0.22), transparent 65%),
-      linear-gradient(180deg, #080a0e, var(--bg));
+      radial-gradient(800px 460px at 50% 0%, rgba(224, 27, 34, 0.24), transparent 65%),
+      linear-gradient(180deg, #000, var(--bg));
   }
   .error-page__inner { max-width: 34rem; }
   .error-page__code {
-    font-family: var(--font-display);
+    font-family: var(--font-head);
+    font-weight: 700;
     font-size: clamp(4rem, 18vw, 7rem);
     line-height: 1;
     color: var(--red-bright);
-    margin-bottom: 0.5rem;
+    margin: 0 0 0.5rem;
   }
+  .error-page .lockup { margin-bottom: 2rem; }
+  .error-page .lockup .logo { font-size: clamp(3rem, 12vw, 4.5rem); }
   .error-page .btn-row { justify-content: center; margin-top: 1.75rem; }
+  .error-page p.lede { color: var(--text-soft); }
 </style>
 </head>
 <body>
 <main class="error-page">
   <div class="error-page__inner">
+    <div class="lockup">
+      <span class="logo" aria-hidden="true"><span>R</span><span class="logo__d">D</span><span>F</span></span>
+      <div class="lockup__rule" aria-hidden="true"><span></span><span></span></div>
+      <div class="lockup__name">Mobile <em>Mechanic</em></div>
+    </div>
     <p class="error-page__code">404</p>
-    <h1>Page Not Found</h1>
-    <p class="lede">That page does not exist. Head back to the home page, or call for a mobile mechanic in Rochester and the surrounding area.</p>
+    <h1>Page not found</h1>
+    <p class="lede">
+      That page does not exist. Head back to the home page, or call or WhatsApp for a mobile
+      mechanic in Rochester and the surrounding area.
+    </p>
     <div class="btn-row">
-      <a class="btn btn--call" href="tel:07767547383">
-        <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-        Call&nbsp;07767547383
-      </a>
-      <a class="btn btn--ghost" href="/">Back to Home</a>
+      <a class="btn btn--primary" href="tel:07706696124">Call&nbsp;07706&nbsp;696124</a>
+      <a class="btn btn--wa" href="https://wa.me/447706696124" rel="noopener">WhatsApp</a>
+      <a class="btn btn--ghost" href="/">Back to home</a>
     </div>
   </div>
 </main>

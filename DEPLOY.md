@@ -1,4 +1,4 @@
-# Putting the Mobile Mechanic website online
+# Putting the RDF Mobile Mechanic website online
 
 Everything here is written for someone who has never deployed a website before.
 Nothing needs to be installed, and the hosting options below are free.
@@ -19,9 +19,9 @@ site.webmanifest    name and icon when someone saves the site to their phone
 netlify.toml        settings, used automatically if you host on Netlify
 vercel.json         settings, used automatically if you host on Vercel
 assets/css/         the styling
-assets/js/          the menu, animations and form
+assets/js/          the menu, animations and quote form
 assets/fonts/       the two typefaces
-assets/img/         photographs, logo and app icons
+assets/img/         photographs, icons and the original RDF flyer
 README.md           notes for you (not published, harmless if it is)
 DEPLOY.md           this file (same)
 ```
@@ -79,8 +79,11 @@ not use GitHub at all.
 
 Buy from any UK registrar — for example 123 Reg, Namecheap, IONOS, GoDaddy or Cloudflare.
 A `.co.uk` domain is usually £8–£15 per year. Something like
-`mobilemechanicrochester.co.uk` or `haremmobilemechanic.co.uk` works well: short, and it
-says what you do and where.
+`rdfmobilemechanic.co.uk` or `mobilemechanicrochester.co.uk` works well: short, and it
+says who you are and what you do. (The site is currently set up for
+`mobilemechanicrochester.co.uk` — if you buy a different name, update the `canonical`,
+`og:url` and structured-data addresses at the top of `index.html`, plus `sitemap.xml` and
+`robots.txt`.)
 
 You do **not** need their hosting, website builder or email add-ons — only the domain.
 
@@ -169,8 +172,8 @@ Then upload the folder again (or push to GitHub if you set up Option B or C).
 2. **Google Business Profile** — <https://business.google.com>. This is the single most
    valuable thing for a local mobile mechanic: it puts you on Google Maps and in the local
    results box. Set the business as a **service-area business** (you travel to customers,
-   so your home address stays private) with Rochester and roughly 20 miles around it as the
-   area, and add your phone number and website address.
+   so your home address stays private) covering Rochester, the Medway towns and the area
+   around them, and add your phone number and website address.
 3. **Bing Webmaster Tools** — <https://www.bing.com/webmasters>, optional, takes two minutes.
 
 Ask happy customers to leave a Google review. Reviews can be shown on the website later —
@@ -181,9 +184,10 @@ penalises fake reviews.
 
 ## 8. Making the quote form send email
 
-The form currently opens the customer's own email app with their details filled in. To have
-enquiries arrive in your inbox automatically instead, follow **section 3 of `README.md`** —
-it takes about five minutes with the free Web3Forms or Formspree service.
+The form currently opens **WhatsApp** with the customer's details already written out, ready
+for them to send to 07706696124. Nothing is emailed and nothing is stored on the site. To have
+enquiries arrive in an inbox as well, follow **section 3 of `README.md`** — it takes about five
+minutes with the free Web3Forms or Formspree service, and needs an email address to send to.
 
 ---
 

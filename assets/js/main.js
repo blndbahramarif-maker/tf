@@ -1,25 +1,24 @@
 /* =============================================================
-   Mobile Mechanic — Rochester, Kent
+   RDF Mobile Mechanic — bringing the workshop to you
    Small, dependency-free script:
    1. Sticky header state
    2. Mobile menu
-   3. Active navigation link on scroll
+   3. Active navigation link while scrolling
    4. Scroll reveal animations
-   5. Quote form (opens the visitor's email app — see README)
-   6. Mobile action bar spacing
+   5. Quote form -> pre-written WhatsApp message
+   6. Current year in the footer
    ============================================================= */
 (function () {
   'use strict';
 
-  var PHONE = '07767547383';
-  var WHATSAPP = 'https://wa.me/447767547383';
-  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var PHONE = '07706 696124';
+  var WHATSAPP_NUMBER = '447706696124';
 
   /* 1. Sticky header ------------------------------------------------- */
   var header = document.getElementById('header');
-  var onScroll = function () {
+  function onScroll() {
     if (header) header.classList.toggle('is-scrolled', window.scrollY > 12);
-  };
+  }
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 
@@ -80,106 +79,122 @@
   }
 
   /* 4. Scroll reveal -------------------------------------------------- */
-  var revealItems = document.querySelectorAll('[data-reveal]');
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var revealables = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
 
   if (reduceMotion || !('IntersectionObserver' in window)) {
-    Array.prototype.forEach.call(revealItems, function (el) {
-      el.classList.add('is-visible');
-    });
+    revealables.forEach(function (el) { el.classList.add('is-visible'); });
   } else {
     var revealObserver = new IntersectionObserver(function (entries, observer) {
-      entries.forEach(function (entry) {
+      entries.forEach(function (entry, index) {
         if (!entry.isIntersecting) return;
-        entry.target.classList.add('is-visible');
+        var delay = Math.min(index, 4) * 80;
+        setTimeout(function () { entry.target.classList.add('is-visible'); }, delay);
         observer.unobserve(entry.target);
       });
-    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
 
-    Array.prototype.forEach.call(revealItems, function (el) {
-      revealObserver.observe(el);
-    });
-
-    /* Safety net: reveal anything already on screen that the observer
-       missed (fast scrolling, an anchor jump, a restored scroll position).
-       Only what is in view, so sections further down still animate in. */
-    var revealInView = function () {
-      Array.prototype.forEach.call(revealItems, function (el) {
-        var box = el.getBoundingClientRect();
-        if (box.top < window.innerHeight * 0.95 && box.bottom > 0) {
-          el.classList.add('is-visible');
-        }
-      });
-    };
-    window.addEventListener('load', revealInView);
-    window.setTimeout(revealInView, 1200);
+    revealables.forEach(function (el) { revealObserver.observe(el); });
   }
 
   /* 5. Quote form ----------------------------------------------------- */
-  /* There is no backend on this site. The form collects the details and
-     hands them to the visitor's own messaging app, pre-addressed to the
-     business. See README.md to connect a form service instead.        */
+  /* There is no server behind this site, so the form does not send
+     anything by itself. It builds a tidy WhatsApp message from the
+     answers and opens WhatsApp with it ready to send. */
   var form = document.getElementById('quoteForm');
   var status = document.getElementById('formStatus');
 
-  function showStatus(message) {
-    if (!status) return;
-    status.innerHTML = message;
-    status.hidden = false;
+  function fieldWrap(input) { return input.closest('.field'); }
+
+  function setError(input, message) {
+    var wrap = fieldWrap(input);
+    var slot = form.querySelector('[data-error-for="' + input.id + '"]');
+    if (wrap) wrap.classList.toggle('is-invalid', Boolean(message));
+    if (slot) slot.textContent = message || '';
+    input.setAttribute('aria-invalid', message ? 'true' : 'false');
+  }
+
+  function validate(input) {
+    var value = (input.value || '').trim();
+
+    if (input.hasAttribute('required') && !value) {
+      setError(input, 'Please fill this in.');
+      return false;
+    }
+    if (input.type === 'tel' && value) {
+      var digits = value.replace(/[^0-9]/g, '');
+      if (digits.length < 10) {
+        setError(input, 'Please enter a full phone number.');
+        return false;
+      }
+    }
+    setError(input, '');
+    return true;
   }
 
   if (form) {
+    var inputs = Array.prototype.slice.call(
+      form.querySelectorAll('input, select, textarea')
+    );
+
+    inputs.forEach(function (input) {
+      input.addEventListener('blur', function () { validate(input); });
+      input.addEventListener('input', function () {
+        if (fieldWrap(input) && fieldWrap(input).classList.contains('is-invalid')) validate(input);
+      });
+    });
+
     form.addEventListener('submit', function (event) {
       event.preventDefault();
 
-      var data = {
-        name: form.name.value.trim(),
-        phone: form.phone.value.trim(),
-        vehicle: form.vehicle.value.trim(),
-        problem: form.problem.value.trim(),
-        datetime: form.datetime.value.trim()
-      };
+      var valid = true;
+      var firstBad = null;
+      inputs.forEach(function (input) {
+        if (!validate(input)) {
+          valid = false;
+          if (!firstBad) firstBad = input;
+        }
+      });
 
-      var missing = [];
-      if (!data.name) missing.push('name');
-      if (!data.phone) missing.push('phone number');
-      if (!data.problem) missing.push('description of the problem');
-
-      if (missing.length) {
-        showStatus('Please add your ' + missing.join(', ') + ' so I can get back to you.');
-        var firstInvalid = !data.name ? form.name : (!data.phone ? form.phone : form.problem);
-        firstInvalid.focus();
+      if (!valid) {
+        if (status) {
+          status.textContent = 'Please check the highlighted fields, or simply call ' + PHONE + '.';
+          status.classList.add('is-visible');
+        }
+        if (firstBad) firstBad.focus();
         return;
       }
 
+      var get = function (id) {
+        var el = document.getElementById(id);
+        return el ? (el.value || '').trim() : '';
+      };
+
       var lines = [
-        'Quote request from the Mobile Mechanic website',
-        'Name: ' + data.name,
-        'Phone: ' + data.phone,
-        'Vehicle: ' + (data.vehicle || 'Not provided'),
-        'Preferred date/time: ' + (data.datetime || 'Not provided'),
-        'Problem: ' + data.problem
+        'Quote request from the RDF website',
+        '',
+        'Name: ' + get('name'),
+        'Phone: ' + get('phone'),
+        'Vehicle: ' + (get('vehicle') || 'not given'),
+        'Registration: ' + (get('reg') || 'not given'),
+        'Service: ' + get('service'),
+        'Area: ' + (get('postcode') || 'not given'),
+        '',
+        'Details: ' + get('details')
       ];
 
-      /* Opens WhatsApp with the details filled in, ready to send. */
-      window.open(WHATSAPP + '?text=' + encodeURIComponent(lines.join('\n')), '_blank', 'noopener');
+      var url = 'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(lines.join('\n'));
+      window.open(url, '_blank', 'noopener');
 
-      showStatus(
-        'WhatsApp should now open with your details ready to send. ' +
-        'If nothing happens, please call <a href="tel:' + PHONE + '" style="color:#fff">' + PHONE + '</a>.'
-      );
+      if (status) {
+        status.textContent =
+          'WhatsApp is opening with your details ready to send. If nothing happens, call ' + PHONE + '.';
+        status.classList.add('is-visible');
+      }
     });
   }
 
-  /* 6. Keep the mobile action bar clear of page content ---------------- */
-  var actionBar = document.getElementById('actionBar');
-
-  function padForActionBar() {
-    if (!actionBar) return;
-    var visible = window.getComputedStyle(actionBar).display !== 'none';
-    document.body.style.paddingBottom = visible ? actionBar.offsetHeight + 'px' : '';
-  }
-
-  window.addEventListener('resize', padForActionBar);
-  window.addEventListener('load', padForActionBar);
-  padForActionBar();
+  /* 6. Footer year ----------------------------------------------------- */
+  var year = document.getElementById('year');
+  if (year) year.textContent = String(new Date().getFullYear());
 })();

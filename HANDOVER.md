@@ -1,4 +1,4 @@
-# Mobile Mechanic — website handover
+# RDF Mobile Mechanic — website handover
 
 Everything the business owner needs to know about the website.
 
@@ -80,15 +80,16 @@ pushed to GitHub — the live site updates itself within a minute.
 
 ## 5. The quote form
 
-The form on the contact section does **not** send email by itself, because the site has no
-server. When a customer presses *Request a Quote*, their own email app opens with all their
-details filled in, addressed to **07767547383**, ready for them to send.
+The form in the contact section does **not** send email by itself, because the site has no
+server — and no email address was given on the flyer. When a customer presses *Send on
+WhatsApp*, WhatsApp opens on their phone or computer with all their details already written
+out, ready for them to send to **07706696124**.
 
-To have enquiries land in the inbox automatically instead, connect a free form service —
-`README.md` section 3 gives the step-by-step instructions (about five minutes).
+To have enquiries arrive by email instead, connect a free form service — `README.md` section 3
+explains the options. That needs an email address to send them to.
 
-Either way, **most customers will phone**. The number is on the screen nine times and the
-sticky bar at the bottom of every phone screen is a permanent Call Now button.
+Either way, **most customers will phone**. The number is on the screen throughout, and the
+sticky bar at the bottom of every phone screen is a permanent Call / WhatsApp pair of buttons.
 
 ---
 
@@ -99,7 +100,7 @@ Two free things, in order of importance:
 1. **Google Business Profile** — business.google.com. This is the big one for a local mobile
    mechanic: it puts the business on Google Maps and in the local results box. Set it up as a
    **service-area business** (travels to customers, so the home address stays private),
-   covering Rochester and roughly 20 miles around it.
+   covering Rochester and the surrounding Medway area.
 2. **Google Search Console** — search.google.com/search-console. Add the site and submit the
    sitemap once a domain is connected. `DEPLOY.md` section 7 explains how.
 
@@ -111,27 +112,33 @@ be added later.
 
 ## 7. What is on the website
 
-One page that scrolls, containing:
+One page that scrolls through **five sections**:
 
-* Hero: 24/7 mobile mechanic, Rochester, approximately 20-mile service area, 8 years of
-  experience, Call Now and Get a Quote buttons
-* All nine services, in three groups of three
-* About section — Lawe H, 8 years of experience, why a mobile service is convenient
-* Service area and 24/7 call-to-action
-* Contact details and a quote form
-* Footer with every service listed
+1. **Hero** — the RDF lockup, "bringing the workshop to you", what the business does, Call and
+   WhatsApp buttons, and the FAST | RELIABLE | CONVENIENT strip from the flyer
+2. **Services we offer** — the six services from the flyer, each with a red hexagon icon
+3. **Why RDF** — the flyer's four promises, a photograph, and the Checkatrade membership panel
+4. **How it works** — three steps, plus the towns covered
+5. **Contact** — a large call/WhatsApp card, what to have ready, and the quote form
+
+Plus a footer with every service listed, and a sticky Call / WhatsApp bar on phones.
 
 Business details used throughout:
 
 ```
-Business:     Mobile Mechanic
-Mechanic:     Lawe H
-Phone:        07767547383
+Business:     RDF Mobile Mechanic
+Strapline:    Bringing the workshop to you
+Phone:        07706696124  (calls and WhatsApp)
+Membership:   Checkatrade
+Services:     Servicing, brakes, timing belts, clutches, diagnostics, general repairs
 Base:         Rochester, Kent
-Availability: 24 hours a day, 7 days a week
-Service area: Approximately 20 miles from Rochester
-Experience:   8 years
+Service area: The Medway towns and the surrounding Kent area
 ```
 
-Nothing else was invented — no reviews, prices, guarantees, qualifications or named towns.
-If any of those are real and should be shown, they can be added.
+**Two things to check:** the flyer gives no address, so **Rochester, Kent** and the list of
+nearby towns (Chatham, Gillingham, Strood, Rainham, Maidstone, Gravesend, Sittingbourne and so
+on) were carried over from the earlier version of this site. If the business is based
+elsewhere, say so and they will be changed — see `README.md` section 5.
+
+Nothing else was invented — no reviews, prices, guarantees, qualifications, opening hours or
+years of experience. If any of those are real and should be shown, they can be added.
