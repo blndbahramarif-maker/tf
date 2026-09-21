@@ -3,56 +3,48 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Page Not Found | RDF Mobile Mechanic</title>
+<title>Page not found | RDF Mobile Mechanic</title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#0a0b0c">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/img/icon-180.png">
 <link rel="stylesheet" href="assets/css/styles.css">
 <style>
-  .error-page {
-    min-height: 100vh;
+  .error {
+    min-height: 100svh;
     display: grid;
     place-items: center;
     text-align: center;
     padding: 3rem 1.25rem;
-    background:
-      radial-gradient(800px 460px at 50% 0%, rgba(224, 27, 34, 0.24), transparent 65%),
-      linear-gradient(180deg, #000, var(--bg));
   }
-  .error-page__inner { max-width: 34rem; }
-  .error-page__code {
-    font-family: var(--font-head);
-    font-weight: 700;
-    font-size: clamp(4rem, 18vw, 7rem);
-    line-height: 1;
-    color: var(--red-bright);
-    margin: 0 0 0.5rem;
+  .error__inner { max-width: 34rem; }
+  .error .brand { justify-content: center; margin-bottom: 2.5rem; }
+  .error__code {
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    color: var(--red);
+    margin-bottom: 1rem;
   }
-  .error-page .lockup { margin-bottom: 2rem; }
-  .error-page .lockup .logo { font-size: clamp(3rem, 12vw, 4.5rem); }
-  .error-page .btn-row { justify-content: center; margin-top: 1.75rem; }
-  .error-page p.lede { color: var(--text-soft); }
+  .error p { color: var(--text-2); margin-top: 1rem; }
+  .error .btn-row { justify-content: center; margin-top: 2rem; }
 </style>
 </head>
 <body>
-<main class="error-page">
-  <div class="error-page__inner">
-    <div class="lockup">
-      <span class="logo" aria-hidden="true"><span>R</span><span class="logo__d">D</span><span>F</span></span>
-      <div class="lockup__rule" aria-hidden="true"><span></span><span></span></div>
-      <div class="lockup__name">Mobile <em>Mechanic</em></div>
-    </div>
-    <p class="error-page__code">404</p>
+<main class="error">
+  <div class="error__inner">
+    <a class="brand" href="/">
+      <span class="brand__mark" aria-hidden="true">R<i>D</i>F</span>
+      <span class="brand__rule" aria-hidden="true"></span>
+      <span class="brand__text">Mobile<br>Mechanic</span>
+    </a>
+    <p class="error__code">Error 404</p>
     <h1>Page not found</h1>
-    <p class="lede">
-      That page does not exist. Head back to the home page, or call or WhatsApp for a mobile
-      mechanic in Rochester and the surrounding area.
-    </p>
+    <p>That page does not exist. Head back to the home page, or call for a mobile mechanic in Rochester and the surrounding area.</p>
     <div class="btn-row">
-      <a class="btn btn--primary" href="tel:07706696124">Call&nbsp;07706&nbsp;696124</a>
-      <a class="btn btn--wa" href="https://wa.me/447706696124" rel="noopener">WhatsApp</a>
-      <a class="btn btn--ghost" href="/">Back to home</a>
+      <a class="btn btn--primary" href="tel:07706696124">Call 07706 696124</a>
+      <a class="btn btn--outline" href="/">Back to home</a>
     </div>
   </div>
 </main>

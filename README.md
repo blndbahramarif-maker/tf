@@ -130,33 +130,24 @@ Anything real can be added later.
 
 ---
 
-## 7. The five scrolls
+## 7. The design
 
-Each of the five sections is at least one screen tall and the page snaps gently onto them
-(`scroll-snap-type: y proximity`), so the site reads as five deliberate panels rather than one
-long page. Every section is labelled — *Scroll 01 / 05* through *Scroll 05 / 05* — and a rail
-on the right edge (wide screens only) shows which one you are on and jumps to any of them.
+Restrained on purpose. The page leans on typography, spacing and one accent colour rather than
+effects:
 
-The sections are sized to fit a 900px-tall laptop screen: Scroll 05 is taller because it holds
-the quote form, which people expect to scroll.
+* **Colour** — near-black (`--bg`), one red (`--red`) used only for the primary action, the
+  section numbers and small marks. Text is high-contrast off-white; secondary text is a single
+  grey. There are no gradients, glows or coloured shadows.
+* **Type** — Barlow Condensed for headings (uppercase, tight), Inter for reading text. One
+  display size per level, set fluidly.
+* **Spacing** — a single scale (`--s-1` … `--s-8`) used for every gap, so the rhythm is
+  consistent between sections.
+* **Structure** — hairline rules instead of boxes. Services and details are lists, not cards.
+* **Motion** — one thing only: content fades and rises 14px as it enters. Nothing tilts, drifts
+  or animates on a loop, and even that is switched off for `prefers-reduced-motion`.
 
----
-
-## 8. The cinematic layer
-
-The page is deliberately filmic: a darkened workshop photograph behind the hero with a slow
-Ken Burns drift, a red key light, a perspective floor grid, film grain over the whole page,
-and oversized outlined words drifting behind each section.
-
-The depth is real CSS 3D, not images: the cards, the hero photograph and the call card tilt
-towards the pointer (`[data-tilt]` in `index.html`, handled in `assets/js/main.js`), the
-hexagon icons sit forward of their cards on the Z axis, and sections rise out of the page as
-they enter the viewport.
-
-All of it is switched off for visitors whose system asks for reduced motion, and the tilt
-never runs on touch screens — a finger cannot hover, and a tilt on tap just feels loose.
-To dial the whole effect down, lower `--shadow-3d`, the `.grain` opacity, or delete the
-`data-tilt` attributes.
+Each of the five sections is a screen of its own (`min-height: 100svh`), numbered *01 / 05*
+through *05 / 05*, with a small rail on the right of wide screens showing which one you are on.
 
 ---
 

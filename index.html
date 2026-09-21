@@ -72,9 +72,7 @@
 <body>
 <a class="skip-link" href="#main">Skip to main content</a>
 
-<!-- ============================================================= -->
-<!-- SVG icon sprite                                               -->
-<!-- ============================================================= -->
+<!-- Icon sprite -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs>
     <symbol id="i-phone" viewBox="0 0 24 24">
@@ -84,17 +82,15 @@
       <path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20.5l1.7-5.2A8.5 8.5 0 1 1 21 11.5z"/>
       <path d="M8.8 8.2c.2-.5.4-.5.7-.5h.5c.2 0 .4 0 .6.5l.7 1.6c.1.3 0 .5-.1.7l-.4.5c-.1.2-.2.3 0 .6a6 6 0 0 0 2.6 2.2c.3.1.4 0 .6-.1l.5-.6c.2-.2.4-.2.6-.1l1.6.8c.2.1.4.2.4.4a1.8 1.8 0 0 1-1.3 1.6 3.6 3.6 0 0 1-2.7-.6 9.6 9.6 0 0 1-4.2-4.2 3.3 3.3 0 0 1-.1-2.8z"/>
     </symbol>
-    <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24"><line x1="4" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="19"/><polyline points="6 13 12 19 18 13"/></symbol>
     <symbol id="i-menu" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></symbol>
-    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></symbol>
-    <symbol id="i-van" viewBox="0 0 24 24"><path d="M1 16V6h12v10"/><path d="M13 9h4.5L22 13v3h-2"/><circle cx="7" cy="17.5" r="2"/><circle cx="17" cy="17.5" r="2"/><line x1="9" y1="16" x2="15" y2="16"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
     <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10z"/><polyline points="9 11.5 11.2 13.8 15.5 9.5"/></symbol>
+    <symbol id="i-van" viewBox="0 0 24 24"><path d="M1 16V6h12v10"/><path d="M13 9h4.5L22 13v3h-2"/><circle cx="7" cy="17.5" r="2"/><circle cx="17" cy="17.5" r="2"/><line x1="9" y1="16" x2="15" y2="16"/></symbol>
     <symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.6 13.4 12 22l-9-9V4h9l8.6 8.6a1.4 1.4 0 0 1 0 2z"/><circle cx="7.5" cy="8.5" r="1.4"/></symbol>
-    <symbol id="i-star" viewBox="0 0 24 24"><polygon points="12 2.5 15 9 22 9.8 17 14.5 18.3 21.5 12 18.2 5.7 21.5 7 14.5 2 9.8 9 9"/></symbol>
     <symbol id="i-clipboard" viewBox="0 0 24 24"><path d="M9 3h6v3H9z"/><path d="M15 4.5h3v16H6v-16h3"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="13" y2="15"/></symbol>
-    <!-- Service icons, echoing the flyer's hexagon set -->
     <symbol id="i-oil" viewBox="0 0 24 24">
       <path d="M2 12.5h9l3.5-2.5H21v6.5a1.5 1.5 0 0 1-1.5 1.5H5a3 3 0 0 1-3-3z"/>
       <path d="M11 12.5 8 8h6"/><line x1="14.5" y1="10" x2="18" y2="6.5"/>
@@ -103,19 +99,15 @@
     <symbol id="i-brake" viewBox="0 0 24 24">
       <circle cx="11" cy="12" r="8"/><circle cx="11" cy="12" r="3"/>
       <path d="M17.5 6.5h2.2A1.3 1.3 0 0 1 21 7.8v8.4a1.3 1.3 0 0 1-1.3 1.3h-2.2"/>
-      <line x1="11" y1="4" x2="11" y2="6.5"/><line x1="11" y1="17.5" x2="11" y2="20"/>
     </symbol>
     <symbol id="i-belt" viewBox="0 0 24 24">
       <circle cx="7" cy="8.5" r="4.5"/><circle cx="17.5" cy="16" r="3"/>
-      <circle cx="7" cy="8.5" r="1.4"/><circle cx="17.5" cy="16" r="1"/>
-      <path d="M4.2 12.1 15 19.1M9.9 4.9 20.2 14"/>
+      <circle cx="7" cy="8.5" r="1.4"/><path d="M4.2 12.1 15 19.1M9.9 4.9 20.2 14"/>
     </symbol>
     <symbol id="i-clutch" viewBox="0 0 24 24">
       <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.4"/>
       <line x1="12" y1="3" x2="12" y2="8.6"/><line x1="12" y1="15.4" x2="12" y2="21"/>
       <line x1="3" y1="12" x2="8.6" y2="12"/><line x1="15.4" y1="12" x2="21" y2="12"/>
-      <line x1="5.6" y1="5.6" x2="9.6" y2="9.6"/><line x1="14.4" y1="14.4" x2="18.4" y2="18.4"/>
-      <line x1="18.4" y1="5.6" x2="14.4" y2="9.6"/><line x1="9.6" y1="14.4" x2="5.6" y2="18.4"/>
     </symbol>
     <symbol id="i-diag" viewBox="0 0 24 24">
       <rect x="6" y="3" width="12" height="18" rx="2"/>
@@ -129,40 +121,26 @@
         <path transform="scale(-1 1) translate(-24 0)" d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-8 8l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 8-8l-3.8 3.8z"/>
       </g>
     </symbol>
-    <symbol id="i-wrench" viewBox="0 0 24 24">
-      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-    </symbol>
     <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/></symbol>
   </defs>
 </svg>
 
-<!-- ============================================================= -->
-<!-- Top bar                                                       -->
-<!-- ============================================================= -->
 <div class="topbar">
   <div class="container topbar__inner">
     <ul class="topbar__list">
-      <li><svg class="icon"><use href="#i-van"></use></svg> We come to you — home, work or roadside</li>
-      <li><svg class="icon"><use href="#i-shield"></use></svg> Member of Checkatrade</li>
-      <li><svg class="icon"><use href="#i-pin"></use></svg> Rochester &amp; the Medway towns</li>
+      <li>Mobile mechanic — Rochester &amp; Medway</li>
+      <li>Member of Checkatrade</li>
     </ul>
-    <a class="topbar__call" href="tel:07706696124">
-      <svg class="icon"><use href="#i-phone"></use></svg> Call or WhatsApp 07706 696124
-    </a>
+    <a href="tel:07706696124">Call or WhatsApp 07706 696124</a>
   </div>
 </div>
 
-<!-- ============================================================= -->
-<!-- Sticky header                                                 -->
-<!-- ============================================================= -->
 <header class="header" id="header">
   <div class="container header__inner">
     <a class="brand" href="#home" aria-label="RDF Mobile Mechanic — home">
-      <span class="logo" aria-hidden="true"><span>R</span><span class="logo__d">D</span><span>F</span></span>
-      <span class="brand__text">
-        <span class="brand__name">Mobile <em>Mechanic</em></span>
-        <span class="brand__tag">Bringing the workshop to you</span>
-      </span>
+      <span class="brand__mark" aria-hidden="true">R<i>D</i>F</span>
+      <span class="brand__rule" aria-hidden="true"></span>
+      <span class="brand__text">Mobile<br>Mechanic</span>
     </a>
 
     <nav class="nav" aria-label="Primary">
@@ -173,7 +151,7 @@
         <li><a href="#how">How it works</a></li>
         <li><a href="#contact">Contact</a></li>
       </ul>
-      <a class="btn btn--primary nav__cta" href="tel:07706696124">
+      <a class="btn btn--primary btn--sm" href="tel:07706696124">
         <svg class="icon"><use href="#i-phone"></use></svg> 07706 696124
       </a>
       <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="mobileNav" aria-label="Open menu">
@@ -183,16 +161,14 @@
     </nav>
   </div>
 
-  <span class="header__progress" id="scrollProgress" aria-hidden="true"></span>
-
   <div class="mobile-nav" id="mobileNav">
     <div class="container">
       <ul>
-        <li><a href="#home">Home <svg class="icon"><use href="#i-arrow"></use></svg></a></li>
-        <li><a href="#services">Services <svg class="icon"><use href="#i-arrow"></use></svg></a></li>
-        <li><a href="#why">Why RDF <svg class="icon"><use href="#i-arrow"></use></svg></a></li>
-        <li><a href="#how">How it works <svg class="icon"><use href="#i-arrow"></use></svg></a></li>
-        <li><a href="#contact">Contact <svg class="icon"><use href="#i-arrow"></use></svg></a></li>
+        <li><a href="#home">Home</a></li>
+        <li><a href="#services">Services</a></li>
+        <li><a href="#why">Why RDF</a></li>
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#contact">Contact</a></li>
       </ul>
       <a class="btn btn--primary btn--block" href="tel:07706696124">
         <svg class="icon"><use href="#i-phone"></use></svg> Call 07706 696124
@@ -201,320 +177,233 @@
   </div>
 </header>
 
-<nav class="rail" id="rail" aria-label="Scroll sections">
+<nav class="rail" aria-label="Sections">
   <ol>
-    <li><a href="#home" data-rail="home"><span class="rail__n">01</span><span class="rail__label">Home</span></a></li>
-    <li><a href="#services" data-rail="services"><span class="rail__n">02</span><span class="rail__label">Services</span></a></li>
-    <li><a href="#why" data-rail="why"><span class="rail__n">03</span><span class="rail__label">Why RDF</span></a></li>
-    <li><a href="#how" data-rail="how"><span class="rail__n">04</span><span class="rail__label">How it works</span></a></li>
-    <li><a href="#contact" data-rail="contact"><span class="rail__n">05</span><span class="rail__label">Contact</span></a></li>
+    <li><a href="#home">01</a></li>
+    <li><a href="#services">02</a></li>
+    <li><a href="#why">03</a></li>
+    <li><a href="#how">04</a></li>
+    <li><a href="#contact">05</a></li>
   </ol>
 </nav>
 
 <main id="main">
 
-  <!-- =========================================================== -->
-  <!-- SCROLL 1 — Hero                                             -->
-  <!-- =========================================================== -->
+  <!-- 01 ------------------------------------------------------------------ -->
   <section class="scroll hero" id="home">
-    <div class="hero__scene" aria-hidden="true">
-      <picture class="hero__bg" data-parallax="0.12">
-        <source type="image/avif" srcset="assets/img/repairs-band-1600.avif">
-        <source type="image/webp" srcset="assets/img/repairs-band-1600.webp">
-        <img src="assets/img/repairs-band-1600.jpg" width="1600" height="1200" alt="">
+    <div class="hero__bg" aria-hidden="true">
+      <picture>
+        <source type="image/avif" srcset="assets/img/repairs-band-1600.avif" sizes="100vw">
+        <source type="image/webp" srcset="assets/img/repairs-band-1600.webp" sizes="100vw">
+        <img src="assets/img/repairs-band-1600.jpg" width="1600" height="1200" alt="" fetchpriority="high">
       </picture>
-      <span class="hero__scrim"></span>
-      <span class="hero__beam"></span>
-      <span class="hero__grid"></span>
     </div>
 
     <div class="container hero__inner">
       <div class="hero__copy">
-        <p class="count reveal"><b>Scroll 01</b> <i>/ 05</i> — Rochester &amp; Medway</p>
-
-        <div class="lockup reveal">
-          <span class="logo" aria-hidden="true"><span>R</span><span class="logo__d">D</span><span>F</span></span>
-          <div class="lockup__rule" aria-hidden="true"><span></span><span></span></div>
-          <div class="lockup__name">Mobile <em>Mechanic</em></div>
-          <div class="lockup__tag">Bringing the workshop to you</div>
-        </div>
-
-        <h1 class="sr-only">RDF Mobile Mechanic — servicing, brakes and repairs at your door</h1>
-
-        <p class="hero__lead reveal">
-          Servicing, brakes, timing belts, clutches, diagnostics and repairs — carried out properly
-          at your home, your workplace or the roadside. Priced up front, no garage visit.
+        <p class="label reveal"><b>01</b> / 05 <span></span> Rochester &amp; Medway</p>
+        <h1 class="reveal">Bringing the workshop to you</h1>
+        <p class="lede reveal">
+          Servicing, brakes, timing belts, clutches, diagnostics and repairs — carried out at your
+          home, your workplace or the roadside, at a price agreed before the work starts.
         </p>
 
         <div class="btn-row reveal">
           <a class="btn btn--primary" href="tel:07706696124">
             <svg class="icon"><use href="#i-phone"></use></svg> Call 07706 696124
           </a>
-          <a class="btn btn--wa" href="https://wa.me/447706696124" rel="noopener">
-            <svg class="icon"><use href="#i-whatsapp"></use></svg> WhatsApp us
+          <a class="btn btn--outline" href="https://wa.me/447706696124" rel="noopener">
+            <svg class="icon"><use href="#i-whatsapp"></use></svg> WhatsApp
           </a>
         </div>
 
-        <ul class="hero__pills reveal">
-          <li class="pill"><svg class="icon"><use href="#i-shield"></use></svg> Checkatrade member</li>
-          <li class="pill"><svg class="icon"><use href="#i-van"></use></svg> Fully mobile</li>
-          <li class="pill"><svg class="icon"><use href="#i-tag"></use></svg> Priced up front</li>
+        <ul class="meta reveal">
+          <li><svg class="icon"><use href="#i-shield"></use></svg> Checkatrade member</li>
+          <li><svg class="icon"><use href="#i-van"></use></svg> Fully mobile</li>
+          <li><svg class="icon"><use href="#i-tag"></use></svg> Priced up front</li>
         </ul>
-      </div>
-
-      <div class="hero__media reveal">
-        <div class="hero__frame" data-tilt data-tilt-max="9">
-          <picture>
-            <source type="image/avif" srcset="assets/img/hero-mechanic-900.avif 900w, assets/img/hero-mechanic-1200.avif 1200w" sizes="(max-width: 960px) 92vw, 44vw">
-            <source type="image/webp" srcset="assets/img/hero-mechanic-900.webp 900w, assets/img/hero-mechanic-1200.webp 1200w" sizes="(max-width: 960px) 92vw, 44vw">
-            <img src="assets/img/hero-mechanic-1200.jpg"
-                 srcset="assets/img/hero-mechanic-900.jpg 900w, assets/img/hero-mechanic-1200.jpg 1200w"
-                 sizes="(max-width: 960px) 92vw, 44vw"
-                 width="1200" height="1800" fetchpriority="high"
-                 alt="Mechanic working under the bonnet of a car with a work light">
-          </picture>
-        </div>
-        <div class="hero__badge">
-          <svg class="icon"><use href="#i-phone"></use></svg>
-          <div>
-            <span>Call or WhatsApp</span>
-            <b>07706 696124</b>
-          </div>
-        </div>
       </div>
     </div>
 
-    <div class="hero__bottom">
-      <div class="container">
-        <div class="strip">
-          <ul>
-            <li>Fast</li>
-            <li>Reliable</li>
-            <li>Convenient</li>
-          </ul>
-        </div>
-        <a class="scrollcue" href="#services" aria-label="Scroll to services">
-          <span class="scrollcue__mouse"><span></span></span>
-          <span class="scrollcue__label">Scroll</span>
+    <div class="container">
+      <div class="hero__foot">
+        <ul class="hero__values">
+          <li>Fast</li>
+          <li>Reliable</li>
+          <li>Convenient</li>
+        </ul>
+        <a class="hero__scroll" href="#services">
+          Services <svg class="icon"><use href="#i-down"></use></svg>
         </a>
       </div>
     </div>
   </section>
 
-  <!-- =========================================================== -->
-  <!-- SCROLL 2 — Services                                         -->
-  <!-- =========================================================== -->
+  <!-- 02 ------------------------------------------------------------------ -->
   <section class="scroll scroll--alt" id="services">
-    <span class="ghost" aria-hidden="true" data-parallax="0.05">Services</span>
     <div class="container">
       <div class="section-head">
-        <p class="count"><b>Scroll 02</b> <i>/ 05</i> — Our work</p>
-        <span class="ribbon">Services we offer</span>
-        <h2 class="sr-only">Services we offer</h2>
-        <p>
-          Everything a small garage does for routine work and common failures — at your address,
-          priced before anything is touched.
+        <p class="label reveal"><b>02</b> / 05 <span></span> Services</p>
+        <h2 class="reveal">What we do</h2>
+        <p class="lede reveal">
+          The six jobs we are called for most. If yours is not listed, ask — you will get a straight
+          answer either way.
         </p>
       </div>
 
-      <div class="grid services__grid">
-        <a class="service reveal" data-tilt data-tilt-max="11" href="#contact">
-          <div class="service__row">
-            <div class="hex"><svg class="icon"><use href="#i-oil"></use></svg></div>
-            <div>
-              <h3>Servicing</h3>
-              <p>Oil, filters and a full check-over, recorded for your service history.</p>
-            </div>
-          </div>
-          <span class="service__go" aria-hidden="true"><svg class="icon"><use href="#i-arrow"></use></svg></span>
-          <span class="sr-only">Enquire about this service</span>
+      <div class="services">
+        <a class="service reveal" href="#contact">
+          <span class="hex service__hex" aria-hidden="true"><svg class="icon"><use href="#i-oil"></use></svg></span>
+          <span>
+            <h3>Servicing</h3>
+            <p>Oil, filters and a full check-over, recorded for your service history.</p>
+          </span>
+          <span class="service__no">01</span>
         </a>
-
-        <a class="service reveal" data-tilt data-tilt-max="11" href="#contact">
-          <div class="service__row">
-            <div class="hex"><svg class="icon"><use href="#i-brake"></use></svg></div>
-            <div>
-              <h3>Brakes</h3>
-              <p>Pads, discs, calipers and fluid — inspected before anything is replaced.</p>
-            </div>
-          </div>
-          <span class="service__go" aria-hidden="true"><svg class="icon"><use href="#i-arrow"></use></svg></span>
-          <span class="sr-only">Enquire about this service</span>
+        <a class="service reveal" href="#contact">
+          <span class="hex service__hex" aria-hidden="true"><svg class="icon"><use href="#i-brake"></use></svg></span>
+          <span>
+            <h3>Brakes</h3>
+            <p>Pads, discs, calipers and fluid — inspected before anything is replaced.</p>
+          </span>
+          <span class="service__no">02</span>
         </a>
-
-        <a class="service reveal" data-tilt data-tilt-max="11" href="#contact">
-          <div class="service__row">
-            <div class="hex"><svg class="icon"><use href="#i-belt"></use></svg></div>
-            <div>
-              <h3>Timing belts</h3>
-              <p>Belts, tensioners and water pumps, to the manufacturer's schedule.</p>
-            </div>
-          </div>
-          <span class="service__go" aria-hidden="true"><svg class="icon"><use href="#i-arrow"></use></svg></span>
-          <span class="sr-only">Enquire about this service</span>
+        <a class="service reveal" href="#contact">
+          <span class="hex service__hex" aria-hidden="true"><svg class="icon"><use href="#i-belt"></use></svg></span>
+          <span>
+            <h3>Timing belts</h3>
+            <p>Belts, tensioners and water pumps, to the manufacturer's schedule.</p>
+          </span>
+          <span class="service__no">03</span>
         </a>
-
-        <a class="service reveal" data-tilt data-tilt-max="11" href="#contact">
-          <div class="service__row">
-            <div class="hex"><svg class="icon"><use href="#i-clutch"></use></svg></div>
-            <div>
-              <h3>Clutches</h3>
-              <p>Slipping, dragging or juddering clutches diagnosed and replaced on site.</p>
-            </div>
-          </div>
-          <span class="service__go" aria-hidden="true"><svg class="icon"><use href="#i-arrow"></use></svg></span>
-          <span class="sr-only">Enquire about this service</span>
+        <a class="service reveal" href="#contact">
+          <span class="hex service__hex" aria-hidden="true"><svg class="icon"><use href="#i-clutch"></use></svg></span>
+          <span>
+            <h3>Clutches</h3>
+            <p>Slipping, dragging or juddering clutches diagnosed and replaced on site.</p>
+          </span>
+          <span class="service__no">04</span>
         </a>
-
-        <a class="service reveal" data-tilt data-tilt-max="11" href="#contact">
-          <div class="service__row">
-            <div class="hex"><svg class="icon"><use href="#i-diag"></use></svg></div>
-            <div>
-              <h3>Diagnostics</h3>
-              <p>Warning lights read with professional kit, explained in plain English.</p>
-            </div>
-          </div>
-          <span class="service__go" aria-hidden="true"><svg class="icon"><use href="#i-arrow"></use></svg></span>
-          <span class="sr-only">Enquire about this service</span>
+        <a class="service reveal" href="#contact">
+          <span class="hex service__hex" aria-hidden="true"><svg class="icon"><use href="#i-diag"></use></svg></span>
+          <span>
+            <h3>Diagnostics</h3>
+            <p>Warning lights read with professional equipment and explained plainly.</p>
+          </span>
+          <span class="service__no">05</span>
         </a>
-
-        <a class="service reveal" data-tilt data-tilt-max="11" href="#contact">
-          <div class="service__row">
-            <div class="hex"><svg class="icon"><use href="#i-tools"></use></svg></div>
-            <div>
-              <h3>General repairs</h3>
-              <p>Suspension, exhausts, batteries, hoses, leaks — and everything between.</p>
-            </div>
-          </div>
-          <span class="service__go" aria-hidden="true"><svg class="icon"><use href="#i-arrow"></use></svg></span>
-          <span class="sr-only">Enquire about this service</span>
+        <a class="service reveal" href="#contact">
+          <span class="hex service__hex" aria-hidden="true"><svg class="icon"><use href="#i-tools"></use></svg></span>
+          <span>
+            <h3>General repairs</h3>
+            <p>Suspension, exhausts, batteries, hoses, leaks — and everything between.</p>
+          </span>
+          <span class="service__no">06</span>
         </a>
       </div>
 
-      <p class="services__note reveal">
-        Not listed? Ask anyway. <b>Call or WhatsApp 07706 696124</b> with your vehicle and the fault —
-        if it is not a job for a mobile mechanic, you will be told straight away.
-      </p>
+      <div class="services__foot reveal">
+        <p>Something else? Tell us the vehicle and the fault.</p>
+        <a class="btn btn--outline btn--sm" href="#contact">
+          Request a quote <svg class="icon"><use href="#i-arrow"></use></svg>
+        </a>
+      </div>
     </div>
   </section>
 
-  <!-- =========================================================== -->
-  <!-- SCROLL 3 — Why choose RDF                                   -->
-  <!-- =========================================================== -->
+  <!-- 03 ------------------------------------------------------------------ -->
   <section class="scroll" id="why">
-    <span class="ghost ghost--right" aria-hidden="true" data-parallax="0.05">Trusted</span>
     <div class="container">
-      <div class="why__inner">
-        <div class="why__media reveal" data-tilt data-tilt-max="6">
+      <div class="why">
+        <div class="why__media reveal">
           <picture>
             <source type="image/avif" srcset="assets/img/about-mechanic-1000.avif">
             <img src="assets/img/about-mechanic-1000.jpg" width="1000" height="750" loading="lazy"
-                 alt="Mechanic with tools working on a vehicle">
+                 alt="Mechanic working on an engine">
           </picture>
         </div>
 
         <div>
-          <p class="count"><b>Scroll 03</b> <i>/ 05</i> — Why RDF</p>
-          <h2>Experienced hands,<br>honest prices</h2>
-          <p>
-            RDF Mobile Mechanic is a one-van operation, so the person who quotes the job is the
-            person who does it. The same care a good workshop gives you — brought to your kerbside.
+          <p class="label reveal"><b>03</b> / 05 <span></span> Why RDF</p>
+          <h2 class="reveal">One mechanic,<br>start to finish</h2>
+          <p class="lede reveal">
+            The person who quotes the job is the person who does it — with the tools, the parts and
+            the time to do it properly.
           </p>
 
-          <ul class="checks">
-            <li class="check reveal">
-              <span class="check__mark"><svg class="icon"><use href="#i-check"></use></svg></span>
+          <div class="points">
+            <div class="point reveal">
+              <span class="point__n">01</span>
               <div>
                 <h3>Experienced &amp; reliable</h3>
                 <p>Years on the tools across makes and models, turning up when we say we will.</p>
               </div>
-            </li>
-            <li class="check reveal">
-              <span class="check__mark"><svg class="icon"><use href="#i-check"></use></svg></span>
+            </div>
+            <div class="point reveal">
+              <span class="point__n">02</span>
               <div>
                 <h3>Competitive prices</h3>
-                <p>No workshop overheads to pass on — the price comes before the work, not after.</p>
+                <p>No workshop overheads to pass on. The price comes before the work, not after.</p>
               </div>
-            </li>
-            <li class="check reveal">
-              <span class="check__mark"><svg class="icon"><use href="#i-check"></use></svg></span>
+            </div>
+            <div class="point reveal">
+              <span class="point__n">03</span>
               <div>
                 <h3>Quality parts &amp; workmanship</h3>
                 <p>Parts that match or better the original specification, fitted properly and checked.</p>
               </div>
-            </li>
-            <li class="check reveal">
-              <span class="check__mark"><svg class="icon"><use href="#i-check"></use></svg></span>
+            </div>
+            <div class="point reveal">
+              <span class="point__n">04</span>
               <div>
                 <h3>Convenient &amp; trusted</h3>
-                <p>Your car stays where it is — no drop-off, no day off work, and a Checkatrade-verified trade behind it.</p>
+                <p>Your car stays where it is — no drop-off, no day off work, no waiting room.</p>
               </div>
-            </li>
-          </ul>
+            </div>
+          </div>
+
+          <div class="credential reveal">
+            <span>Member of</span>
+            <b>Checkatrade</b>
+            <span>Trusted trades. Quality verified.</span>
+          </div>
         </div>
-      </div>
-
-      <div class="why__band">
-      <ul class="stats reveal">
-        <li class="stat"><b data-count-to="6">6</b><span>Core services covered</span></li>
-        <li class="stat"><b data-count-to="100" data-count-suffix="%">100%</b><span>Work done at your location</span></li>
-        <li class="stat"><b data-count-to="1">1</b><span>Number for calls &amp; WhatsApp</span></li>
-        <li class="stat"><b data-count-to="0">0</b><span>Garage waiting rooms</span></li>
-      </ul>
-
-      <div class="member reveal">
-        <span class="member__label">Member of</span>
-        <span class="member__name"><span>Checka</span><span>trade</span></span>
-        <span class="member__strap">Trusted trades.<br>Quality verified.</span>
-      </div>
       </div>
     </div>
   </section>
 
-  <!-- =========================================================== -->
-  <!-- SCROLL 4 — How it works & coverage                          -->
-  <!-- =========================================================== -->
+  <!-- 04 ------------------------------------------------------------------ -->
   <section class="scroll scroll--alt" id="how">
-    <span class="ghost" aria-hidden="true" data-parallax="0.05">Mobile</span>
     <div class="container">
-      <div class="section-head section-head--center">
-        <p class="count"><b>Scroll 04</b> <i>/ 05</i> — How it works</p>
-        <h2>Three steps, no garage visit</h2>
-        <p>Booking a mobile mechanic should take one phone call. Here is exactly what happens.</p>
+      <div class="section-head">
+        <p class="label reveal"><b>04</b> / 05 <span></span> How it works</p>
+        <h2 class="reveal">Three steps, no garage visit</h2>
       </div>
 
-      <div class="grid steps">
-        <article class="step reveal" data-tilt data-tilt-max="9">
-          <div class="hex"><svg class="icon"><use href="#i-chat"></use></svg></div>
+      <div class="steps">
+        <div class="step reveal">
+          <p class="step__n">Step 01</p>
           <h3>Call or WhatsApp</h3>
-          <p>Tell us the make, model, mileage and what the vehicle is doing. Photos and videos over WhatsApp help. You get a clear price or a diagnostic plan there and then.</p>
-        </article>
-        <article class="step reveal" data-tilt data-tilt-max="9">
-          <div class="hex"><svg class="icon"><use href="#i-van"></use></svg></div>
+          <p>Tell us the make, model and what the vehicle is doing. Photos help. You get a price or a diagnostic plan there and then.</p>
+        </div>
+        <div class="step reveal">
+          <p class="step__n">Step 02</p>
           <h3>We come to you</h3>
-          <p>We arrive at your home, your workplace or the roadside with the tools and the parts for the job. You carry on with your day.</p>
-        </article>
-        <article class="step reveal" data-tilt data-tilt-max="9">
-          <div class="hex"><svg class="icon"><use href="#i-clipboard"></use></svg></div>
-          <h3>Job done &amp; explained</h3>
-          <p>The work is completed on site, the old parts are there to see and anything extra is agreed with you before it is fitted. Never a surprise on the bill.</p>
-        </article>
+          <p>We arrive with the tools and the parts for the job, at your home, your workplace or the roadside.</p>
+        </div>
+        <div class="step reveal">
+          <p class="step__n">Step 03</p>
+          <h3>Job done, explained</h3>
+          <p>The work is finished on site, the old parts are there to see, and nothing extra is fitted without your say-so.</p>
+        </div>
       </div>
 
       <div class="coverage reveal">
         <div>
-          <h3>Where we cover</h3>
-          <p>
-            Based in Rochester, Kent and working across the Medway towns and the surrounding area.
-            If you are a little further out, call and ask — travel is usually not a problem.
-          </p>
-          <div class="btn-row">
-            <a class="btn btn--primary" href="tel:07706696124">
-              <svg class="icon"><use href="#i-phone"></use></svg> Check your area
-            </a>
-          </div>
+          <h3>Where we work</h3>
+          <p>Based in Rochester, Kent. A little further out? Call and ask.</p>
         </div>
-        <ul class="areas">
+        <ul class="coverage__towns">
           <li>Rochester</li>
           <li>Chatham</li>
           <li>Gillingham</li>
@@ -526,75 +415,57 @@
           <li>Snodland</li>
           <li>Gravesend</li>
           <li>Sittingbourne</li>
-          <li>Surrounding Kent</li>
         </ul>
       </div>
     </div>
   </section>
 
-  <!-- =========================================================== -->
-  <!-- SCROLL 5 — Contact                                          -->
-  <!-- =========================================================== -->
-  <section class="scroll scroll--black" id="contact">
-    <span class="ghost ghost--right" aria-hidden="true" data-parallax="0.05">Call</span>
+  <!-- 05 ------------------------------------------------------------------ -->
+  <section class="scroll" id="contact">
     <div class="container">
-      <div class="section-head">
-        <p class="count"><b>Scroll 05</b> <i>/ 05</i> — Get in touch</p>
-        <h2>Talk to a mechanic</h2>
-        <p>One number for everything — quotes, bookings and advice. Prefer to write it down? The form opens WhatsApp with your details ready to send.</p>
-      </div>
-
-      <div class="contact__inner">
+      <div class="contact">
         <div>
-          <div class="callcard reveal" data-tilt data-tilt-max="5">
-            <span>Call or WhatsApp</span>
-            <a class="callcard__number" href="tel:07706696124">07706 696124</a>
-            <div class="btn-row">
-              <a class="btn btn--light" href="tel:07706696124">
-                <svg class="icon"><use href="#i-phone"></use></svg> Call now
-              </a>
-              <a class="btn btn--wa" href="https://wa.me/447706696124" rel="noopener">
-                <svg class="icon"><use href="#i-whatsapp"></use></svg> WhatsApp
-              </a>
-            </div>
+          <p class="label reveal"><b>05</b> / 05 <span></span> Contact</p>
+          <h2 class="reveal">Talk to a mechanic</h2>
+          <a class="contact__number reveal" href="tel:07706696124">07706 696124</a>
+          <div class="btn-row reveal">
+            <a class="btn btn--primary" href="tel:07706696124">
+              <svg class="icon"><use href="#i-phone"></use></svg> Call now
+            </a>
+            <a class="btn btn--outline" href="https://wa.me/447706696124" rel="noopener">
+              <svg class="icon"><use href="#i-whatsapp"></use></svg> WhatsApp
+            </a>
           </div>
 
-          <ul class="info reveal">
-            <li class="info__row">
+          <div class="details">
+            <div class="detail reveal">
               <svg class="icon"><use href="#i-van"></use></svg>
               <div>
                 <h4>Where we work</h4>
-                <p>At your home, your workplace or the roadside — Rochester, the Medway towns and the surrounding Kent area.</p>
+                <p>At your home, your workplace or the roadside across Rochester, Medway and the surrounding Kent area.</p>
               </div>
-            </li>
-            <li class="info__row">
+            </div>
+            <div class="detail reveal">
               <svg class="icon"><use href="#i-shield"></use></svg>
               <div>
                 <h4>Membership</h4>
                 <p>Member of Checkatrade — trusted trades, quality verified.</p>
               </div>
-            </li>
-            <li class="info__row">
+            </div>
+            <div class="detail reveal">
               <svg class="icon"><use href="#i-clipboard"></use></svg>
               <div>
                 <h4>Have this ready</h4>
-                <p>Make and model, registration, rough mileage and what the vehicle is doing. It makes the quote far more accurate.</p>
+                <p>Make, model, registration and what the vehicle is doing. It makes the quote far more accurate.</p>
               </div>
-            </li>
-            <li class="info__row">
-              <svg class="icon"><use href="#i-star"></use></svg>
-              <div>
-                <h4>Happy with the work?</h4>
-                <p>A review on Checkatrade helps more than anything else — and it keeps the prices competitive for everyone.</p>
-              </div>
-            </li>
-          </ul>
+            </div>
+          </div>
         </div>
 
         <form class="form reveal" id="quoteForm" novalidate>
           <h3>Request a quote</h3>
           <p class="form__intro">
-            Press the button and WhatsApp opens with the message written for you. Nothing is sent from
+            Press the button and WhatsApp opens with your details written out. Nothing is sent from
             this website and nothing is stored here.
           </p>
 
@@ -605,12 +476,12 @@
               <span class="error" data-error-for="name"></span>
             </div>
             <div class="field">
-              <label for="phone">Phone number <span class="req">*</span></label>
+              <label for="phone">Phone <span class="req">*</span></label>
               <input type="tel" id="phone" name="phone" autocomplete="tel" placeholder="07000 000000" required>
               <span class="error" data-error-for="phone"></span>
             </div>
             <div class="field">
-              <label for="vehicle">Vehicle make &amp; model</label>
+              <label for="vehicle">Vehicle</label>
               <input type="text" id="vehicle" name="vehicle" placeholder="Ford Focus 1.6 TDCi">
               <span class="error" data-error-for="vehicle"></span>
             </div>
@@ -633,23 +504,21 @@
               <span class="error" data-error-for="service"></span>
             </div>
             <div class="field">
-              <label for="postcode">Your postcode or area</label>
+              <label for="postcode">Postcode or area</label>
               <input type="text" id="postcode" name="postcode" autocomplete="postal-code" placeholder="ME1">
               <span class="error" data-error-for="postcode"></span>
             </div>
             <div class="field field--full">
               <label for="details">What is the vehicle doing? <span class="req">*</span></label>
-              <textarea id="details" name="details" placeholder="Grinding noise from the front when braking, started about a week ago. Car is on the driveway." required></textarea>
+              <textarea id="details" name="details" placeholder="Grinding noise from the front when braking, started about a week ago." required></textarea>
               <span class="error" data-error-for="details"></span>
             </div>
           </div>
 
-          <button class="btn btn--wa btn--block" type="submit">
+          <button class="btn btn--primary btn--block" type="submit">
             <svg class="icon"><use href="#i-whatsapp"></use></svg> Send on WhatsApp
           </button>
-          <p class="form__small">
-            Rather talk? <a href="tel:07706696124"><b>Call 07706 696124</b></a>
-          </p>
+          <p class="form__small">Rather talk? <a href="tel:07706696124"><b>07706 696124</b></a></p>
           <p class="form__status" id="formStatus" role="status" aria-live="polite"></p>
         </form>
       </div>
@@ -657,21 +526,18 @@
   </section>
 </main>
 
-<!-- ============================================================= -->
-<!-- Footer                                                        -->
-<!-- ============================================================= -->
 <footer class="footer">
   <div class="container">
     <div class="footer__grid">
       <div>
-        <div class="lockup">
-          <span class="logo" aria-hidden="true" style="font-size:3.2rem"><span>R</span><span class="logo__d">D</span><span>F</span></span>
-          <div class="lockup__rule" aria-hidden="true"><span></span><span></span></div>
-          <div class="lockup__name" style="font-size:1.25rem">Mobile <em>Mechanic</em></div>
-        </div>
-        <p class="footer__brandtext">
-          Bringing the workshop to you. Servicing, brakes, timing belts, clutches, diagnostics and
-          general repairs at your home or workplace across Rochester and Medway, Kent.
+        <a class="brand" href="#home">
+          <span class="brand__mark" aria-hidden="true">R<i>D</i>F</span>
+          <span class="brand__rule" aria-hidden="true"></span>
+          <span class="brand__text">Mobile<br>Mechanic</span>
+        </a>
+        <p class="footer__about">
+          Bringing the workshop to you — servicing, brakes, timing belts, clutches, diagnostics and
+          repairs across Rochester, Medway and the surrounding Kent area.
         </p>
       </div>
 
@@ -702,7 +568,7 @@
         <h4>Contact</h4>
         <ul class="footer__links">
           <li><a href="tel:07706696124"><b>07706 696124</b></a></li>
-          <li><a href="https://wa.me/447706696124" rel="noopener">WhatsApp us</a></li>
+          <li><a href="https://wa.me/447706696124" rel="noopener">WhatsApp</a></li>
           <li>Rochester &amp; Medway, Kent</li>
           <li>Member of Checkatrade</li>
         </ul>
@@ -710,19 +576,16 @@
     </div>
 
     <div class="footer__bottom">
-      <p>&copy; <span id="year">2026</span> RDF Mobile Mechanic. All rights reserved.</p>
-      <p>Fast &nbsp;|&nbsp; Reliable &nbsp;|&nbsp; Convenient</p>
+      <p>&copy; <span id="year">2026</span> RDF Mobile Mechanic</p>
+      <p>Fast · Reliable · Convenient</p>
     </div>
   </div>
 </footer>
 
-<!-- Mobile sticky action bar -->
 <div class="actionbar">
   <a class="actionbar__call" href="tel:07706696124"><svg class="icon"><use href="#i-phone"></use></svg> Call</a>
   <a class="actionbar__wa" href="https://wa.me/447706696124" rel="noopener"><svg class="icon"><use href="#i-whatsapp"></use></svg> WhatsApp</a>
 </div>
-
-<div class="grain" aria-hidden="true"></div>
 
 <script src="assets/js/main.js" defer></script>
 </body>
