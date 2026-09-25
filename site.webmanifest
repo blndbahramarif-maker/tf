@@ -1,14 +1,12 @@
 {
-  "name": "Mobile Mechanic — Rochester, Kent",
-  "short_name": "Mobile Mechanic",
-  "description": "24/7 mobile mechanic in Rochester, Kent. Servicing, repairs and diagnostics at your location.",
+  "name": "Pampered Pets — Grooming Parlour, South Croydon",
+  "short_name": "Pampered Pets",
+  "description": "Dog and cat grooming at 120 Selsdon Road, South Croydon.",
   "start_url": "/",
   "display": "browser",
-  "background_color": "#0a0d11",
-  "theme_color": "#0a0d11",
+  "background_color": "#0e0a12",
+  "theme_color": "#0e0a12",
   "icons": [
-    { "src": "assets/img/icon-180.png", "sizes": "180x180", "type": "image/png" },
-    { "src": "assets/img/icon-512.png", "sizes": "512x512", "type": "image/png" },
     { "src": "assets/img/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
   ]
 }

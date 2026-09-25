@@ -1,4 +1,4 @@
-# Netlify configuration for the Mobile Mechanic website.
+# Netlify configuration for the Pampered Pets website.
 # The site is plain HTML, so there is nothing to build — Netlify just
 # serves the files in this folder.
 

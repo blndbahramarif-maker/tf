@@ -1,185 +1,85 @@
-/* =============================================================
-   Mobile Mechanic — Rochester, Kent
-   Small, dependency-free script:
-   1. Sticky header state
-   2. Mobile menu
-   3. Active navigation link on scroll
-   4. Scroll reveal animations
-   5. Quote form (opens the visitor's email app — see README)
-   6. Mobile action bar spacing
-   ============================================================= */
+/* Pampered Pets — page behaviour (header, menu, section tracking, reveals). */
 (function () {
   'use strict';
 
-  var PHONE = '07767547383';
-  var WHATSAPP = 'https://wa.me/447767547383';
-  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  /* 1. Sticky header ------------------------------------------------- */
   var header = document.getElementById('header');
-  var onScroll = function () {
-    if (header) header.classList.toggle('is-scrolled', window.scrollY > 12);
-  };
-  window.addEventListener('scroll', onScroll, { passive: true });
-  onScroll();
-
-  /* 2. Mobile menu --------------------------------------------------- */
   var toggle = document.getElementById('navToggle');
-  var mobileNav = document.getElementById('mobileNav');
+  var hero = document.getElementById('home');
+  var dots = document.querySelector('.scroll-dots');
+  var mobileBar = document.querySelector('.mobile-bar');
+  var sections = Array.prototype.slice.call(document.querySelectorAll('[data-section]'));
+  var lightSections = ['parlour', 'services', 'visit'];
 
+  // Show the hero text even if the 3D scene is slow or blocked.
+  setTimeout(function () { hero.classList.add('is-shown'); }, 2600);
+
+  /* Mobile menu */
   function closeMenu() {
-    if (!toggle || !mobileNav) return;
+    document.body.classList.remove('nav-open');
     toggle.setAttribute('aria-expanded', 'false');
     toggle.setAttribute('aria-label', 'Open menu');
-    mobileNav.classList.remove('is-open');
   }
+  toggle.addEventListener('click', function () {
+    var open = document.body.classList.toggle('nav-open');
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+  });
+  document.querySelectorAll('.mobile-nav a').forEach(function (a) { a.addEventListener('click', closeMenu); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenu(); });
 
-  if (toggle && mobileNav) {
-    toggle.addEventListener('click', function () {
-      var open = toggle.getAttribute('aria-expanded') === 'true';
-      toggle.setAttribute('aria-expanded', String(!open));
-      toggle.setAttribute('aria-label', open ? 'Open menu' : 'Close menu');
-      mobileNav.classList.toggle('is-open', !open);
+  /* Header style + active section, based on what sits under the header. */
+  function update() {
+    var probe = header.offsetHeight + 1;
+    var current = sections[0];
+    sections.forEach(function (s) { if (s.getBoundingClientRect().top <= probe) current = s; });
+    var id = current.id;
+    var light = lightSections.indexOf(id) !== -1;
+
+    header.classList.toggle('is-scrolled', window.scrollY > 20);
+    header.classList.toggle('is-light', light && window.scrollY > 20);
+
+    document.querySelectorAll('[data-nav]').forEach(function (a) {
+      a.classList.toggle('is-active', a.getAttribute('data-nav') === id);
     });
 
-    mobileNav.addEventListener('click', function (event) {
-      if (event.target.closest('a')) closeMenu();
-    });
-
-    document.addEventListener('keydown', function (event) {
-      if (event.key === 'Escape') closeMenu();
-    });
-
-    window.addEventListener('resize', function () {
-      if (window.innerWidth >= 860) closeMenu();
-    });
-  }
-
-  /* 3. Active navigation link ---------------------------------------- */
-  var navLinks = Array.prototype.slice.call(
-    document.querySelectorAll('#primary-links a[href^="#"]')
-  );
-  var sections = navLinks
-    .map(function (link) { return document.querySelector(link.getAttribute('href')); })
-    .filter(Boolean);
-
-  if ('IntersectionObserver' in window && sections.length) {
-    var navObserver = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (!entry.isIntersecting) return;
-        navLinks.forEach(function (link) {
-          link.classList.toggle(
-            'is-active',
-            link.getAttribute('href') === '#' + entry.target.id
-          );
-        });
+    // Dots sit mid-screen, so colour them by the section in the middle.
+    var mid = window.innerHeight / 2;
+    var midSection = sections[0];
+    sections.forEach(function (s) { if (s.getBoundingClientRect().top <= mid) midSection = s; });
+    if (dots) {
+      dots.classList.toggle('is-light', lightSections.indexOf(midSection.id) !== -1);
+      dots.querySelectorAll('[data-dot]').forEach(function (a) {
+        a.classList.toggle('is-active', a.getAttribute('data-dot') === midSection.id);
       });
-    }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
+    }
 
-    sections.forEach(function (section) { navObserver.observe(section); });
+    if (mobileBar) mobileBar.classList.toggle('is-visible', window.scrollY > window.innerHeight * 0.6);
   }
+  var ticking = false;
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(function () { ticking = false; update(); }); }
+  }, { passive: true });
+  window.addEventListener('resize', update);
+  update();
 
-  /* 4. Scroll reveal -------------------------------------------------- */
-  var revealItems = document.querySelectorAll('[data-reveal]');
-
-  if (reduceMotion || !('IntersectionObserver' in window)) {
-    Array.prototype.forEach.call(revealItems, function (el) {
-      el.classList.add('is-visible');
+  /* Reveal on scroll, staggered within each section. */
+  var reveals = document.querySelectorAll('[data-reveal]');
+  if ('IntersectionObserver' in window) {
+    sections.forEach(function (s) {
+      s.querySelectorAll('[data-reveal]').forEach(function (el, i) {
+        el.style.setProperty('--rd', Math.min(i * 0.08, 0.6) + 's');
+      });
     });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) { entry.target.classList.add('is-visible'); io.unobserve(entry.target); }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+    reveals.forEach(function (el) { io.observe(el); });
   } else {
-    var revealObserver = new IntersectionObserver(function (entries, observer) {
-      entries.forEach(function (entry) {
-        if (!entry.isIntersecting) return;
-        entry.target.classList.add('is-visible');
-        observer.unobserve(entry.target);
-      });
-    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
-
-    Array.prototype.forEach.call(revealItems, function (el) {
-      revealObserver.observe(el);
-    });
-
-    /* Safety net: reveal anything already on screen that the observer
-       missed (fast scrolling, an anchor jump, a restored scroll position).
-       Only what is in view, so sections further down still animate in. */
-    var revealInView = function () {
-      Array.prototype.forEach.call(revealItems, function (el) {
-        var box = el.getBoundingClientRect();
-        if (box.top < window.innerHeight * 0.95 && box.bottom > 0) {
-          el.classList.add('is-visible');
-        }
-      });
-    };
-    window.addEventListener('load', revealInView);
-    window.setTimeout(revealInView, 1200);
+    reveals.forEach(function (el) { el.classList.add('is-visible'); });
   }
 
-  /* 5. Quote form ----------------------------------------------------- */
-  /* There is no backend on this site. The form collects the details and
-     hands them to the visitor's own messaging app, pre-addressed to the
-     business. See README.md to connect a form service instead.        */
-  var form = document.getElementById('quoteForm');
-  var status = document.getElementById('formStatus');
-
-  function showStatus(message) {
-    if (!status) return;
-    status.innerHTML = message;
-    status.hidden = false;
-  }
-
-  if (form) {
-    form.addEventListener('submit', function (event) {
-      event.preventDefault();
-
-      var data = {
-        name: form.name.value.trim(),
-        phone: form.phone.value.trim(),
-        vehicle: form.vehicle.value.trim(),
-        problem: form.problem.value.trim(),
-        datetime: form.datetime.value.trim()
-      };
-
-      var missing = [];
-      if (!data.name) missing.push('name');
-      if (!data.phone) missing.push('phone number');
-      if (!data.problem) missing.push('description of the problem');
-
-      if (missing.length) {
-        showStatus('Please add your ' + missing.join(', ') + ' so I can get back to you.');
-        var firstInvalid = !data.name ? form.name : (!data.phone ? form.phone : form.problem);
-        firstInvalid.focus();
-        return;
-      }
-
-      var lines = [
-        'Quote request from the Mobile Mechanic website',
-        'Name: ' + data.name,
-        'Phone: ' + data.phone,
-        'Vehicle: ' + (data.vehicle || 'Not provided'),
-        'Preferred date/time: ' + (data.datetime || 'Not provided'),
-        'Problem: ' + data.problem
-      ];
-
-      /* Opens WhatsApp with the details filled in, ready to send. */
-      window.open(WHATSAPP + '?text=' + encodeURIComponent(lines.join('\n')), '_blank', 'noopener');
-
-      showStatus(
-        'WhatsApp should now open with your details ready to send. ' +
-        'If nothing happens, please call <a href="tel:' + PHONE + '" style="color:#fff">' + PHONE + '</a>.'
-      );
-    });
-  }
-
-  /* 6. Keep the mobile action bar clear of page content ---------------- */
-  var actionBar = document.getElementById('actionBar');
-
-  function padForActionBar() {
-    if (!actionBar) return;
-    var visible = window.getComputedStyle(actionBar).display !== 'none';
-    document.body.style.paddingBottom = visible ? actionBar.offsetHeight + 'px' : '';
-  }
-
-  window.addEventListener('resize', padForActionBar);
-  window.addEventListener('load', padForActionBar);
-  padForActionBar();
+  var year = document.getElementById('year');
+  if (year) year.textContent = new Date().getFullYear();
 })();
