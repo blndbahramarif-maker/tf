@@ -248,18 +248,14 @@ h3 { font-family: var(--font-display); font-size: 1.35rem; line-height: 1.2; let
 }
 .is-3d-ready .hero__canvas { opacity: 1; }
 
+/* Still frame of the 3D scene: shows instantly, and stays if a phone or
+   browser cannot run the live 3D. The live canvas fades in over it. */
 .hero__fallback {
   position: absolute; inset: 0; z-index: -4;
-  background:
-    radial-gradient(40% 50% at 70% 55%, rgba(122, 63, 76, 0.55), transparent 70%),
-    radial-gradient(30% 40% at 25% 30%, rgba(58, 42, 92, 0.45), transparent 70%),
-    linear-gradient(180deg, #1d1223, #07050a);
+  background: #2a1422 url("../img/hero-poster.jpg") 71% center / cover no-repeat;
 }
-.no-webgl .hero__fallback::after {
-  content: ""; position: absolute; right: 12%; top: 50%; width: min(34vw, 380px); aspect-ratio: 1;
-  transform: translateY(-50%);
-  background: url("../img/favicon.svg") center / 60% no-repeat;
-  opacity: 0.18; filter: blur(0.5px);
+@media (max-aspect-ratio: 9/10) {
+  .hero__fallback { background-image: url("../img/hero-poster-mobile.jpg"); background-position: center 22%; }
 }
 
 /* Colour grade: vignette + readable scrim behind the text. */
@@ -283,12 +279,12 @@ h3 { font-family: var(--font-display); font-size: 1.35rem; line-height: 1.2; let
 /* Cinematic letterbox that opens as the scene fades in. */
 .letterbox {
   position: absolute; left: 0; right: 0; height: 11vh; z-index: 5; background: #000; pointer-events: none;
-  transition: transform 1.8s var(--ease) 0.6s;
+  transition: transform 1.6s var(--ease) 0.15s;
 }
 .letterbox--top { top: 0; }
 .letterbox--bottom { bottom: 0; }
-.js .is-3d-ready .letterbox--top, .no-webgl .letterbox--top { transform: translateY(-100%); }
-.js .is-3d-ready .letterbox--bottom, .no-webgl .letterbox--bottom { transform: translateY(100%); }
+.js .is-3d-ready .letterbox--top, .no-webgl .letterbox--top, .is-shown .letterbox--top { transform: translateY(-100%); }
+.js .is-3d-ready .letterbox--bottom, .no-webgl .letterbox--bottom, .is-shown .letterbox--bottom { transform: translateY(100%); }
 html:not(.js) .letterbox { display: none; }
 
 .hero__inner { position: relative; z-index: 2; padding-block: calc(var(--header-h) + 3rem) 6rem; }
@@ -323,7 +319,7 @@ html:not(.js) .letterbox { display: none; }
 .js .hero__in {
   opacity: 0; transform: translateY(0.6em);
   transition: opacity 1.2s var(--ease), transform 1.4s var(--ease);
-  transition-delay: calc(1.2s + var(--d, 0) * 0.14s);
+  transition-delay: calc(0.5s + var(--d, 0) * 0.12s);
 }
 .js .hero__line .hero__in { transform: translateY(105%); }
 .js .hero.is-3d-ready .hero__in, .js .hero.no-webgl .hero__in, .js .hero.is-shown .hero__in { opacity: 1; transform: none; }

@@ -46,6 +46,12 @@ function start() {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
 
+  // If the phone drops the 3D context (low memory), fall back to the still frame.
+  canvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    hero.classList.remove('is-3d-ready');
+  });
+
   const scene = new THREE.Scene();
   const BG = new THREE.Color(0x0e0a12);
   scene.fog = new THREE.FogExp2(BG, 0.07);

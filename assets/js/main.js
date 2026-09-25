@@ -10,8 +10,9 @@
   var sections = Array.prototype.slice.call(document.querySelectorAll('[data-section]'));
   var lightSections = ['parlour', 'services', 'visit'];
 
-  // Show the hero text even if the 3D scene is slow or blocked.
-  setTimeout(function () { hero.classList.add('is-shown'); }, 2600);
+  // Open the letterbox and bring the hero text in straight away; the 3D
+  // scene fades in over the still frame whenever it is ready.
+  requestAnimationFrame(function () { hero.classList.add('is-shown'); });
 
   /* Mobile menu */
   function closeMenu() {
