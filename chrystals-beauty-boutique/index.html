@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Chrystal's Beauty Boutique · Coulsdon</title>
-<meta name="description" content="Chrystal's Beauty Boutique, 330 Chipstead Valley Road, Coulsdon. Lashes, skin, nails, brows, waxing, aesthetics, facials, piercings and kids pamper parties. 26+ years experience. Book your appointment online.">
+<meta name="description" content="Chrystal's Beauty Boutique, 330 Chipstead Valley Road, Coulsdon, CR5 3BE. Tel 01737 479381. Lashes, skin, nails, brows, waxing, aesthetics, facials, piercings and kids pamper parties. 26+ years experience. Book your appointment online.">
 <meta name="theme-color" content="#1b1817">
 <meta property="og:title" content="Chrystal's Beauty Boutique · Coulsdon">
 <meta property="og:description" content="Lashes | Skin | Nails | Brows | Waxing | Aesthetics. Kids Pamper Parties. 26+ years experience. Book your appointment today.">
@@ -66,7 +66,8 @@ nav.links a:hover{color:var(--ink)}
 .chip{font-size:13px;letter-spacing:.06em;padding:7px 14px;border-radius:999px;background:#fff;border:1px solid var(--line)}
 .cta{display:flex;flex-direction:column;gap:12px}
 .cta .btn-gold{min-height:62px;font-size:16px}
-.facts{display:flex;gap:22px;margin-top:26px;font-size:14px;color:var(--ink-2)}
+.facts{display:flex;flex-wrap:wrap;gap:14px 22px;margin-top:26px;font-size:14px;color:var(--ink-2)}
+.facts a{text-decoration:none}
 .facts b{display:block;font-family:var(--serif);font-size:30px;font-weight:600;color:var(--ink);line-height:1}
 .hero-photos{position:relative;display:grid;grid-template-columns:1.25fr 1fr;gap:12px}
 .hero-photos img{width:100%;height:100%;object-fit:cover;border-radius:var(--radius);box-shadow:var(--shadow)}
@@ -93,6 +94,8 @@ section{padding:72px 0}
 .svc small{display:block;color:var(--muted);font-size:13px;letter-spacing:.04em}
 .svc .chev{margin-left:auto;transition:transform .2s;color:var(--gold)}
 .svc[open] .chev{transform:rotate(180deg)}
+.svc .info{border-top:1px solid var(--line);padding:14px 22px 0;font-size:13px;color:var(--gold);letter-spacing:.03em}
+.svc .info+ul{border-top:0}
 .svc ul{list-style:none;border-top:1px solid var(--line);padding:6px 22px 14px}
 .svc li{display:flex;align-items:baseline;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line)}
 .svc li:last-child{border-bottom:0}
@@ -244,6 +247,7 @@ footer .s{font-family:var(--script);font-size:34px;color:#fff;line-height:1}
       <div class="facts">
         <div><b>26+</b>years experience</div>
         <div><b>Coulsdon</b>330 Chipstead Valley Road</div>
+        <div><b>Call</b><a href="tel:01737479381">01737 479381</a></div>
       </div>
     </div>
     <div class="hero-photos">
@@ -356,15 +360,15 @@ footer .s{font-family:var(--script);font-size:34px;color:#fff;line-height:1}
     <div class="contact-grid">
       <div class="card">
         <h3>Find the salon</h3>
-        <p>330 Chipstead Valley Road<br>Coulsdon</p>
-        <a class="btn btn-dark" href="https://www.google.com/maps/search/?api=1&query=330+Chipstead+Valley+Road+Coulsdon" target="_blank" rel="noopener">Get directions</a>
+        <p>330 Chipstead Valley Road<br>Coulsdon, CR5 3BE</p>
+        <a class="btn btn-dark" href="https://www.google.com/maps/search/?api=1&query=330+Chipstead+Valley+Road+Coulsdon+CR5+3BE" target="_blank" rel="noopener">Get directions</a>
       </div>
       <div class="card">
         <h3>Get in touch</h3>
         <p id="contactLine">Message us on Instagram. We'd love to hear from you.</p>
         <div class="socials" id="socials"></div>
       </div>
-      <iframe class="map" title="Map showing 330 Chipstead Valley Road, Coulsdon" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://maps.google.com/maps?q=330%20Chipstead%20Valley%20Road%2C%20Coulsdon&z=16&output=embed"></iframe>
+      <iframe class="map" title="Map showing 330 Chipstead Valley Road, Coulsdon" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://maps.google.com/maps?q=330%20Chipstead%20Valley%20Road%2C%20Coulsdon%20CR5%203BE&z=16&output=embed"></iframe>
     </div>
   </div>
 </section>
@@ -374,7 +378,7 @@ footer .s{font-family:var(--script);font-size:34px;color:#fff;line-height:1}
 <footer>
   <div class="wrap">
     <div class="s">Chrystal's</div>
-    <p>Beauty Boutique · 330 Chipstead Valley Road, Coulsdon</p>
+    <p>Beauty Boutique · 330 Chipstead Valley Road, Coulsdon, CR5 3BE · <a href="tel:01737479381">01737 479381</a></p>
     <p style="margin-top:6px">© <span id="yr"></span> Chrystal's Beauty Boutique</p>
   </div>
 </footer>
@@ -395,7 +399,7 @@ const SALON = {
   // The first one that is filled in becomes the main button.
   whatsapp: "",   // e.g. "447700900000" (country code, no + or spaces)
   email: "",      // e.g. "bookings@example.com"
-  phone: "",      // e.g. "01737 000000"
+  phone: "01737 479381",
   website: "",    // full website address
   facebook: "",   // full Facebook page address
 
@@ -408,17 +412,118 @@ const SALON = {
     default: ["09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00"]
   },
 
-  // Treatments, from the Instagram bio and story highlights.
-  // Add each treatment to "items" as {name, price, note}. Price is text, e.g. "£45".
+  // Treatments and prices, from the salon's Instagram price list.
+  // Each treatment is {name, price, note}. Leave price "" to show "Ask us".
   services: [
-    { cat:"Lashes",              mark:"L", items:[] },
-    { cat:"Brows",               mark:"B", items:[] },
-    { cat:"Nails",               mark:"N", items:[] },
-    { cat:"Skin & Facials",      mark:"S", items:[] },
-    { cat:"Waxing",              mark:"W", items:[] },
-    { cat:"Aesthetics",          mark:"A", items:[] },
-    { cat:"Piercings",           mark:"P", items:[] },
-    { cat:"Kids Pamper Parties", mark:"K", items:[], note:"🎀" }
+    { cat:"Eyes & Brows", mark:"E", info:"Patch test required 48 hours before treatment.", items:[
+      {name:"Eyelash tint", price:"£16"},
+      {name:"Eyebrow tint", price:"£10"},
+      {name:"Lash lift", price:"£38"},
+      {name:"Lash lift & tint", price:"£48"},
+      {name:"Brow lamination", price:"£35"},
+      {name:"Brow lam & tint", price:"£38"},
+      {name:"Lash & brow tint", price:"£25"},
+      {name:"Lash, brow tint & brow shape", price:"£30"},
+      {name:"Brow tint & shape", price:"£16"},
+      {name:"Henna brows", price:"£25"}
+    ] },
+    { cat:"Waxing", mark:"W", items:[
+      {name:"Eyebrow shape", price:"£8"},
+      {name:"Eyebrow reshape", price:"£10"},
+      {name:"Lip wax", price:"£5"},
+      {name:"Chin wax", price:"£6"},
+      {name:"Lip & chin wax", price:"£10"},
+      {name:"Nasal wax", price:"£7"},
+      {name:"Face wax, cheeks", price:"£6"},
+      {name:"Under arm wax", price:"£10"},
+      {name:"Half arm wax", price:"£12"},
+      {name:"Full arm wax", price:"£15"},
+      {name:"Bikini line", price:"£12"},
+      {name:"Extended bikini line", price:"£15"},
+      {name:"Brazilian wax", price:"£26"},
+      {name:"Hollywood wax", price:"£32"},
+      {name:"Half leg wax", price:"£16"},
+      {name:"3/4 leg wax", price:"£20"},
+      {name:"Full leg wax", price:"£28"},
+      {name:"Full leg & bikini wax", price:"£35"},
+      {name:"Full leg & Brazilian wax", price:"£50"},
+      {name:"Full leg & Hollywood wax", price:"£55"},
+      {name:"Back & shoulder wax", price:"£28"},
+      {name:"Chest & shoulder wax", price:"£28"},
+      {name:"Stomach", price:"£12"}
+    ] },
+    { cat:"Hands & Feet", mark:"H", items:[
+      {name:"Manicure", price:"£20"},
+      {name:"File & re-varnish", price:"£10"},
+      {name:"File & re-varnish French tip", price:"£12"},
+      {name:"Gel removal", price:"£10"},
+      {name:"French manicure", price:"£22"},
+      {name:"Paraffin wax manicure", price:"£25"},
+      {name:"Hand scrub & moisture pedicure", price:"£10"},
+      {name:"Paraffin wax pedicure", price:"£30"},
+      {name:"Paraffin wax pedicure & French polish", price:"£32"}
+    ] },
+    { cat:"Facials & Skin", mark:"F", info:"Tropic skincare is made from fresh plants, fruit extracts & essential oils, which gives it its name Tropic. It is kind & gentle on the skin.", items:[
+      {name:"Tropical 1 hour facial", price:"£50", note:"Inc cleanse, tone, exfoliate, facial massage, masks, hand & arm massage & ice glow massage"},
+      {name:"Tropical ½ hour express facial", price:"£30", note:"Inc cleanse, tone, exfoliate & moisturise"},
+      {name:"Back facial", price:"£30", note:"Inc steam, cleanse, tone, scrub, mask & moisturise"},
+      {name:"Dermaplaning facial, 45 min", price:"£45"},
+      {name:"Dermaplaning facial, 1 hr 15 min", price:"£65"},
+      {name:"Dermaplaning facial with peel, 1 hr 30 min", price:"£75"},
+      {name:"Chemical peel", price:"£70", note:"Incl double cleanse, chemical peel, EGF serum, soothing masks & finishing product"},
+      {name:"Course of 3 sessions", price:"£190", note:"To be used within 6 months"},
+      {name:"Chrystal Glow Facial, 1 hr 15 min", price:"", note:"Luxury facial with gold collagen mask"},
+      {name:"Radio frequency with express facial", price:"£55"},
+      {name:"Radio frequency facial", price:"£75", note:"Recommended a course of 4"},
+      {name:"Add-on: dermaplaning to any facial", price:"£15"},
+      {name:"Ultimate fix: dermaplane & micro needling treatment", price:"£130", note:"Inc double cleanse, dermaplane, serum, micro needling & finishing product"},
+      {name:"Micro needling", price:"£99"},
+      {name:"LED facial", price:"£55"}
+    ] },
+    { cat:"Massage & Body", mark:"M", items:[
+      {name:"Back massage (25 minutes)", price:"£30"},
+      {name:"Full body massage (1 hour)", price:"£50"},
+      {name:"Leg & foot massage (20 minutes)", price:"£20"},
+      {name:"Indian head massage (40 minutes)", price:"£30"},
+      {name:"Hot stone massage (no face)", price:"£50"},
+      {name:"Hot stone back massage", price:"£35"},
+      {name:"Hot stone full body (inc face)", price:"£55"},
+      {name:"Hot & cold stone massage combined, inc face", price:"£58", note:"For sinus problems & injuries"},
+      {name:"Pregnancy massage (30 minutes)", price:"£38"},
+      {name:"Pregnancy massage (1 hour)", price:"£58"},
+      {name:"Full body scrub & moisture", price:"£25"},
+      {name:"Hopi ear candle", price:"£20"},
+      {name:"Reflexology (25 min)", price:"£25"}
+    ] },
+    { cat:"Botox & Fillers", mark:"A", items:[
+      {name:"Botox, 1 area", price:"£150"},
+      {name:"Botox, 2 areas", price:"£180"},
+      {name:"Botox, 3 areas", price:"£200"},
+      {name:"Mantox", price:"£250"},
+      {name:"Marionette lines filler", price:"£150"},
+      {name:"Nasal folds 1ml filler", price:"£150"},
+      {name:"Botox bunny", price:"£50"},
+      {name:"Downturn smile", price:"£75"},
+      {name:"Chin dimple", price:"£75"},
+      {name:"Brow lift", price:"£75"},
+      {name:"Chin filler", price:"£150"},
+      {name:"Jawline filler", price:"£250"},
+      {name:"Cheek contour", price:"£150"},
+      {name:"Teeth grinding", price:"£250"},
+      {name:"Hyperhidrosis (armpit)", price:"£300"},
+      {name:"Platysma neck band", price:"£225"},
+      {name:"8 point face lift", price:"£400"},
+      {name:"Lumi Eyr", price:"£150"},
+      {name:"Lip filler 0.5ml", price:"£125"},
+      {name:"Lip filler 1ml", price:"£165"},
+      {name:"Lip dissolve", price:"£100"},
+      {name:"Lip flip", price:"£100"},
+      {name:"Smokers lines", price:"£75"}
+    ] },
+    { cat:"Piercings", mark:"P", items:[
+      {name:"Caflon ear piercing (both ears)", price:"£25"}
+    ] },
+    { cat:"Kids Pamper Parties", mark:"K", note:"🎀", items:[] }
   ],
 
   // Client reviews. Add as {text, name, stars}
@@ -443,7 +548,7 @@ $("#svcGrid").innerHTML = SALON.services.map((s, i) => {
   return `<details class="svc"${i === 0 ? " open" : ""}>
     <summary><span class="ico" aria-hidden="true">${esc(s.mark)}</span>
       <span><h3>${esc(s.cat)} ${s.note || ""}</h3><small>${count ? count + " treatment" + (count > 1 ? "s" : "") : "Treatments available"}</small></span>${chev}</summary>
-    <ul>${list}</ul>
+    ${s.info ? `<p class="info">${esc(s.info)}</p>` : ""}<ul>${list}</ul>
     <button class="btn btn-dark book-this" data-cat="${i}">Book ${esc(s.cat)}</button>
   </details>`;
 }).join("");
@@ -466,7 +571,7 @@ socials.push(`<a href="${IG}" target="_blank" rel="noopener">Instagram @${esc(SA
 if (SALON.facebook) socials.push(`<a href="${SALON.facebook}" target="_blank" rel="noopener">Facebook</a>`);
 if (SALON.website) socials.push(`<a href="${SALON.website}" target="_blank" rel="noopener">Website</a>`);
 $("#socials").innerHTML = socials.join("");
-if (SALON.phone || SALON.whatsapp || SALON.email) $("#contactLine").textContent = "Call, message or email us. We'd love to hear from you.";
+if (SALON.phone || SALON.whatsapp || SALON.email) $("#contactLine").textContent = "Call us or send us a message. We'd love to hear from you.";
 
 /* ---------- booking ---------- */
 const B = { cat:null, item:null, date:null, time:null };
@@ -508,7 +613,7 @@ function renderSvcPick(){
     }</div>`;
   } else {
     const s = SALON.services[B.cat];
-    el.innerHTML = `<button class="back-link" id="svcBack">‹ All treatments</button><h3>${esc(s.cat)}</h3><p class="sub">Choose your treatment.</p><div class="opt-list">${
+    el.innerHTML = `<button class="back-link" id="svcBack">‹ All treatments</button><h3>${esc(s.cat)}</h3><p class="sub">${s.info ? esc(s.info) : "Choose your treatment."}</p><div class="opt-list">${
       s.items.map((it,j) => `<button class="opt" data-item="${j}" aria-pressed="${B.item===j}"><span class="t">${esc(it.name)}${it.note?`<i>${esc(it.note)}</i>`:""}</span><span class="pr">${esc(it.price||"")}</span></button>`).join("")
     }</div>`;
   }
@@ -587,6 +692,7 @@ function renderSummary(sel){
   const rows = [["Treatment", serviceLabel()]];
   if (priceLabel()) rows.push(["Price", priceLabel()]);
   rows.push(["Date", fmtDate(B.date)], ["Time", B.time]);
+  if (SALON.services[B.cat].info && /patch test/i.test(SALON.services[B.cat].info)) rows.push(["Please note", SALON.services[B.cat].info]);
   if (sel === "#summary2") {
     rows.push(["Name", $("#fName").value.trim()], ["Mobile", $("#fPhone").value.trim()]);
     if ($("#fNotes").value.trim()) rows.push(["Notes", $("#fNotes").value.trim()]);
@@ -624,10 +730,10 @@ $("#bookForm").addEventListener("submit", e => {
   const opts = [];
   if (SALON.whatsapp) opts.push(`<a class="btn btn-gold" href="https://wa.me/${SALON.whatsapp}?text=${enc}" target="_blank" rel="noopener">Send on WhatsApp</a>`);
   if (SALON.email) opts.push(`<a class="btn ${opts.length ? "btn-ghost" : "btn-gold"}" href="mailto:${SALON.email}?subject=${encodeURIComponent("Booking request: " + serviceLabel())}&body=${enc}">Send by email</a>`);
-  if (SALON.phone) opts.push(`<a class="btn btn-ghost" href="sms:${SALON.phone.replace(/\s/g,"")}?&body=${enc}">Send by text</a>`);
   opts.push(`<button class="btn ${opts.length ? "btn-ghost" : "btn-gold"}" id="igSend">Send on Instagram</button>`);
+  if (SALON.phone) opts.push(`<a class="btn btn-ghost" href="tel:${SALON.phone.replace(/\s/g,"")}">Or call ${esc(SALON.phone)}</a>`);
   $("#sendList").innerHTML = opts.join("");
-  $("#sendNote").textContent = SALON.whatsapp || SALON.email || SALON.phone
+  $("#sendNote").textContent = SALON.whatsapp || SALON.email
     ? "The salon will reply to confirm your appointment."
     : "We'll copy your booking details. Just paste them into the chat and send. The salon will reply to confirm.";
   const ig = $("#igSend");
@@ -639,7 +745,7 @@ $("#restart").onclick = () => { Object.assign(B, {cat:null,item:null,date:null,t
 renderSvcPick();
 
 /* hide mobile bar while booking is on screen */
-const io = new IntersectionObserver(es => es.forEach(x => $("#mbar").classList.toggle("hide", x.isIntersecting)), {threshold:.15});
+const io = new IntersectionObserver(es => es.forEach(x => $("#mbar").classList.toggle("hide", x.isIntersecting)), {threshold:0});
 io.observe($("#book"));
 </script>
 </body>
