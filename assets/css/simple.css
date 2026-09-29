@@ -1,0 +1,330 @@
+/* ==========================================================================
+   RDF Mobile Mechanic — simple one-page site
+   One short page: logo, phone, services, photos, contact. No scroll
+   sections, no animation.
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../fonts/barlow-condensed-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/barlow-condensed-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../fonts/inter-variable.woff2') format('woff2');
+}
+
+:root {
+  --bg: #0a0b0c;
+  --bg-2: #101113;
+  --line: rgba(255, 255, 255, 0.10);
+  --line-2: rgba(255, 255, 255, 0.20);
+  --text: #f3f3f1;
+  --text-2: #b9bbbe;
+  --muted: #85888b;
+  --red: #d8232a;
+  --red-2: #f03840;
+  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  --gutter: clamp(1.25rem, 5vw, 3rem);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  color: #fff;
+  margin: 0;
+}
+h1 { font-size: clamp(2.2rem, 1.5rem + 3.4vw, 3.6rem); }
+h2 { font-size: clamp(1.5rem, 1.2rem + 1.4vw, 2rem); letter-spacing: 0.02em; }
+h3 { font-size: 1.15rem; letter-spacing: 0.02em; }
+
+p { margin: 0; }
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; height: auto; display: block; }
+ul { margin: 0; padding: 0; list-style: none; }
+
+:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+.wrap {
+  width: 100%;
+  max-width: 1100px;
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.block { padding-block: clamp(2.5rem, 2rem + 3vw, 4rem); border-top: 1px solid var(--line); }
+.block--alt { background: var(--bg-2); }
+
+/* --- buttons ------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  height: 54px;
+  padding-inline: 1.6rem;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.btn .icon { width: 1.1em; height: 1.1em; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.btn--primary { background: var(--red); color: #fff; }
+.btn--primary:hover { background: var(--red-2); }
+.btn--outline { border-color: var(--line-2); color: #fff; }
+.btn--outline:hover { border-color: #fff; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+
+/* --- logo at the top ------------------------------------------------------ */
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding-block: 1.5rem;
+}
+
+.logo { display: block; text-align: left; }
+.logo__mark {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 2rem + 4vw, 4.6rem);
+  font-weight: 700;
+  line-height: 0.85;
+  letter-spacing: -0.02em;
+  color: #fff;
+  transform: skewX(-8deg);
+}
+.logo__mark i { font-style: normal; color: var(--red); }
+.logo__rule {
+  display: block;
+  height: 4px;
+  width: 78%;
+  background: var(--red);
+  margin-block: 0.35rem 0.5rem;
+}
+.logo__name {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 0.9rem + 0.9vw, 1.6rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  transform: skewX(-8deg);
+}
+.logo__name i { font-style: normal; color: var(--red); }
+.logo__tag {
+  display: block;
+  margin-top: 0.4rem;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.top__phone { text-align: right; }
+.top__phone span {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.3rem;
+}
+.top__phone a {
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 1.2rem + 2vw, 2.4rem);
+  font-weight: 700;
+  color: #fff;
+}
+.top__phone a:hover { color: var(--red); }
+
+/* --- hero ----------------------------------------------------------------- */
+.hero { position: relative; overflow: hidden; border-top: 1px solid var(--line); }
+.hero__img { position: absolute; inset: 0; }
+.hero__img img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(0.8) brightness(0.55) contrast(1.1); }
+.hero__img::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(10, 11, 12, 0.95) 0%, rgba(10, 11, 12, 0.75) 45%, rgba(10, 11, 12, 0.45) 100%);
+}
+.hero__inner {
+  position: relative;
+  padding-block: clamp(3rem, 2.5rem + 4vw, 5rem);
+}
+.hero p { max-width: 46ch; margin-top: 1rem; color: var(--text-2); }
+.hero .btn-row { margin-top: 1.75rem; }
+.hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+  margin-top: 1.75rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* --- services ------------------------------------------------------------- */
+.services {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: clamp(2rem, 1rem + 4vw, 4rem);
+  margin-top: 1.75rem;
+  border-top: 1px solid var(--line);
+}
+.service {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 1.1rem;
+  padding-block: 1.1rem;
+  border-bottom: 1px solid var(--line);
+}
+.service p { color: var(--text-2); font-size: 0.95rem; line-height: 1.55; }
+.hex {
+  width: 42px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  background: var(--red);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+.hex .icon { width: 20px; height: 20px; color: #fff; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+/* --- photos + points ------------------------------------------------------- */
+.about {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(1.75rem, 1rem + 3vw, 3rem);
+  align-items: center;
+}
+.about img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; filter: grayscale(0.35) brightness(0.95); }
+.points { display: grid; gap: 0.9rem; margin-top: 1.25rem; }
+.point { display: grid; grid-template-columns: auto 1fr; gap: 0.85rem; align-items: start; }
+.point svg { width: 1.1rem; height: 1.1rem; margin-top: 0.4rem; color: var(--red); fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.point b { display: block; color: #fff; font-weight: 600; }
+.point span { color: var(--text-2); font-size: 0.95rem; }
+
+/* --- contact --------------------------------------------------------------- */
+.contact { text-align: center; }
+.contact__number {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 1.8rem + 4vw, 4.2rem);
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  margin-block: 0.75rem 1.5rem;
+}
+.contact__number:hover { color: var(--red); }
+.contact .btn-row { justify-content: center; }
+.contact__lines {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 2rem;
+  margin-top: 1.75rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* --- footer ---------------------------------------------------------------- */
+.foot {
+  border-top: 1px solid var(--line);
+  padding-block: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* --- sticky call bar on phones ---------------------------------------------- */
+.bar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 10;
+  display: none;
+  border-top: 1px solid var(--line-2);
+  background: rgba(10, 11, 12, 0.96);
+}
+.bar a {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding-block: 0.85rem;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.bar .icon { width: 1.1em; height: 1.1em; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.bar__call { background: var(--red); color: #fff; }
+.bar__wa { color: #fff; }
+
+@media (max-width: 860px) {
+  .services, .about { grid-template-columns: minmax(0, 1fr); }
+  .about__img { max-width: 480px; }
+  .bar { display: flex; }
+  body { padding-bottom: 54px; }
+  .top { justify-content: center; text-align: center; }
+  .top__phone { text-align: center; }
+  .logo { text-align: center; }
+  .logo__rule { margin-inline: auto; width: 60%; }
+}
+
+@media (max-width: 520px) {
+  .btn { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+
+@media print {
+  .bar { display: none; }
+  body { background: #fff; color: #000; }
+}
