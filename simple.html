@@ -250,17 +250,20 @@
 
 
 <script>
-/* A tel: link hands the number to the dialler. A page shown inside a sandboxed
-   frame (a preview, an embed) is not allowed to do that, so a tap would appear
-   to do nothing. Only in that case, copy the number instead and say so. On a
-   real phone this never runs. */
+/* Tapping a phone number must dial. A page shown inside a sandboxed frame (a
+   preview, an embed) is not allowed to hand tel: to the dialler the usual way,
+   so inside a frame we try every route the browser may still permit — while
+   the tap is still counted as a user gesture — and only if all of them are
+   refused do we copy the number instead. Opened normally, none of this runs
+   and the link dials as it always did. */
 (function () {
+  var NUMBER = '07706696124';
   var embedded = false;
   try { embedded = window.top !== window.self; } catch (e) { embedded = true; }
   if (!embedded) return;
 
   var toast, timer;
-  function show(msg) {
+  function say(msg) {
     if (!toast) {
       toast = document.createElement('div');
       toast.setAttribute('role', 'status');
@@ -293,12 +296,42 @@
   }
 
   document.addEventListener('click', function (event) {
+    /* Only a real finger — step 3 below clicks a link of its own, and without
+       this check that synthetic click would come straight back in here. */
+    if (!event.isTrusted) return;
     var link = event.target.closest('a[href^="tel:"]');
     if (!link) return;
+    var href = link.getAttribute('href');
     event.preventDefault();
-    copy(link.getAttribute('href').replace('tel:', '')).then(function (ok) {
-      show(ok ? 'Number copied \u2014 07706 696124' : 'Call 07706 696124');
-    });
+
+    /* 1. a new window — allowed when the frame permits popups */
+    try {
+      var w = window.open(href, '_blank');
+      if (w) { setTimeout(function () { try { w.close(); } catch (e) {} }, 1500); return; }
+    } catch (e) {}
+
+    /* 2. straight out of the frame — allowed when it permits top navigation */
+    try { window.top.location.href = href; return; } catch (e) {}
+
+    /* 3. a click on a real link aimed at the top window */
+    try {
+      var a = document.createElement('a');
+      a.href = href;
+      a.target = '_top';
+      a.rel = 'noopener';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (e) {}
+
+    /* 4. nothing was allowed — leave them the number */
+    setTimeout(function () {
+      if (document.hidden) return;              // the dialler took over after all
+      copy(NUMBER).then(function (ok) {
+        say(ok ? 'Number copied \u2014 07706 696124' : 'Call 07706 696124');
+      });
+    }, 700);
   });
 })();
 </script>
