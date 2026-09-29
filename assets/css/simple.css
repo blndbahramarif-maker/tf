@@ -267,6 +267,29 @@ ul { margin: 0; padding: 0; list-style: none; }
   color: var(--muted);
 }
 
+
+/* --- Checkatrade reviews widget -------------------------------------------
+   Only gives the widget room; its own styling is left alone. */
+.checkatrade {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+.checkatrade__widget {
+  max-width: 100%;
+  margin-inline: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.checkatrade__widget > * { max-width: 100%; }
+.checkatrade__widget iframe { max-width: 100%; border: 0; display: block; margin-inline: auto; }
+.checkatrade__widget img { max-width: 100%; height: auto; }
+/* If the widget cannot render (offline, blocked, or still loading), the
+   container holds nothing but the two <script> tags — hide the block so no
+   empty gap is left behind. */
+.checkatrade:not(:has(.checkatrade__widget > :not(script))) { display: none; }
+
+
 /* --- footer ---------------------------------------------------------------- */
 .foot {
   border-top: 1px solid var(--line);
