@@ -813,7 +813,10 @@ strong, b { font-weight: 600; color: #fff; }
   .topbar__list { display: none; }
   .topbar__inner { justify-content: center; }
   .actionbar { display: flex; }
-  body { padding-bottom: 54px; }
+  /* Room for the fixed bar: the foot of the page must never sit under it,
+     and anchor jumps must stop short of it. */
+  body { padding-bottom: 68px; }
+  html { scroll-padding-bottom: 68px; }
   .scroll { min-height: 0; padding-block: clamp(3.5rem, 3rem + 3vw, 5rem); }
   .hero { min-height: calc(100svh - var(--header-h)); }
 }
@@ -827,7 +830,65 @@ strong, b { font-weight: 600; color: #fff; }
   .btn { width: 100%; }
 }
 
-/* 16. Print ------------------------------------------------------------------------------ */
+
+/* Touch --------------------------------------------------------------------
+   Everything below exists because a finger is not a mouse: no hover, a
+   bigger contact patch, and browsers that add their own delays and zoom. */
+
+/* No 300ms tap delay, and a branded tap flash instead of the default. */
+a, button, input, select, textarea, label, summary {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(216, 35, 42, 0.25);
+}
+
+/* Decorative layers must never swallow a tap. */
+.hero__bg, .hero__bg::after { pointer-events: none; }
+
+/* Pressed feedback — the only feedback a touch screen gets. */
+.btn:active { transform: translateY(1px); }
+.btn--primary:active { background: #b81a20; }
+.btn--outline:active { background: rgba(255, 255, 255, 0.10); border-color: #fff; }
+.btn--light:active { background: #dcdcd8; }
+.service:active { background: rgba(255, 255, 255, 0.04); }
+.actionbar a:active { filter: brightness(0.9); }
+.contact__number:active,
+.topbar a:active,
+.footer__links a:active,
+.nav__links a:active { color: var(--red-2); }
+
+@media (pointer: coarse) {
+  /* 44px minimum contact patch on every link that is plain text. */
+  .nav__links a,
+  .mobile-nav a,
+  .footer__links a,
+  .topbar a,
+  .rail a,
+  .hero__scroll,
+  .form__small a,
+  .brand,
+  .contact__number,
+  .service {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  .footer__links a { width: fit-content; }
+  .footer__links li { margin-bottom: 0; }
+  .services__foot .btn { min-height: 48px; }
+
+  /* iOS zooms the whole page in when a field under 16px takes focus. */
+  .field input,
+  .field select,
+  .field textarea { font-size: 16px; }
+}
+
+
+/* On touch, shorten the entry animation: a moving target is a missed tap. */
+@media (pointer: coarse) {
+  .js .reveal { transform: translateY(8px); transition-duration: 0.4s; }
+}
+
+/* 17. Print ------------------------------------------------------------------------------ */
 @media print {
   .header, .topbar, .actionbar, .rail, .form, .mobile-nav { display: none !important; }
   body { background: #fff; color: #000; }

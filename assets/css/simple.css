@@ -332,7 +332,8 @@ ul { margin: 0; padding: 0; list-style: none; }
   .services, .about { grid-template-columns: minmax(0, 1fr); }
   .about__img { max-width: 480px; }
   .bar { display: flex; }
-  body { padding-bottom: 54px; }
+  body { padding-bottom: 64px; }
+  html { scroll-padding-bottom: 64px; }
   .top { justify-content: center; text-align: center; }
   .top__phone { text-align: center; }
   .logo { text-align: center; }
@@ -345,6 +346,33 @@ ul { margin: 0; padding: 0; list-style: none; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
+}
+
+
+/* --- Touch ------------------------------------------------------------------
+   A finger is not a mouse: no hover, a bigger contact patch, and no
+   browser-added tap delay. */
+a, button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(216, 35, 42, 0.25);
+}
+
+.hero__img, .hero__img::after { pointer-events: none; }
+
+.btn:active { transform: translateY(1px); }
+.btn--primary:active { background: #b81a20; }
+.btn--outline:active { background: rgba(255, 255, 255, 0.10); border-color: #fff; }
+.bar a:active { filter: brightness(0.9); }
+.top__phone a:active,
+.contact__number:active { color: var(--red-2); }
+
+@media (pointer: coarse) {
+  .logo,
+  .top__phone a,
+  .contact__number { min-height: 44px; display: flex; align-items: center; }
+  .logo { display: block; }
+  .top__phone a { justify-content: center; }
+  .contact__number { justify-content: center; }
 }
 
 @media print {
