@@ -1,0 +1,45 @@
+# Publishes the site to GitHub Pages — and switches Pages on the first time it
+# runs, so nothing has to be turned on by hand.
+name: Publish website
+
+on:
+  push:
+    branches: [claude/professional-website-5-sections-p0rcqj]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble the site
+        run: |
+          mkdir -p _site
+          cp index.html simple.html start.html 404.html robots.txt sitemap.xml site.webmanifest _site/
+          cp .nojekyll _site/ 2>/dev/null || true
+          cp -r assets _site/
+          ls -la _site
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
