@@ -2,9 +2,10 @@
 # runs, so nothing has to be turned on by hand.
 name: Publish website
 
+# Run on request only. GitHub will not let a workflow switch Pages on by
+# itself ("Resource not accessible by integration"), so Pages is enabled once
+# in the repository settings and this then publishes on demand.
 on:
-  push:
-    branches: [claude/professional-website-5-sections-p0rcqj]
   workflow_dispatch:
 
 permissions:
