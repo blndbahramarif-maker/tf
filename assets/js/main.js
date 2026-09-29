@@ -6,6 +6,7 @@
    4. Reveal on scroll (a short fade and rise, nothing more)
    5. Quote form -> pre-written WhatsApp message
    6. Current year in the footer
+   7. Phone links inside an embedded preview
    ============================================================= */
 (function () {
   'use strict';
@@ -194,4 +195,59 @@
   /* 6. Footer year ----------------------------------------------------- */
   var year = document.getElementById('year');
   if (year) year.textContent = String(new Date().getFullYear());
+
+  /* 7. Phone links inside an embedded preview ---------------------------- */
+  /* A tel: link hands the number to the dialler — but a page shown inside a
+     sandboxed frame (a preview, an embed) is not allowed to do that, so a tap
+     appears to do nothing. Only in that case, copy the number instead and say
+     so. On a real phone this code never runs. */
+  var embedded = false;
+  try { embedded = window.top !== window.self; } catch (e) { embedded = true; }
+
+  if (embedded) {
+    var toast = null;
+
+    var showToast = function (message) {
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.setAttribute('role', 'status');
+        toast.style.cssText =
+          'position:fixed;left:50%;bottom:78px;transform:translateX(-50%);z-index:999;' +
+          'max-width:90vw;padding:0.8rem 1.1rem;background:#fff;color:#111;border-radius:2px;' +
+          'font:600 0.95rem/1.4 system-ui,sans-serif;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,0.5);' +
+          'opacity:0;transition:opacity 0.2s ease';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = message;
+      toast.style.opacity = '1';
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(function () { toast.style.opacity = '0'; }, 2600);
+    };
+
+    var copy = function (text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return false; });
+      }
+      var box = document.createElement('textarea');
+      box.value = text;
+      box.setAttribute('readonly', '');
+      box.style.cssText = 'position:fixed;top:-1000px';
+      document.body.appendChild(box);
+      box.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(box);
+      return Promise.resolve(ok);
+    };
+
+    document.addEventListener('click', function (event) {
+      var link = event.target.closest('a[href^="tel:"]');
+      if (!link) return;
+      event.preventDefault();
+      var number = link.getAttribute('href').replace('tel:', '');
+      copy(number).then(function (ok) {
+        showToast(ok ? 'Number copied — ' + PHONE : 'Call ' + PHONE);
+      });
+    });
+  }
 })();
