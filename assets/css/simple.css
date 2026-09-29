@@ -116,45 +116,11 @@ ul { margin: 0; padding: 0; list-style: none; }
   padding-block: 1.5rem;
 }
 
-.logo { display: block; text-align: left; }
-.logo__mark {
+.logo { display: block; }
+.logo__img {
   display: block;
-  font-family: var(--font-display);
-  font-size: clamp(3rem, 2rem + 4vw, 4.6rem);
-  font-weight: 700;
-  line-height: 0.85;
-  letter-spacing: -0.02em;
-  color: #fff;
-  transform: skewX(-8deg);
-}
-.logo__mark i { font-style: normal; color: var(--red); }
-.logo__rule {
-  display: block;
-  height: 4px;
-  width: 78%;
-  background: var(--red);
-  margin-block: 0.35rem 0.5rem;
-}
-.logo__name {
-  display: block;
-  font-family: var(--font-display);
-  font-size: clamp(1.1rem, 0.9rem + 0.9vw, 1.6rem);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #fff;
-  transform: skewX(-8deg);
-}
-.logo__name i { font-style: normal; color: var(--red); }
-.logo__tag {
-  display: block;
-  margin-top: 0.4rem;
-  font-family: var(--font-display);
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--muted);
+  width: clamp(190px, 26vw, 290px);
+  height: auto;
 }
 
 .top__phone { text-align: right; }
@@ -336,8 +302,7 @@ ul { margin: 0; padding: 0; list-style: none; }
   html { scroll-padding-bottom: 64px; }
   .top { justify-content: center; text-align: center; }
   .top__phone { text-align: center; }
-  .logo { text-align: center; }
-  .logo__rule { margin-inline: auto; width: 60%; }
+  .logo__img { margin-inline: auto; width: clamp(200px, 62vw, 280px); }
 }
 
 @media (max-width: 520px) {
@@ -367,10 +332,8 @@ a, button {
 .contact__number:active { color: var(--red-2); }
 
 @media (pointer: coarse) {
-  .logo,
   .top__phone a,
   .contact__number { min-height: 44px; display: flex; align-items: center; }
-  .logo { display: block; }
   .top__phone a { justify-content: center; }
   .contact__number { justify-content: center; }
 }
